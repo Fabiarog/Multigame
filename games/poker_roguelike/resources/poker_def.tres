@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GameDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/registry/GameDefinition.cs" id="1_gd"]
+
+[resource]
+script = ExtResource("1_gd")
+GameId = "poker_roguelike"
+GameName = "Poker Roguelike"
+Description = "Um jogo de poker roguelike com mecânicas de construção de mão e pontuação inspiradas em Balatro. Jogue contra a mesa e tente atingir o alvo de pontos!"
+MinPlayers = 1
+MaxPlayers = 6
+MainScenePath = "res://games/poker_roguelike/scenes/PokerGame.tscn"
+Version = "1.0.0"

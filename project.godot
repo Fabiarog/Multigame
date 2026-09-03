@@ -1,0 +1,53 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Game Hub"
+config/description="A scalable, modular Game Hub supporting multiple 2D Pixel Art multiplayer games."
+config/version="0.1.0"
+run/main_scene="res://hub/scenes/HubMain.tscn"
+config/features=PackedStringArray("4.7", "C#", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameRegistry="*res://core/registry/GameRegistry.tscn"
+NetworkManager="*res://core/networking/NetworkManager.tscn"
+SettingsManager="*res://core/systems/SettingsManager.cs"
+AudioManager="*res://core/systems/AudioManager.cs"
+SaveManager="*res://core/systems/SaveManager.cs"
+LanDiscovery="*res://core/networking/LanDiscovery.cs"
+LobbyManager="*res://core/networking/LobbyManager.cs"
+ScenarioManager="*res://core/scenarios/ScenarioManager.cs"
+
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=360
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+
+[dotnet]
+
+project/assembly_name="GameHub"
+
+[file_customization]
+
+folder_colors={
+"res://core/": "blue",
+"res://games/": "green",
+"res://hub/": "purple"
+}
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0

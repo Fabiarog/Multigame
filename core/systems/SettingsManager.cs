@@ -1,0 +1,114 @@
+using Godot;
+
+namespace GameHub.Core.Systems;
+
+/// <summary>
+/// Singleton that manages saving/loading of all game configuration settings.
+/// Handles Visuals, Audio, Controls, Profile, and Accessibility.
+/// </summary>
+public partial class SettingsManager : Node
+{
+    public static SettingsManager Instance { get; private set; }
+
+    private const string SETTINGS_PATH = "user://settings.cfg";
+    private ConfigFile _config = new ConfigFile();
+
+    // -- Profile --
+    public string PlayerNickname { get; set; } = "Player";
+    public string AvatarId { get; set; } = "default";
+
+    // -- Visuals --
+    public bool IsFullscreen { get; set; } = true;
+    public float ResolutionScale { get; set; } = 1.0f;
+    public bool VfxEnabled { get; set; } = true;
+
+    // -- Audio --
+    public float MasterVolume { get; set; } = 1.0f;
+    public float MusicVolume { get; set; } = 0.8f;
+    public float SfxVolume { get; set; } = 1.0f;
+
+    // -- Accessibility --
+    public bool ScreenShakeEnabled { get; set; } = true;
+    public int ColorblindMode { get; set; } = 0; // 0 = None, 1 = Protanopia, etc.
+
+    public override void _EnterTree()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            LoadSettings();
+        }
+        else
+        {
+            QueueFree();
+        }
+    }
+
+    public void LoadSettings()
+    {
+        Error err = _config.Load(SETTINGS_PATH);
+        if (err == Error.Ok)
+        {
+            // Profile
+            PlayerNickname = (string)_config.GetValue("Profile", "Nickname", PlayerNickname);
+            AvatarId = (string)_config.GetValue("Profile", "AvatarId", AvatarId);
+
+            // Visuals
+            IsFullscreen = (bool)_config.GetValue("Visuals", "Fullscreen", IsFullscreen);
+            ResolutionScale = (float)_config.GetValue("Visuals", "ResolutionScale", ResolutionScale);
+            VfxEnabled = (bool)_config.GetValue("Visuals", "VfxEnabled", VfxEnabled);
+
+            // Audio
+            MasterVolume = (float)_config.GetValue("Audio", "MasterVolume", MasterVolume);
+            MusicVolume = (float)_config.GetValue("Audio", "MusicVolume", MusicVolume);
+            SfxVolume = (float)_config.GetValue("Audio", "SfxVolume", SfxVolume);
+
+            // Accessibility
+            ScreenShakeEnabled = (bool)_config.GetValue("Accessibility", "ScreenShake", ScreenShakeEnabled);
+            ColorblindMode = (int)_config.GetValue("Accessibility", "ColorblindMode", ColorblindMode);
+
+            ApplySettings();
+        }
+        else
+        {
+            GD.Print("[Settings] No settings file found, creating default.");
+            SaveSettings();
+            ApplySettings();
+        }
+    }
+
+    public void SaveSettings()
+    {
+        _config.SetValue("Profile", "Nickname", PlayerNickname);
+        _config.SetValue("Profile", "AvatarId", AvatarId);
+
+        _config.SetValue("Visuals", "Fullscreen", IsFullscreen);
+        _config.SetValue("Visuals", "ResolutionScale", ResolutionScale);
+        _config.SetValue("Visuals", "VfxEnabled", VfxEnabled);
+
+        _config.SetValue("Audio", "MasterVolume", MasterVolume);
+        _config.SetValue("Audio", "MusicVolume", MusicVolume);
+        _config.SetValue("Audio", "SfxVolume", SfxVolume);
+
+        _config.SetValue("Accessibility", "ScreenShake", ScreenShakeEnabled);
+        _config.SetValue("Accessibility", "ColorblindMode", ColorblindMode);
+
+        _config.Save(SETTINGS_PATH);
+        GD.Print("[Settings] Settings saved.");
+    }
+
+    public void ApplySettings()
+    {
+        // Visuals
+        if (IsFullscreen)
+            DisplayServer.WindowSetMode(DisplayServer.WindowMode.Fullscreen);
+        else
+            DisplayServer.WindowSetMode(DisplayServer.WindowMode.Windowed);
+
+        // Here we would also update AudioServer buses based on volumes.
+        // int masterBus = AudioServer.GetBusIndex("Master");
+        // AudioServer.SetBusVolumeDb(masterBus, Mathf.LinearToDb(MasterVolume));
+
+        GD.Print("[Settings] Applied current settings to the engine.");
+    }
+}

@@ -48,6 +48,14 @@ public partial class PokerUI : Control
     private Button _tutorialSkipBtn;
     private Core.AI.TutorialController _tutorialController;
 
+    // Shop
+    private Control _shopOverlay;
+    private Label _goldLabel;
+    private Button _buyMultBtn;
+    private Button _buyHandBtn;
+    private Button _buyDiscardBtn;
+    private Button _shopNextRoundBtn;
+
     // ===== THEME COLORS =====
     private static readonly Color BgDark = new(0.05f, 0.05f, 0.09f);
     private static readonly Color PanelBg = new(0.09f, 0.09f, 0.15f);
@@ -280,6 +288,9 @@ public partial class PokerUI : Control
         // --- Overlay ---
         BuildOverlay();
 
+        // --- Shop Overlay ---
+        BuildShopOverlay();
+
         // --- Tutorial Panel ---
         BuildTutorialPanel();
     }
@@ -350,6 +361,112 @@ public partial class PokerUI : Control
         _backMenuBtn = CreateStyledButton("Voltar ao Menu", BtnRed, BtnRedHover, new Vector2(100, 22));
         _backMenuBtn.Pressed += () => GetTree().ChangeSceneToFile("res://hub/scenes/HubMain.tscn");
         vbox.AddChild(_backMenuBtn);
+    }
+
+    private void BuildShopOverlay()
+    {
+        _shopOverlay = new ColorRect();
+        ((ColorRect)_shopOverlay).Color = new Color(0, 0, 0, 0.85f);
+        _shopOverlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _shopOverlay.Visible = false;
+        _shopOverlay.MouseFilter = MouseFilterEnum.Stop;
+        AddChild(_shopOverlay);
+
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _shopOverlay.AddChild(center);
+
+        var panel = new PanelContainer();
+        panel.CustomMinimumSize = new Vector2(280, 180);
+        var panelStyle = new StyleBoxFlat();
+        panelStyle.BgColor = PanelBg;
+        panelStyle.SetCornerRadiusAll(8);
+        panelStyle.SetBorderWidthAll(2);
+        panelStyle.BorderColor = Gold;
+        panelStyle.ContentMarginLeft = 24;
+        panelStyle.ContentMarginRight = 24;
+        panelStyle.ContentMarginTop = 16;
+        panelStyle.ContentMarginBottom = 16;
+        panel.AddThemeStyleboxOverride("panel", panelStyle);
+        center.AddChild(panel);
+
+        var vbox = new VBoxContainer();
+        vbox.AddThemeConstantOverride("separation", 10);
+        vbox.Alignment = BoxContainer.AlignmentMode.Center;
+        panel.AddChild(vbox);
+
+        var title = CreateLabel("LOJA (SHOP)", 14, Gold);
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        vbox.AddChild(title);
+
+        _goldLabel = CreateLabel("Fichas (Gold): 0", 10, SuccessGreen);
+        _goldLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        vbox.AddChild(_goldLabel);
+
+        vbox.AddChild(CreateFixedSpacer(6));
+
+        // Upgrades
+        var grid = new GridContainer();
+        grid.Columns = 2;
+        grid.AddThemeConstantOverride("h_separation", 16);
+        grid.AddThemeConstantOverride("v_separation", 12);
+        grid.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+
+        // Upgrade 1
+        var multBox = new VBoxContainer();
+        multBox.Alignment = BoxContainer.AlignmentMode.Center;
+        multBox.AddChild(CreateLabel("+1 Multiplicador", 8, Accent));
+        _buyMultBtn = CreateStyledButton("Comprar (10g)", BtnPurple, BtnPurpleHover, new Vector2(80, 20));
+        _buyMultBtn.Pressed += () => TryBuy("multiplier", 10);
+        multBox.AddChild(_buyMultBtn);
+        grid.AddChild(multBox);
+
+        // Upgrade 2
+        var handBox = new VBoxContainer();
+        handBox.Alignment = BoxContainer.AlignmentMode.Center;
+        handBox.AddChild(CreateLabel("+1 Mão/Rodada", 8, Accent));
+        _buyHandBtn = CreateStyledButton("Comprar (15g)", BtnPurple, BtnPurpleHover, new Vector2(80, 20));
+        _buyHandBtn.Pressed += () => TryBuy("hand", 15);
+        handBox.AddChild(_buyHandBtn);
+        grid.AddChild(handBox);
+
+        // Upgrade 3
+        var discardBox = new VBoxContainer();
+        discardBox.Alignment = BoxContainer.AlignmentMode.Center;
+        discardBox.AddChild(CreateLabel("+1 Descarte/Rodada", 8, Accent));
+        _buyDiscardBtn = CreateStyledButton("Comprar (8g)", BtnPurple, BtnPurpleHover, new Vector2(80, 20));
+        _buyDiscardBtn.Pressed += () => TryBuy("discard", 8);
+        discardBox.AddChild(_buyDiscardBtn);
+        grid.AddChild(discardBox);
+
+        vbox.AddChild(grid);
+        vbox.AddChild(CreateFixedSpacer(10));
+
+        _nextRoundBtn = CreateStyledButton("Próxima Rodada", BtnGreen, BtnGreenHover, new Vector2(100, 24));
+        _nextRoundBtn.Pressed += () =>
+        {
+            _shopOverlay.Visible = false;
+            _game.StartNextRound();
+        };
+        _nextRoundBtn.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        vbox.AddChild(_nextRoundBtn);
+    }
+
+    private void TryBuy(string type, int cost)
+    {
+        if (_game.BuyUpgrade(type, cost))
+        {
+            RefreshShopUI();
+            // Optional: play sound or particle
+        }
+    }
+
+    private void RefreshShopUI()
+    {
+        _goldLabel.Text = $"Fichas (Gold): {_game.Gold}";
+        _buyMultBtn.Disabled = _game.Gold < 10;
+        _buyHandBtn.Disabled = _game.Gold < 15;
+        _buyDiscardBtn.Disabled = _game.Gold < 8;
     }
 
     private void BuildTutorialPanel()
@@ -618,8 +735,7 @@ public partial class PokerUI : Control
     private void UpdateActionButtons()
     {
         int selectedCount = _game.GetSelectedIndices().Count;
-        bool inPlayerTurn = _game.CurrentPhase == PokerGameManager.GamePhase.PlayerTurn;
-
+        
         _playBtn.Disabled = !_game.CanPlayHand();
         _discardBtn.Disabled = !_game.CanDiscard();
 

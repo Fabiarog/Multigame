@@ -17,6 +17,7 @@ public partial class PokerGameManager : Node
         Dealing,
         PlayerTurn,
         Scoring,
+        Shop,
         RoundEnd,
         GameOver,
         GameWon
@@ -51,6 +52,12 @@ public partial class PokerGameManager : Node
     public int RoundScore { get; private set; } = 0;
     public int RoundTarget { get; private set; }
     public int TotalScore { get; private set; } = 0;
+
+    // --- Roguelike Shop State ---
+    public int Gold { get; private set; } = 0;
+    public int BaseMultiplierBonus { get; private set; } = 0;
+    public int ExtraHands { get; private set; } = 0;
+    public int ExtraDiscards { get; private set; } = 0;
 
     // ===== CONSTANTS =====
 
@@ -145,6 +152,20 @@ public partial class PokerGameManager : Node
     {
         CurrentRound = 0;
         TotalScore = 0;
+        // Random Map Selection
+        var bgSprite = GetNodeOrNull<Sprite3D>("../Environment/Background");
+        if (bgSprite != null)
+        {
+            string[] maps = {
+                "res://assets/sprites/backgrounds/cyber_casino.jpg",
+                "res://assets/sprites/backgrounds/neon_lounge.jpg",
+                "res://assets/sprites/backgrounds/retro_arcade.jpg"
+            };
+            string chosenMap = maps[_rng.NextInt() % maps.Length];
+            bgSprite.Texture = ResourceLoader.Load<Texture2D>(chosenMap);
+            GD.Print($"[Poker] Chosen map: {chosenMap}");
+        }
+
         StartNextRound();
     }
 
@@ -166,8 +187,8 @@ public partial class PokerGameManager : Node
         }
 
         RoundScore = 0;
-        HandsRemaining = HandsPerRound;
-        DiscardsRemaining = DiscardsPerRound;
+        HandsRemaining = HandsPerRound + ExtraHands;
+        DiscardsRemaining = DiscardsPerRound + ExtraDiscards;
         RoundTarget = CurrentRound <= RoundTargets.Length
             ? RoundTargets[CurrentRound - 1]
             : RoundTargets[RoundTargets.Length - 1] + (CurrentRound - RoundTargets.Length) * 500;
@@ -232,6 +253,7 @@ public partial class PokerGameManager : Node
 
         // Evaluate
         var result = HandEvaluator.Evaluate(playedCards);
+        result.Mult += BaseMultiplierBonus;
         GD.Print($"[Poker] Played: {result.HandName} = {result.GetScoreBreakdown()}");
 
         // Update score
@@ -258,10 +280,15 @@ public partial class PokerGameManager : Node
         // Check win condition
         if (RoundScore >= RoundTarget)
         {
-            CurrentPhase = GamePhase.RoundEnd;
+            // Award gold based on overscore
+            int overscore = RoundScore - RoundTarget;
+            int goldEarned = 5 + (overscore / 100);
+            Gold += goldEarned;
+
+            CurrentPhase = GamePhase.Shop;
             EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
             EmitSignal(SignalName.RoundEnded, CurrentRound, true);
-            GD.Print($"[Poker] Round {CurrentRound} passed! Score: {RoundScore}/{RoundTarget}");
+            GD.Print($"[Poker] Round {CurrentRound} passed! Score: {RoundScore}/{RoundTarget}. Earned {goldEarned} Gold.");
             return;
         }
 
@@ -298,6 +325,29 @@ public partial class PokerGameManager : Node
 
         EmitSignal(SignalName.HandDealt);
         EmitSignal(SignalName.ScoreUpdated, RoundScore, RoundTarget);
+    }
+
+    public bool BuyUpgrade(string upgradeType, int cost)
+    {
+        if (Gold < cost) return false;
+        
+        switch (upgradeType)
+        {
+            case "multiplier":
+                BaseMultiplierBonus++;
+                break;
+            case "hand":
+                ExtraHands++;
+                break;
+            case "discard":
+                ExtraDiscards++;
+                break;
+            default:
+                return false;
+        }
+        
+        Gold -= cost;
+        return true;
     }
 
     // ===== INTERNAL =====

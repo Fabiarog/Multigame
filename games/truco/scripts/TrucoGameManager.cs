@@ -92,6 +92,20 @@ public partial class TrucoGameManager : Node
         PlayerScore = 0;
         OpponentScore = 0;
         _playerStartsNext = true;
+
+        var bgSprite = GetNodeOrNull<Sprite3D>("../Environment/Background");
+        if (bgSprite != null)
+        {
+            string[] maps = {
+                "res://assets/sprites/backgrounds/cyber_casino.jpg",
+                "res://assets/sprites/backgrounds/neon_lounge.jpg",
+                "res://assets/sprites/backgrounds/retro_arcade.jpg"
+            };
+            string chosenMap = maps[_rng.NextInt() % maps.Length];
+            bgSprite.Texture = ResourceLoader.Load<Texture2D>(chosenMap);
+            GD.Print($"[Truco] Chosen map: {chosenMap}");
+        }
+
         EmitSignal(SignalName.ScoreUpdated, PlayerScore, OpponentScore);
         StartNewHand();
     }

@@ -21,6 +21,7 @@ public partial class TrucoUI : Control
     private HBoxContainer _tableOpponentRow;
     private HBoxContainer _tombosContainer;
     private Button _trucoBtn;
+    private CenterContainer _viraCardContainer;
 
     // Overlay
     private Control _trucoOverlay;
@@ -191,8 +192,30 @@ public partial class TrucoUI : Control
         oppCenter.AddChild(_tableOpponentRow);
         mainVBox.AddChild(oppCenter);
 
-        // --- Spacer (table area) ---
-        mainVBox.AddChild(CreateExpandSpacer());
+        // --- Spacer (table area) with Vira Card ---
+        var tableArea = new MarginContainer();
+        tableArea.SizeFlagsVertical = SizeFlags.ExpandFill;
+        tableArea.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        
+        var viraHBox = new HBoxContainer();
+        viraHBox.Alignment = BoxContainer.AlignmentMode.Center;
+        viraHBox.AddThemeConstantOverride("separation", 15);
+        tableArea.AddChild(viraHBox);
+
+        var viraTextVBox = new VBoxContainer();
+        viraTextVBox.Alignment = BoxContainer.AlignmentMode.Center;
+        var vTitle = CreateLabel("CARTA DO TOMBO", 6, TrucoOrange);
+        vTitle.HorizontalAlignment = HorizontalAlignment.Center;
+        viraTextVBox.AddChild(vTitle);
+        _viraLabel = CreateLabel("(Vira)", 6, Gold);
+        _viraLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        viraTextVBox.AddChild(_viraLabel);
+        viraHBox.AddChild(viraTextVBox);
+
+        _viraCardContainer = new CenterContainer();
+        viraHBox.AddChild(_viraCardContainer);
+
+        mainVBox.AddChild(tableArea);
 
         _statusLabel = CreateLabel("Sua vez!", 8, SuccessGreen);
         _statusLabel.HorizontalAlignment = HorizontalAlignment.Center;
@@ -441,7 +464,15 @@ public partial class TrucoUI : Control
 
     private void OnViraRevealed(string viraDisplay, string manilhaDisplay)
     {
-        _viraLabel.Text = $"Vira: {viraDisplay}";
+        _viraLabel.Text = $"Vira:\n{viraDisplay}";
+        
+        ClearContainer(_viraCardContainer);
+        if (_game.ViraCard != null)
+        {
+            var panel = CreateCardPanel(_game.ViraCard, -1);
+            panel.MouseFilter = MouseFilterEnum.Ignore; // Vira card is not clickable
+            _viraCardContainer.AddChild(panel);
+        }
     }
 
     private void OnTrucoCalled(int stakes, bool byPlayer)

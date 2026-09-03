@@ -26,6 +26,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -22)
 size = Vector3(60, 30, 0.1)
 material = SubResource("StandardMaterial3D_darkbg")
 
+[node name="Floor" type="CSGBox3D" parent="Environment"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, -5)
+size = Vector3(60, 0.1, 40)
+material = SubResource("StandardMaterial3D_darkbg")
+
 [node name="Background" type="Sprite3D" parent="Environment"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -18)
 pixel_size = 0.03

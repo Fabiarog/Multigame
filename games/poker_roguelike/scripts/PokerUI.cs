@@ -442,14 +442,14 @@ public partial class PokerUI : Control
         vbox.AddChild(grid);
         vbox.AddChild(CreateFixedSpacer(10));
 
-        _nextRoundBtn = CreateStyledButton("Próxima Rodada", BtnGreen, BtnGreenHover, new Vector2(100, 24));
-        _nextRoundBtn.Pressed += () =>
+        _shopNextRoundBtn = CreateStyledButton("Próxima Rodada", BtnGreen, BtnGreenHover, new Vector2(100, 24));
+        _shopNextRoundBtn.Pressed += () =>
         {
             _shopOverlay.Visible = false;
             _game.StartNextRound();
         };
-        _nextRoundBtn.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
-        vbox.AddChild(_nextRoundBtn);
+        _shopNextRoundBtn.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        vbox.AddChild(_shopNextRoundBtn);
     }
 
     private void TryBuy(string type, int cost)

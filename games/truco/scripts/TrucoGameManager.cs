@@ -101,7 +101,7 @@ public partial class TrucoGameManager : Node
                 "res://assets/sprites/backgrounds/neon_lounge.jpg",
                 "res://assets/sprites/backgrounds/retro_arcade.jpg"
             };
-            string chosenMap = maps[_rng.NextInt() % maps.Length];
+            string chosenMap = maps[_rng.RandiRange(0, maps.Length - 1)];
             bgSprite.Texture = ResourceLoader.Load<Texture2D>(chosenMap);
             GD.Print($"[Truco] Chosen map: {chosenMap}");
         }

@@ -160,6 +160,11 @@ public partial class LobbyManager : Node
     {
         if (!IsHost) return;
 
+        // A Truco table is always two complete teams. LAN players keep their
+        // seats; any missing seats become ready bots before validation.
+        if (CurrentLobby.SelectedGameId == "truco")
+            FillTrucoTeamsWithBots();
+
         if (!CurrentLobby.AreAllPlayersReady())
         {
             GD.Print("[LobbyManager] Cannot start: not all players are ready.");
@@ -189,6 +194,25 @@ public partial class LobbyManager : Node
         Rpc(MethodName.ClientStartMatch, gameDef.MainScenePath, matchSeed, (int)CurrentLobby.SelectedTurnMode, CurrentLobby.TargetScore, CurrentLobby.SelectedScenarioId);
     }
 
+    private void FillTrucoTeamsWithBots()
+    {
+        int nextBotId = -1;
+        while (CurrentLobby.PlayerSlots.ContainsKey(nextBotId)) nextBotId--;
+
+        while (CurrentLobby.PlayerSlots.Count < CurrentLobby.MaxPlayers)
+        {
+            int teamOneCount = CurrentLobby.PlayerSlots.Values.Count(slot => slot.Team == 1);
+            int teamTwoCount = CurrentLobby.PlayerSlots.Values.Count(slot => slot.Team == 2);
+            int team = teamOneCount <= teamTwoCount ? 1 : 2;
+            CurrentLobby.AddPlayer(nextBotId, $"Bot {Mathf.Abs(nextBotId)}");
+            var bot = CurrentLobby.PlayerSlots[nextBotId];
+            bot.Team = team;
+            bot.IsReady = true;
+            Rpc(MethodName.ClientSyncPlayer, nextBotId, bot.PlayerName, true, team);
+            nextBotId--;
+        }
+    }
+
     [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
     private void ClientStartMatch(string scenePath, uint matchSeed, int turnMode, int targetScore, string scenarioId)
     {
@@ -214,6 +238,8 @@ public partial class LobbyManager : Node
         // A new peer connected. We send them the full lobby state.
         // For now, assign a temporary name until they register.
         CurrentLobby.AddPlayer(id, $"Player_{id}");
+        if (CurrentLobby.SelectedGameId == "truco" && CurrentLobby.TeamAssignment == LobbyState.TeamAssignmentMode.Random)
+            AssignTeamsRandomly();
 
         // Update our broadcast player count
         LanDiscovery.Instance?.StopBroadcasting();
@@ -245,6 +271,8 @@ public partial class LobbyManager : Node
         {
             CurrentLobby.AddPlayer(peerId, name);
         }
+        if (CurrentLobby.PlayerSlots.TryGetValue(peerId, out var slot))
+            slot.Team = team;
         CurrentLobby.SetPlayerReady(peerId, ready);
         EmitSignal(SignalName.LobbyUpdated);
     }

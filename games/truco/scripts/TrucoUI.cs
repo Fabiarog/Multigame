@@ -109,8 +109,19 @@ public partial class TrucoUI : Control
 
     private void BuildUI()
     {
+        // Keep the casino visible across the whole canvas. The 3D backdrop was
+        // only visible in a narrow band because it sat behind the table.
+        var backdrop = new TextureRect();
+        backdrop.Texture = ResourceLoader.Load<Texture2D>("res://assets/sprites/backgrounds/cyber_casino.jpg");
+        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        backdrop.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+        backdrop.StretchMode = TextureRect.StretchModeEnum.Scale;
+        backdrop.Modulate = new Color(1, 1, 1, 0.38f);
+        backdrop.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(backdrop);
+
         var bg = new ColorRect();
-        bg.Color = new Color(0, 0, 0, 0.3f);
+        bg.Color = new Color(0, 0, 0, 0.2f);
         bg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(bg);
 
@@ -130,7 +141,7 @@ public partial class TrucoUI : Control
         var topBar = new HBoxContainer();
         topBar.AddThemeConstantOverride("separation", 8);
 
-        var titleLabel = CreateLabel("♣ TRUCO", 8, Gold);
+        var titleLabel = CreateLabel($"♣ TRUCO {_game.TeamSize}v{_game.TeamSize}", 8, Gold);
         topBar.AddChild(titleLabel);
 
         topBar.AddChild(CreateExpandSpacer());

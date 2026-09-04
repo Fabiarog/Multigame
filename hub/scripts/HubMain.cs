@@ -56,6 +56,7 @@ public partial class HubMain : Control
     private Label _lobbyStatusLabel;
     private HBoxContainer _ipRow;
     private OptionButton _teamAssignmentSelect;
+    private OptionButton _teamAssignmentSelect;
     private bool _isHosting = false;
     private string _selectedGameId = "poker_roguelike";
 
@@ -550,6 +551,22 @@ public partial class HubMain : Control
         _ipRow.AddChild(connectBtn);
         vbox.AddChild(_ipRow);
 
+        var teamModeRow = new HBoxContainer();
+        teamModeRow.Alignment = BoxContainer.AlignmentMode.Center;
+        teamModeRow.AddThemeConstantOverride("separation", 8);
+        teamModeRow.AddChild(CreateLabel("Equipes:", 8, TextPrimary));
+        _teamAssignmentSelect = new OptionButton();
+        _teamAssignmentSelect.AddItem("Sortear", (int)LobbyState.TeamAssignmentMode.Random);
+        _teamAssignmentSelect.AddItem("Escolher", (int)LobbyState.TeamAssignmentMode.HostChooses);
+        _teamAssignmentSelect.CustomMinimumSize = new Vector2(90, 20);
+        _teamAssignmentSelect.ItemSelected += index =>
+        {
+            if (_isHosting)
+                LobbyManager.Instance?.SetTeamAssignment((LobbyState.TeamAssignmentMode)_teamAssignmentSelect.GetItemId(index));
+        };
+        teamModeRow.AddChild(_teamAssignmentSelect);
+        vbox.AddChild(teamModeRow);
+
         // Player list
         vbox.AddChild(CreateSectionLabel("Jogadores"));
 
@@ -748,6 +765,8 @@ public partial class HubMain : Control
         {
             RefreshLobbyUI();
             _ipRow.Visible = !_isHosting;
+            if (_teamAssignmentSelect.GetParent() is Control teamConfig)
+                teamConfig.Visible = LobbyManager.Instance?.CurrentLobby?.SelectedGameId == "truco";
             _startBtn.Visible = _isHosting;
             _lobbyStatusLabel.Text = _isHosting ? "Hosting — aguardando jogadores..." : "Digite o IP e conecte";
         }
@@ -857,11 +876,20 @@ public partial class HubMain : Control
             row.AddChild(nameLabel);
 
             var statusLabel = CreateLabel(
-                slot.IsReady ? "✓ Pronto" : "Aguardando",
+                $"T{slot.Team} · {(slot.IsReady ? "✓ Pronto" : "Aguardando")}",
                 8,
                 slot.IsReady ? SuccessGreen : TextSecondary
             );
             row.AddChild(statusLabel);
+
+            if (_isHosting && lobby.TeamAssignment == LobbyState.TeamAssignmentMode.HostChooses)
+            {
+                var teamButton = CreateStyledButton($"Equipe {slot.Team}", BtnPurple, BtnPurpleHover, new Vector2(62, 18));
+                long playerId = slot.PeerId;
+                int currentTeam = slot.Team;
+                teamButton.Pressed += () => LobbyManager.Instance?.SetPlayerTeam(playerId, currentTeam == 1 ? 2 : 1);
+                row.AddChild(teamButton);
+            }
 
             _playerListBox.AddChild(row);
         }

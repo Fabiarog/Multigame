@@ -45,6 +45,8 @@ public partial class TrucoGameManager : Node
     public int PlayerScore { get; private set; } = 0;
     public int OpponentScore { get; private set; } = 0;
     public int CurrentStakes { get; private set; } = 1;
+    public int TeamSize { get; private set; } = 1;
+    public int BotCount => TeamSize * 2 - 1;
 
     // Hand state
     public List<TrucoCardData> PlayerHand { get; private set; } = new();
@@ -65,6 +67,7 @@ public partial class TrucoGameManager : Node
     private List<TrucoCardData> _deck = new();
     private Core.Visuals.AvatarComposite _playerAvatar;
     private Core.Visuals.AvatarComposite _opponentAvatar;
+    private readonly List<Sprite3D> _teamSeatSprites = new();
 
     // AI fields
     private SyncRng _rng;
@@ -78,7 +81,55 @@ public partial class TrucoGameManager : Node
         _rng = new SyncRng(GD.Randi());
         _playerAvatar = GetNodeOrNull<Core.Visuals.AvatarComposite>("../Environment/PlayerSprite");
         _opponentAvatar = GetNodeOrNull<Core.Visuals.AvatarComposite>("../Environment/OpponentSprite");
+        TeamSize = Mathf.Clamp(Core.Registry.GameRegistry.TrucoTeamSize, 1, 3);
+        RefreshTeamSeatVisuals();
         GD.Print("[Truco] Game manager initialized.");
+    }
+
+    private void RefreshTeamSeatVisuals()
+    {
+        foreach (var sprite in _teamSeatSprites) sprite.QueueFree();
+        _teamSeatSprites.Clear();
+        if (TeamSize == 1) return;
+
+        var environment = GetNodeOrNull<Node3D>("../Environment");
+        if (environment == null) return;
+
+        Vector3[] seats =
+        {
+            new(-3.3f, 1.1f, 0.5f),  // ally, anti-clockwise from player
+            new(3.3f, 1.1f, 0.5f),   // ally for 3v3
+            new(-3.3f, 1.1f, -3.0f),
+            new(3.3f, 1.1f, -3.0f)
+        };
+        string[] textures =
+        {
+            "res://assets/sprites/characters/spider/spider_spritesheet.jpg",
+            "res://assets/sprites/characters/turtle/turtle_spritesheet.jpg",
+            "res://assets/sprites/characters/spider/spider_spritesheet.jpg",
+            "res://assets/sprites/characters/turtle/turtle_spritesheet.jpg"
+        };
+        var shader = ResourceLoader.Load<Shader>("res://assets/shaders/SpatialChromaKey.gdshader");
+        for (int i = 0; i < BotCount - 1; i++)
+        {
+            var sprite = new Sprite3D
+            {
+                Name = $"TrucoBotSeat{i + 1}", Position = seats[i], PixelSize = 0.004f,
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Transparent = true,
+                Hframes = 2, Vframes = 2, Texture = ResourceLoader.Load<Texture2D>(textures[i])
+            };
+            if (shader != null && sprite.Texture != null)
+            {
+                var material = new ShaderMaterial { Shader = shader };
+                material.SetShaderParameter("chroma_color", new Color(0, 1, 0));
+                material.SetShaderParameter("chroma_threshold", 0.35f);
+                material.SetShaderParameter("chroma_smoothing", 0.1f);
+                material.SetShaderParameter("sprite_texture", sprite.Texture);
+                sprite.MaterialOverride = material;
+            }
+            environment.AddChild(sprite);
+            _teamSeatSprites.Add(sprite);
+        }
     }
 
     public override void _Process(double delta)
@@ -179,6 +230,7 @@ public partial class TrucoGameManager : Node
     public async void PlayerPlayCard(int handIndex)
     {
         if (CurrentPhase != TrucoPhase.PlayerTurn) return;
+        if (PlayerPlayed[CurrentRound] != null) return;
         if (handIndex < 0 || handIndex >= PlayerHand.Count) return;
 
         var card = PlayerHand[handIndex];
@@ -223,7 +275,7 @@ public partial class TrucoGameManager : Node
         CurrentStakes = newStakes;
         _trucoPendingByPlayer = true;
         _waitingTrucoResponse = true;
-        _phaseAfterTrucoResponse = TrucoPhase.OpponentTurn;
+        _phaseAfterTrucoResponse = CurrentPhase;
         _playerAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Truco);
 
         CurrentPhase = TrucoPhase.TrucoRequested;
@@ -243,7 +295,7 @@ public partial class TrucoGameManager : Node
 
         if (raise && CurrentStakes < 12)
         {
-            // Counter-raise
+            // A counter-raise changes who is waiting for an answer.
             CurrentStakes = CurrentStakes switch
             {
                 3 => 6,
@@ -251,13 +303,13 @@ public partial class TrucoGameManager : Node
                 9 => 12,
                 _ => 12
             };
-            _trucoPendingByPlayer = false;
+            _trucoPendingByPlayer = true;
             _waitingTrucoResponse = true;
-            EmitSignal(SignalName.TrucoCalled, CurrentStakes, false);
-            GD.Print($"[Truco] Opponent raises! Stakes: {CurrentStakes}");
-            // Now player needs to respond — show overlay handled by UI
+            EmitSignal(SignalName.TrucoCalled, CurrentStakes, true);
+            GD.Print($"[Truco] Player raises! Stakes: {CurrentStakes}");
             CurrentPhase = TrucoPhase.TrucoRequested;
             EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
+            RespondAIToTrucoDelayed();
         }
         else if (accept)
         {
@@ -396,6 +448,7 @@ public partial class TrucoGameManager : Node
     private async void ExecuteAITurn()
     {
         if (OpponentHand.Count == 0) return;
+        if (OpponentPlayed[CurrentRound] != null) return;
 
         // Simple AI: play strongest card if losing, weakest if winning
         int playerWins = RoundWinners.Count(w => w == 0);
@@ -456,7 +509,7 @@ public partial class TrucoGameManager : Node
         _waitingTrucoResponse = true;
         // The AI calls before it places its pending card, so it must keep the
         // turn after the player accepts regardless of who started the tombo.
-        _phaseAfterTrucoResponse = TrucoPhase.OpponentTurn;
+        _phaseAfterTrucoResponse = CurrentPhase;
         _opponentAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Truco);
 
         CurrentPhase = TrucoPhase.TrucoRequested;
@@ -482,9 +535,10 @@ public partial class TrucoGameManager : Node
             // Accept
             _waitingTrucoResponse = false;
             GD.Print("[Truco] AI accepts truco!");
-            CurrentPhase = TrucoPhase.OpponentTurn;
+            CurrentPhase = _phaseAfterTrucoResponse;
             EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
-            StartAIThinking();
+            if (CurrentPhase == TrucoPhase.OpponentTurn)
+                StartAIThinking();
         }
         else
         {

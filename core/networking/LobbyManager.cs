@@ -1,4 +1,5 @@
 using Godot;
+using System.Linq;
 using GameHub.Core.Networking;
 using GameHub.Core.Systems;
 
@@ -62,6 +63,9 @@ public partial class LobbyManager : Node
 
         CurrentLobby.AddPlayer(1, nickname);
 
+        if (gameId == "truco")
+            AssignTeamsRandomly();
+
         LanDiscovery.Instance?.StartBroadcasting(nickname, gameId, 1, maxPlayers);
 
         EmitSignal(SignalName.LobbyUpdated);
@@ -89,6 +93,45 @@ public partial class LobbyManager : Node
             bool newReady = !slot.IsReady;
             RpcId(1, MethodName.ServerSetPlayerReady, myId, newReady);
         }
+    }
+
+    public void SetTeamAssignment(LobbyState.TeamAssignmentMode mode)
+    {
+        if (!IsHost) return;
+        CurrentLobby.TeamAssignment = mode;
+        if (mode == LobbyState.TeamAssignmentMode.Random)
+            AssignTeamsRandomly();
+        EmitSignal(SignalName.LobbyUpdated);
+    }
+
+    public void SetPlayerTeam(long playerId, int team)
+    {
+        if (!IsHost || team < 1 || team > 2) return;
+        if (CurrentLobby.PlayerSlots.TryGetValue(playerId, out var slot))
+        {
+            slot.Team = team;
+            Rpc(MethodName.ClientUpdatePlayerTeam, playerId, team);
+            EmitSignal(SignalName.LobbyUpdated);
+        }
+    }
+
+    private void AssignTeamsRandomly()
+    {
+        int team = 1;
+        foreach (var slot in CurrentLobby.PlayerSlots.Values.OrderBy(_ => GD.Randf()))
+        {
+            slot.Team = team;
+            Rpc(MethodName.ClientUpdatePlayerTeam, slot.PeerId, team);
+            team = team == 1 ? 2 : 1;
+        }
+    }
+
+    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
+    private void ClientUpdatePlayerTeam(long peerId, int team)
+    {
+        if (CurrentLobby.PlayerSlots.TryGetValue(peerId, out var slot))
+            slot.Team = team;
+        EmitSignal(SignalName.LobbyUpdated);
     }
 
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]

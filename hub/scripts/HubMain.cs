@@ -10,6 +10,7 @@ public enum HubState
     Settings,
     Lobby,
     Collectibles,
+    Accessibility,
     Tutorial
 }
 
@@ -27,10 +28,14 @@ public partial class HubMain : Control
     private Control _settingsPanel;
     private Control _lobbyPanel;
     private Control _collectiblesPanel;
+    private Control _accessibilityPanel;
 
     // Settings controls
     private LineEdit _nicknameEdit;
-    private OptionButton _avatarSelect;
+    private OptionButton _baseSelect;
+    private OptionButton _shirtSelect;
+    private OptionButton _pantsSelect;
+    private OptionButton _hairSelect;
     private HSlider _masterSlider;
     private HSlider _musicSlider;
     private HSlider _sfxSlider;
@@ -38,6 +43,10 @@ public partial class HubMain : Control
     private Label _masterValueLabel;
     private Label _musicValueLabel;
     private Label _sfxValueLabel;
+    private CheckButton _screenShakeToggle;
+    private CheckButton _reduceMotionToggle;
+    private OptionButton _colorblindSelect;
+    private OptionButton _colorblindScopeSelect;
 
     // Lobby controls
     private VBoxContainer _playerListBox;
@@ -46,7 +55,9 @@ public partial class HubMain : Control
     private LineEdit _ipEdit;
     private Label _lobbyStatusLabel;
     private HBoxContainer _ipRow;
+    private OptionButton _teamAssignmentSelect;
     private bool _isHosting = false;
+    private string _selectedGameId = "poker_roguelike";
 
     // ===== THEME COLORS =====
     private static readonly Color BgDark = new(0.05f, 0.05f, 0.09f);
@@ -128,7 +139,7 @@ public partial class HubMain : Control
         var center = viewportSize / 2;
 
         _bgSprite = new Sprite2D();
-        var bgTex = ResourceLoader.Load<Texture2D>("res://assets/sprites/backgrounds/cyber_casino/cyber_casino.jpg");
+        var bgTex = ResourceLoader.Load<Texture2D>("res://assets/sprites/backgrounds/cyber_casino.jpg");
         _bgSprite.Texture = bgTex;
         _bgSprite.Position = center;
         if (bgTex != null)
@@ -183,11 +194,13 @@ public partial class HubMain : Control
         _settingsPanel = BuildSettingsPanel();
         _lobbyPanel = BuildLobbyPanel();
         _collectiblesPanel = BuildCollectiblesPanel();
+        _accessibilityPanel = BuildAccessibilityPanel();
 
         AddChild(_mainMenuPanel);
         AddChild(_settingsPanel);
         AddChild(_lobbyPanel);
         AddChild(_collectiblesPanel);
+        AddChild(_accessibilityPanel);
 
         if (LobbyManager.Instance != null)
         {
@@ -233,6 +246,7 @@ public partial class HubMain : Control
         var gameSelect = new OptionButton();
         gameSelect.AddItem("Poker", 0);
         gameSelect.AddItem("Truco", 1);
+        gameSelect.ItemSelected += index => _selectedGameId = index == 0 ? "poker_roguelike" : "truco";
         gameSelect.CustomMinimumSize = new Vector2(80, 20);
         gameSelect.AddThemeFontSizeOverride("font_size", 8);
         gameRow.AddChild(gameSelect);
@@ -247,19 +261,86 @@ public partial class HubMain : Control
         var modeSelect = new OptionButton();
         modeSelect.AddItem("Solo", 0);
         modeSelect.AddItem("Tutorial (IA)", 1);
+        modeSelect.AddItem("Multijogador (LAN)", 2);
         modeSelect.CustomMinimumSize = new Vector2(80, 20);
         modeSelect.AddThemeFontSizeOverride("font_size", 8);
         modeRow.AddChild(modeSelect);
         playControls.AddChild(modeRow);
 
+        var botRow = new HBoxContainer();
+        botRow.Alignment = BoxContainer.AlignmentMode.Center;
+        botRow.AddThemeConstantOverride("separation", 6);
+        botRow.AddChild(CreateLabel("Bots:", 8, TextPrimary));
+        var botSelect = new OptionButton();
+        botSelect.AddItem("1 bot", 1);
+        botSelect.AddItem("2 bots", 2);
+        botSelect.AddItem("3 bots", 3);
+        botSelect.CustomMinimumSize = new Vector2(80, 20);
+        botRow.AddChild(botSelect);
+        playControls.AddChild(botRow);
+
+        var difficultyRow = new HBoxContainer();
+        difficultyRow.Alignment = BoxContainer.AlignmentMode.Center;
+        difficultyRow.AddThemeConstantOverride("separation", 6);
+        difficultyRow.AddChild(CreateLabel("Dificuldade:", 8, TextPrimary));
+        var difficultySelect = new OptionButton();
+        difficultySelect.AddItem("Fácil", 0);
+        difficultySelect.AddItem("Normal", 1);
+        difficultySelect.AddItem("Difícil", 2);
+        difficultySelect.Selected = 1;
+        difficultySelect.CustomMinimumSize = new Vector2(80, 20);
+        difficultyRow.AddChild(difficultySelect);
+        playControls.AddChild(difficultyRow);
+
+        var teamRow = new HBoxContainer();
+        teamRow.Alignment = BoxContainer.AlignmentMode.Center;
+        teamRow.AddThemeConstantOverride("separation", 6);
+        teamRow.AddChild(CreateLabel("Truco:", 8, TextPrimary));
+        var teamSelect = new OptionButton();
+        teamSelect.AddItem("1v1", 1);
+        teamSelect.AddItem("2v2", 2);
+        teamSelect.AddItem("3v3", 3);
+        teamSelect.CustomMinimumSize = new Vector2(80, 20);
+        teamRow.AddChild(teamSelect);
+        teamRow.Visible = false;
+        playControls.AddChild(teamRow);
+        gameSelect.ItemSelected += index =>
+        {
+            bool isTruco = index == 1;
+            teamRow.Visible = isTruco;
+            botRow.Visible = !isTruco && modeSelect.Selected == 0;
+            difficultyRow.Visible = !isTruco && modeSelect.Selected == 0;
+        };
+        modeSelect.ItemSelected += index =>
+        {
+            bool isSolo = index == 0 && gameSelect.Selected == 0;
+            botRow.Visible = isSolo;
+            difficultyRow.Visible = isSolo;
+        };
+
         var playBtn = CreateStyledButton("Iniciar Jogo", BtnGreen, BtnGreenHover, new Vector2(160, 26));
         playBtn.Pressed += () =>
         {
             string game = gameSelect.Selected == 0 ? "Poker" : "Truco";
-            string mode = modeSelect.Selected == 0 ? "Solo" : "Tutorial";
+            string mode = modeSelect.Selected switch
+            {
+                1 => "Tutorial",
+                2 => "Multijogador LAN",
+                _ => "Solo"
+            };
             GD.Print($"[HubMain] Launching {game} ({mode})...");
             
             Core.Registry.GameRegistry.IsTutorialMode = modeSelect.Selected == 1;
+            Core.Registry.GameRegistry.SoloBotCount = botSelect.GetItemId(botSelect.Selected);
+            Core.Registry.GameRegistry.SelectedSoloDifficulty = (Core.Registry.GameRegistry.SoloDifficulty)difficultySelect.Selected;
+            Core.Registry.GameRegistry.TrucoTeamSize = teamSelect.GetItemId(teamSelect.Selected);
+
+            if (modeSelect.Selected == 2)
+            {
+                _isHosting = false;
+                ShowMenu(HubState.Lobby);
+                return;
+            }
 
             if (gameSelect.Selected == 0)
                 GetTree().ChangeSceneToFile("res://games/poker_roguelike/scenes/PokerGame.tscn");
@@ -279,7 +360,13 @@ public partial class HubMain : Control
         hostBtn.Pressed += () =>
         {
             _isHosting = true;
-            LobbyManager.Instance?.HostLobby("poker_roguelike", 6, LobbyState.TurnMode.Sequential, 300, "casino");
+            bool isTruco = _selectedGameId == "truco";
+            LobbyManager.Instance?.HostLobby(
+                _selectedGameId,
+                isTruco ? Core.Registry.GameRegistry.TrucoTeamSize * 2 : 6,
+                LobbyState.TurnMode.Sequential,
+                isTruco ? 12 : 300,
+                "casino");
             ShowMenu(HubState.Lobby);
         };
         vbox.AddChild(hostBtn);
@@ -295,6 +382,10 @@ public partial class HubMain : Control
         var settingsBtn = CreateStyledButton("Configurações", BtnPurple, BtnPurpleHover, new Vector2(160, 26));
         settingsBtn.Pressed += () => ShowMenu(HubState.Settings);
         vbox.AddChild(settingsBtn);
+
+        var accessibilityBtn = CreateStyledButton("Acessibilidade", BtnPurple, BtnPurpleHover, new Vector2(160, 26));
+        accessibilityBtn.Pressed += () => ShowMenu(HubState.Accessibility);
+        vbox.AddChild(accessibilityBtn);
 
         var quitBtn = CreateStyledButton("Sair", BtnRed, BtnRedHover, new Vector2(160, 26));
         quitBtn.Pressed += () => GetTree().Quit();
@@ -356,20 +447,13 @@ public partial class HubMain : Control
         nickRow.AddChild(_nicknameEdit);
         vbox.AddChild(nickRow);
 
-        var avatarRow = new HBoxContainer();
-        avatarRow.AddThemeConstantOverride("separation", 8);
-        var avatarLabel = CreateLabel("Avatar:", 8, TextPrimary);
-        avatarLabel.CustomMinimumSize = new Vector2(70, 0);
-        avatarRow.AddChild(avatarLabel);
-
-        _avatarSelect = new OptionButton();
-        _avatarSelect.AddItem("Padrão", 0);
-        _avatarSelect.AddItem("Tartaruga", 1);
-        _avatarSelect.AddItem("Aranha", 2);
-        _avatarSelect.CustomMinimumSize = new Vector2(120, 20);
-        _avatarSelect.AddThemeFontSizeOverride("font_size", 8);
-        avatarRow.AddChild(_avatarSelect);
-        vbox.AddChild(avatarRow);
+        // Every avatar component is saved separately.  The current art pack ships
+        // one item per slot; additional assets can be registered here without
+        // changing the persisted settings format.
+        vbox.AddChild(CreateAvatarSelectorRow("Corpo:", out _baseSelect, "Padrão", "default_base"));
+        vbox.AddChild(CreateAvatarSelectorRow("Camisa:", out _shirtSelect, "Padrão", "default_shirt"));
+        vbox.AddChild(CreateAvatarSelectorRow("Calça:", out _pantsSelect, "Padrão", "default_pants"));
+        vbox.AddChild(CreateAvatarSelectorRow("Cabelo:", out _hairSelect, "Padrão", "default_hair"));
 
         // -- Audio --
         vbox.AddChild(CreateFixedSpacer(4));
@@ -557,8 +641,8 @@ public partial class HubMain : Control
         grid.AddThemeConstantOverride("v_separation", 10);
         grid.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
 
-        grid.AddChild(CreateSectionLabel("Avatares:"));
-        grid.AddChild(CreateLabel("Tartaruga, Aranha", 8, TextPrimary));
+        grid.AddChild(CreateSectionLabel("Customização:"));
+        grid.AddChild(CreateLabel("Corpo, camisa, calça e cabelo", 8, TextPrimary));
         
         grid.AddChild(CreateSectionLabel("Cenários:"));
         grid.AddChild(CreateLabel("Cyber Casino", 8, TextPrimary));
@@ -578,6 +662,73 @@ public partial class HubMain : Control
         return margin;
     }
 
+    private Control BuildAccessibilityPanel()
+    {
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+
+        var panel = new PanelContainer();
+        panel.CustomMinimumSize = new Vector2(300, 210);
+        var style = new StyleBoxFlat();
+        style.BgColor = PanelBg;
+        style.SetCornerRadiusAll(8);
+        style.SetBorderWidthAll(2);
+        style.BorderColor = Gold;
+        style.ContentMarginLeft = 20;
+        style.ContentMarginRight = 20;
+        style.ContentMarginTop = 16;
+        style.ContentMarginBottom = 16;
+        panel.AddThemeStyleboxOverride("panel", style);
+        center.AddChild(panel);
+
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 10);
+        panel.AddChild(box);
+        var title = CreateLabel("Acessibilidade", 14, Gold);
+        title.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(title);
+
+        _screenShakeToggle = new CheckButton { Text = "Reduzir tremores de tela" };
+        _screenShakeToggle.AddThemeFontSizeOverride("font_size", 8);
+        box.AddChild(_screenShakeToggle);
+        _reduceMotionToggle = new CheckButton { Text = "Reduzir animações" };
+        _reduceMotionToggle.AddThemeFontSizeOverride("font_size", 8);
+        box.AddChild(_reduceMotionToggle);
+
+        var colorRow = new HBoxContainer();
+        colorRow.AddChild(CreateLabel("Cores:", 8, TextPrimary));
+        _colorblindSelect = new OptionButton();
+        _colorblindSelect.AddItem("Padrão", 0);
+        _colorblindSelect.AddItem("Protanopia", 1);
+        _colorblindSelect.AddItem("Deuteranopia", 2);
+        _colorblindSelect.AddItem("Tritanopia", 3);
+        _colorblindSelect.CustomMinimumSize = new Vector2(110, 20);
+        colorRow.AddChild(_colorblindSelect);
+        box.AddChild(colorRow);
+
+        var scopeRow = new HBoxContainer();
+        scopeRow.AddChild(CreateLabel("Aplicar em:", 8, TextPrimary));
+        _colorblindScopeSelect = new OptionButton();
+        _colorblindScopeSelect.AddItem("Somente cartas", 1);
+        _colorblindScopeSelect.AddItem("Tela inteira", 0);
+        _colorblindScopeSelect.CustomMinimumSize = new Vector2(110, 20);
+        scopeRow.AddChild(_colorblindScopeSelect);
+        box.AddChild(scopeRow);
+        box.AddChild(CreateLabel("As opções são salvas para todas as partidas.", 7, TextSecondary));
+        box.AddChild(CreateFixedSpacer(8));
+
+        var buttons = new HBoxContainer();
+        buttons.Alignment = BoxContainer.AlignmentMode.Center;
+        var save = CreateStyledButton("Salvar", BtnGreen, BtnGreenHover, new Vector2(70, 20));
+        save.Pressed += SaveAccessibilitySettings;
+        buttons.AddChild(save);
+        var back = CreateStyledButton("Voltar", BtnPurple, BtnPurpleHover, new Vector2(70, 20));
+        back.Pressed += () => ShowMenu(HubState.MainMenu);
+        buttons.AddChild(back);
+        box.AddChild(buttons);
+        return center;
+    }
+
     // ==================== STATE MANAGEMENT ====================
 
     private void ShowMenu(HubState state)
@@ -587,6 +738,7 @@ public partial class HubMain : Control
         _settingsPanel.Visible = state == HubState.Settings;
         _lobbyPanel.Visible = state == HubState.Lobby;
         _collectiblesPanel.Visible = state == HubState.Collectibles;
+        _accessibilityPanel.Visible = state == HubState.Accessibility;
 
         if (state == HubState.Settings)
         {
@@ -599,6 +751,10 @@ public partial class HubMain : Control
             _startBtn.Visible = _isHosting;
             _lobbyStatusLabel.Text = _isHosting ? "Hosting — aguardando jogadores..." : "Digite o IP e conecte";
         }
+        if (state == HubState.Accessibility)
+        {
+            LoadAccessibilitySettingsToUI();
+        }
 
         GD.Print($"[HubMain] Switching UI to: {state}");
     }
@@ -610,11 +766,10 @@ public partial class HubMain : Control
         if (SettingsManager.Instance == null) return;
         _nicknameEdit.Text = SettingsManager.Instance.PlayerNickname;
         
-        // Match avatar ID
-        string avatar = SettingsManager.Instance.AvatarBase;
-        if (avatar == "turtle") _avatarSelect.Selected = 1;
-        else if (avatar == "spider") _avatarSelect.Selected = 2;
-        else _avatarSelect.Selected = 0;
+        SelectAvatarItem(_baseSelect, SettingsManager.Instance.AvatarBase);
+        SelectAvatarItem(_shirtSelect, SettingsManager.Instance.AvatarShirt);
+        SelectAvatarItem(_pantsSelect, SettingsManager.Instance.AvatarPants);
+        SelectAvatarItem(_hairSelect, SettingsManager.Instance.AvatarHair);
 
         _masterSlider.Value = SettingsManager.Instance.MasterVolume * 100;
         _musicSlider.Value = SettingsManager.Instance.MusicVolume * 100;
@@ -627,15 +782,10 @@ public partial class HubMain : Control
         if (SettingsManager.Instance == null) return;
         SettingsManager.Instance.PlayerNickname = _nicknameEdit.Text;
         
-        SettingsManager.Instance.AvatarBase = _avatarSelect.Selected switch {
-            1 => "turtle",
-            2 => "spider",
-            _ => "default_base"
-        };
-        // Ensure clothes are loaded for default base
-        SettingsManager.Instance.AvatarShirt = "default_shirt";
-        SettingsManager.Instance.AvatarPants = "default_pants";
-        SettingsManager.Instance.AvatarHair = "default_hair";
+        SettingsManager.Instance.AvatarBase = GetSelectedAvatarId(_baseSelect, "default_base");
+        SettingsManager.Instance.AvatarShirt = GetSelectedAvatarId(_shirtSelect, "default_shirt");
+        SettingsManager.Instance.AvatarPants = GetSelectedAvatarId(_pantsSelect, "default_pants");
+        SettingsManager.Instance.AvatarHair = GetSelectedAvatarId(_hairSelect, "default_hair");
 
         SettingsManager.Instance.MasterVolume = (float)_masterSlider.Value / 100f;
         SettingsManager.Instance.MusicVolume = (float)_musicSlider.Value / 100f;
@@ -644,6 +794,30 @@ public partial class HubMain : Control
         SettingsManager.Instance.SaveSettings();
         SettingsManager.Instance.ApplySettings();
         GD.Print("[HubMain] Settings saved.");
+    }
+
+    private void LoadAccessibilitySettingsToUI()
+    {
+        if (SettingsManager.Instance == null) return;
+        _screenShakeToggle.ButtonPressed = !SettingsManager.Instance.ScreenShakeEnabled;
+        _reduceMotionToggle.ButtonPressed = SettingsManager.Instance.ReduceMotion;
+        _colorblindSelect.Selected = SettingsManager.Instance.ColorblindMode;
+        for (int i = 0; i < _colorblindScopeSelect.ItemCount; i++)
+        {
+            if (_colorblindScopeSelect.GetItemId(i) == SettingsManager.Instance.ColorblindScope)
+                _colorblindScopeSelect.Selected = i;
+        }
+    }
+
+    private void SaveAccessibilitySettings()
+    {
+        if (SettingsManager.Instance == null) return;
+        SettingsManager.Instance.ScreenShakeEnabled = !_screenShakeToggle.ButtonPressed;
+        SettingsManager.Instance.ReduceMotion = _reduceMotionToggle.ButtonPressed;
+        SettingsManager.Instance.ColorblindMode = _colorblindSelect.Selected;
+        SettingsManager.Instance.ColorblindScope = _colorblindScopeSelect.GetItemId(_colorblindScopeSelect.Selected);
+        SettingsManager.Instance.SaveSettings();
+        ShowMenu(HubState.MainMenu);
     }
 
     // ==================== LOBBY LOGIC ====================
@@ -697,6 +871,43 @@ public partial class HubMain : Control
     }
 
     // ==================== HELPERS ====================
+
+    private HBoxContainer CreateAvatarSelectorRow(string labelText, out OptionButton selector, string optionText, string optionId)
+    {
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 8);
+
+        var label = CreateLabel(labelText, 8, TextPrimary);
+        label.CustomMinimumSize = new Vector2(70, 0);
+        row.AddChild(label);
+
+        selector = new OptionButton();
+        selector.AddItem(optionText);
+        selector.SetItemMetadata(0, optionId);
+        selector.CustomMinimumSize = new Vector2(120, 20);
+        selector.AddThemeFontSizeOverride("font_size", 8);
+        row.AddChild(selector);
+        return row;
+    }
+
+    private static string GetSelectedAvatarId(OptionButton selector, string fallback)
+    {
+        if (selector.Selected < 0) return fallback;
+        return selector.GetItemMetadata(selector.Selected).AsString();
+    }
+
+    private static void SelectAvatarItem(OptionButton selector, string id)
+    {
+        for (int i = 0; i < selector.ItemCount; i++)
+        {
+            if (selector.GetItemMetadata(i).AsString() == id)
+            {
+                selector.Selected = i;
+                return;
+            }
+        }
+        selector.Selected = 0;
+    }
 
     private Label CreateLabel(string text, int fontSize, Color color)
     {

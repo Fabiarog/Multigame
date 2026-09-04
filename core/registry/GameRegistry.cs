@@ -8,11 +8,15 @@ namespace GameHub.Core.Registry;
 /// </summary>
 public partial class GameRegistry : Node
 {
+    public enum SoloDifficulty { Fácil, Normal, Difícil }
     public static GameRegistry Instance { get; private set; }
     
     public Dictionary<string, GameDefinition> AvailableGames { get; private set; } = new();
 
     public static bool IsTutorialMode { get; set; } = false;
+    public static int SoloBotCount { get; set; } = 1;
+    public static SoloDifficulty SelectedSoloDifficulty { get; set; } = SoloDifficulty.Normal;
+    public static int TrucoTeamSize { get; set; } = 1;
 
     public override void _EnterTree()
     {
@@ -34,6 +38,7 @@ public partial class GameRegistry : Node
 
         // Load all registered game definitions
         LoadGameResource("res://games/poker_roguelike/resources/poker_def.tres");
+        LoadGameResource("res://games/truco/resources/truco_def.tres");
     }
 
     private void LoadGameResource(string path)

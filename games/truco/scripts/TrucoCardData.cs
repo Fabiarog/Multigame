@@ -82,6 +82,18 @@ public class TrucoCardData
         };
     }
 
+    public string GetSuitName()
+    {
+        return Suit switch
+        {
+            TrucoSuit.Diamonds => "Ouros",
+            TrucoSuit.Spades => "Espadas",
+            TrucoSuit.Hearts => "Copas",
+            TrucoSuit.Clubs => "Paus (Zap)",
+            _ => "?"
+        };
+    }
+
     public override string ToString() => $"{GetRankString()}{GetSuitSymbol()}";
 
     /// <summary>

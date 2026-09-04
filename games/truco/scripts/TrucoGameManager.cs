@@ -18,6 +18,7 @@ public partial class TrucoGameManager : Node
     public enum TrucoPhase
     {
         Dealing,
+        Cutting,
         PlayerTurn,
         OpponentTurn,
         TrucoRequested,
@@ -29,6 +30,8 @@ public partial class TrucoGameManager : Node
     // ===== SIGNALS =====
     [Signal] public delegate void PhaseChangedEventHandler(int phase);
     [Signal] public delegate void HandDealtEventHandler();
+    [Signal] public delegate void DeckShuffledEventHandler();
+    [Signal] public delegate void DeckCutEventHandler(int cutPosition);
     [Signal] public delegate void ViraRevealedEventHandler(string viraDisplay, string manilhaDisplay);
     [Signal] public delegate void ScoreUpdatedEventHandler(int team1, int team2);
     [Signal] public delegate void TrucoCalledEventHandler(int currentStakes, bool byPlayer);
@@ -58,6 +61,10 @@ public partial class TrucoGameManager : Node
     private bool _playerStartsNext = true;
     private bool _waitingTrucoResponse = false;
     private bool _trucoPendingByPlayer = false;
+    private TrucoPhase _phaseAfterTrucoResponse = TrucoPhase.PlayerTurn;
+    private List<TrucoCardData> _deck = new();
+    private Core.Visuals.AvatarComposite _playerAvatar;
+    private Core.Visuals.AvatarComposite _opponentAvatar;
 
     // AI fields
     private SyncRng _rng;
@@ -69,6 +76,8 @@ public partial class TrucoGameManager : Node
     public override void _Ready()
     {
         _rng = new SyncRng(GD.Randi());
+        _playerAvatar = GetNodeOrNull<Core.Visuals.AvatarComposite>("../Environment/PlayerSprite");
+        _opponentAvatar = GetNodeOrNull<Core.Visuals.AvatarComposite>("../Environment/OpponentSprite");
         GD.Print("[Truco] Game manager initialized.");
     }
 
@@ -122,14 +131,28 @@ public partial class TrucoGameManager : Node
             RoundWinners[i] = -1;
         }
 
-        // Create and shuffle deck
-        var deck = TrucoCardData.CreateDeck();
-        _rng.ShuffleList(deck);
+        // The deck stays available until the player cuts it. This makes the
+        // shuffle/cut a real game action rather than a cosmetic message.
+        _deck = TrucoCardData.CreateDeck();
+        _rng.ShuffleList(_deck);
+        CurrentPhase = TrucoPhase.Cutting;
+        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
+        EmitSignal(SignalName.DeckShuffled);
+    }
 
-        // Deal 3 cards to each
-        PlayerHand = deck.GetRange(0, 3);
-        OpponentHand = deck.GetRange(3, 3);
-        ViraCard = deck[6];
+    public void CutDeck()
+    {
+        if (CurrentPhase != TrucoPhase.Cutting || _deck.Count == 0) return;
+
+        int cutPosition = _rng.RandiRange(4, _deck.Count - 4);
+        var top = _deck.GetRange(0, cutPosition);
+        _deck.RemoveRange(0, cutPosition);
+        _deck.AddRange(top);
+        EmitSignal(SignalName.DeckCut, cutPosition);
+
+        PlayerHand = _deck.GetRange(0, 3);
+        OpponentHand = _deck.GetRange(3, 3);
+        ViraCard = _deck[6];
         ManilhaRank = TrucoCardData.GetManilhaRank(ViraCard.Rank);
 
         CurrentPhase = TrucoPhase.PlayerTurn;
@@ -159,6 +182,7 @@ public partial class TrucoGameManager : Node
         if (handIndex < 0 || handIndex >= PlayerHand.Count) return;
 
         var card = PlayerHand[handIndex];
+        _playerAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Action);
         PlayerHand.RemoveAt(handIndex);
         PlayerPlayed[CurrentRound] = card;
 
@@ -199,6 +223,8 @@ public partial class TrucoGameManager : Node
         CurrentStakes = newStakes;
         _trucoPendingByPlayer = true;
         _waitingTrucoResponse = true;
+        _phaseAfterTrucoResponse = TrucoPhase.OpponentTurn;
+        _playerAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Truco);
 
         CurrentPhase = TrucoPhase.TrucoRequested;
         EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
@@ -207,7 +233,7 @@ public partial class TrucoGameManager : Node
         GD.Print($"[Truco] Player calls! Stakes: {CurrentStakes}");
 
         // AI decides whether to accept (simple: accept if has manilha or 3)
-        CallDeferred(nameof(AIRespondToTruco));
+        RespondAIToTrucoDelayed();
     }
 
     public void RespondToTruco(bool accept, bool raise)
@@ -236,8 +262,10 @@ public partial class TrucoGameManager : Node
         else if (accept)
         {
             GD.Print("[Truco] Truco accepted!");
-            // Return to whoever's turn
-            CurrentPhase = _trucoPendingByPlayer ? TrucoPhase.OpponentTurn : TrucoPhase.PlayerTurn;
+            // Resume the exact action that was paused by the call. In
+            // particular, an AI call made after the player placed a card must
+            // return to the AI, otherwise the player can overwrite that card.
+            CurrentPhase = _phaseAfterTrucoResponse;
             EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
             if (CurrentPhase == TrucoPhase.OpponentTurn)
             {
@@ -396,6 +424,7 @@ public partial class TrucoGameManager : Node
         }
 
         OpponentHand.Remove(chosen);
+        _opponentAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Action);
         OpponentPlayed[CurrentRound] = chosen;
 
         EmitSignal(SignalName.CardPlayed, 1, chosen.ToString(), CurrentRound);
@@ -425,11 +454,22 @@ public partial class TrucoGameManager : Node
         CurrentStakes = newStakes;
         _trucoPendingByPlayer = false;
         _waitingTrucoResponse = true;
+        // The AI calls before it places its pending card, so it must keep the
+        // turn after the player accepts regardless of who started the tombo.
+        _phaseAfterTrucoResponse = TrucoPhase.OpponentTurn;
+        _opponentAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Truco);
 
         CurrentPhase = TrucoPhase.TrucoRequested;
         EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
         EmitSignal(SignalName.TrucoCalled, CurrentStakes, false);
         GD.Print($"[Truco] Opponent calls! Stakes: {CurrentStakes}");
+    }
+
+    private async void RespondAIToTrucoDelayed()
+    {
+        await ToSignal(GetTree().CreateTimer(0.8f), SceneTreeTimer.SignalName.Timeout);
+        if (_waitingTrucoResponse && _trucoPendingByPlayer)
+            AIRespondToTruco();
     }
 
     private void AIRespondToTruco()

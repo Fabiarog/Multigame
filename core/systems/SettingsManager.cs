@@ -32,7 +32,10 @@ public partial class SettingsManager : Node
 
     // -- Accessibility --
     public bool ScreenShakeEnabled { get; set; } = true;
+    public bool ReduceMotion { get; set; } = false;
     public int ColorblindMode { get; set; } = 0; // 0 = None, 1 = Protanopia, etc.
+    // 0 = entire interface, 1 = cards only
+    public int ColorblindScope { get; set; } = 1;
 
     public override void _EnterTree()
     {
@@ -71,7 +74,9 @@ public partial class SettingsManager : Node
 
             // Accessibility
             ScreenShakeEnabled = (bool)_config.GetValue("Accessibility", "ScreenShake", ScreenShakeEnabled);
+            ReduceMotion = (bool)_config.GetValue("Accessibility", "ReduceMotion", ReduceMotion);
             ColorblindMode = (int)_config.GetValue("Accessibility", "ColorblindMode", ColorblindMode);
+            ColorblindScope = (int)_config.GetValue("Accessibility", "ColorblindScope", ColorblindScope);
 
             ApplySettings();
         }
@@ -100,7 +105,9 @@ public partial class SettingsManager : Node
         _config.SetValue("Audio", "SfxVolume", SfxVolume);
 
         _config.SetValue("Accessibility", "ScreenShake", ScreenShakeEnabled);
+        _config.SetValue("Accessibility", "ReduceMotion", ReduceMotion);
         _config.SetValue("Accessibility", "ColorblindMode", ColorblindMode);
+        _config.SetValue("Accessibility", "ColorblindScope", ColorblindScope);
 
         _config.Save(SETTINGS_PATH);
         GD.Print("[Settings] Settings saved.");

@@ -21,6 +21,7 @@ public partial class TrucoUI : Control
     private HBoxContainer _tableOpponentRow;
     private HBoxContainer _tombosContainer;
     private Button _trucoBtn;
+    private Button _cutDeckBtn;
     private CenterContainer _viraCardContainer;
 
     // Overlay
@@ -74,6 +75,8 @@ public partial class TrucoUI : Control
     private void ConnectSignals()
     {
         _game.HandDealt += OnHandDealt;
+        _game.DeckShuffled += OnDeckShuffled;
+        _game.DeckCut += OnDeckCut;
         _game.ScoreUpdated += OnScoreUpdated;
         _game.ViraRevealed += OnViraRevealed;
         _game.TrucoCalled += OnTrucoCalled;
@@ -89,6 +92,8 @@ public partial class TrucoUI : Control
         if (_game != null)
         {
             _game.HandDealt -= OnHandDealt;
+            _game.DeckShuffled -= OnDeckShuffled;
+            _game.DeckCut -= OnDeckCut;
             _game.ScoreUpdated -= OnScoreUpdated;
             _game.ViraRevealed -= OnViraRevealed;
             _game.TrucoCalled -= OnTrucoCalled;
@@ -247,6 +252,11 @@ public partial class TrucoUI : Control
         _trucoBtn = CreateStyledButton("TRUCO!", TrucoOrange, new Color(1f, 0.7f, 0.2f), new Vector2(70, 22));
         _trucoBtn.Pressed += () => _game.RequestTruco();
         actionRow.AddChild(_trucoBtn);
+
+        _cutDeckBtn = CreateStyledButton("Cortar", BtnPurple, BtnPurpleHover, new Vector2(70, 22));
+        _cutDeckBtn.Pressed += () => _game.CutDeck();
+        _cutDeckBtn.Visible = false;
+        actionRow.AddChild(_cutDeckBtn);
 
         actionCenter.AddChild(actionRow);
         mainVBox.AddChild(actionCenter);
@@ -470,6 +480,24 @@ public partial class TrucoUI : Control
         UpdateTrucoButton();
     }
 
+    private void OnDeckShuffled()
+    {
+        _statusLabel.Text = "Baralho embaralhado — corte para distribuir";
+        _statusLabel.AddThemeColorOverride("font_color", Gold);
+        _cutDeckBtn.Visible = true;
+        _cutDeckBtn.Disabled = false;
+        var tween = CreateTween();
+        _cutDeckBtn.Scale = new Vector2(0.8f, 0.8f);
+        tween.TweenProperty(_cutDeckBtn, "scale", Vector2.One, 0.25f)
+            .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+    }
+
+    private void OnDeckCut(int cutPosition)
+    {
+        _statusLabel.Text = "Corte feito — distribuindo cartas...";
+        _cutDeckBtn.Visible = false;
+    }
+
     private void OnScoreUpdated(int team1, int team2)
     {
         _scoreLabel.Text = $"Nós: {team1} × Eles: {team2}";
@@ -477,7 +505,7 @@ public partial class TrucoUI : Control
 
     private void OnViraRevealed(string viraDisplay, string manilhaDisplay)
     {
-        _viraLabel.Text = $"Vira:\n{viraDisplay}";
+        _viraLabel.Text = $"Vira: {viraDisplay}\n{manilhaDisplay}";
         
         ClearContainer(_viraCardContainer);
         if (_game.ViraCard != null)
@@ -492,19 +520,18 @@ public partial class TrucoUI : Control
     {
         _stakesLabel.Text = $"Aposta: {stakes}";
 
+        string label = stakes switch
+        {
+            3 => "TRUCO!",
+            6 => "SEIS!",
+            9 => "NOVE!",
+            12 => "DOZE!",
+            _ => "TRUCO!"
+        };
+        _trucoOverlayLabel.Text = label;
+
         if (!byPlayer)
         {
-            // Opponent called — show response overlay
-            string label = stakes switch
-            {
-                3 => "TRUCO!",
-                6 => "SEIS!",
-                9 => "NOVE!",
-                12 => "DOZE!",
-                _ => "TRUCO!"
-            };
-            _trucoOverlayLabel.Text = label;
-
             _raiseBtn.Text = stakes switch
             {
                 3 => "Seis!",
@@ -513,8 +540,14 @@ public partial class TrucoUI : Control
                 _ => "..."
             };
             _raiseBtn.Visible = stakes < 12;
-            _trucoOverlay.Visible = true;
         }
+
+        // The portrait also punctuates a call made by the local player.  In that
+        // case the response controls are hidden while the AI considers the call.
+        _acceptBtn.Visible = !byPlayer;
+        _declineBtn.Visible = !byPlayer;
+        _raiseBtn.Visible = !byPlayer && stakes < 12;
+        _trucoOverlay.Visible = true;
     }
 
     private void OnCardPlayed(int who, string cardDisplay, int roundIdx)
@@ -563,6 +596,11 @@ public partial class TrucoUI : Control
         {
             _statusLabel.Text = "Sua vez! Escolha uma carta.";
             _statusLabel.AddThemeColorOverride("font_color", SuccessGreen);
+        }
+        else if (p == TrucoGameManager.TrucoPhase.Cutting)
+        {
+            _statusLabel.Text = "Corte o baralho para começar";
+            _statusLabel.AddThemeColorOverride("font_color", Gold);
         }
         else if (p == TrucoGameManager.TrucoPhase.OpponentTurn)
         {
@@ -644,7 +682,7 @@ public partial class TrucoUI : Control
         if (isManilha)
         {
             var manilhaTag = new Label();
-            manilhaTag.Text = "★";
+            manilhaTag.Text = $"MANILHA • {card.GetSuitName()}";
             manilhaTag.HorizontalAlignment = HorizontalAlignment.Center;
             manilhaTag.AddThemeFontSizeOverride("font_size", 6);
             manilhaTag.AddThemeColorOverride("font_color", Gold);

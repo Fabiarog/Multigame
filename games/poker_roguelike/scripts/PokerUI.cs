@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace GameHub.Games.PokerRoguelike;
 
@@ -18,11 +19,15 @@ public partial class PokerUI : Control
     private Label _targetLabel;
     private Label _handsLabel;
     private Label _discardsLabel;
+    private Label _relicsLabel;
+    private Label _opponentsLabel;
     private Label _resultLabel;
     private Label _breakdownLabel;
     private ProgressBar _scoreBar;
     private HBoxContainer _dealerCardContainer;
     private HBoxContainer _cardContainer;
+    private Control _tableCardLayer;
+    private Label _scorePopup;
     private Button _playBtn;
     private Button _discardBtn;
 
@@ -133,11 +138,36 @@ public partial class PokerUI : Control
 
     private void BuildUI()
     {
-        // Background (transparent to show 3D scene)
+        // A full-screen 2D backdrop keeps the casino visible on every aspect
+        // ratio; the 3D Sprite3D is retained only as scene depth.
+        var backdrop = new TextureRect();
+        backdrop.Texture = ResourceLoader.Load<Texture2D>("res://assets/sprites/backgrounds/cyber_casino.jpg");
+        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        backdrop.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+        // Scale fills every viewport. The old aspect-preserving mode left the
+        // casino as a thin strip behind the 3D table on some resolutions.
+        backdrop.StretchMode = TextureRect.StretchModeEnum.Scale;
+        backdrop.Modulate = new Color(1, 1, 1, 0.55f);
+        backdrop.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(backdrop);
+
+        // Slight darkening keeps controls legible without replacing the scene.
         var bg = new ColorRect();
-        bg.Color = new Color(0, 0, 0, 0.2f); // Slight darkening
+        bg.Color = new Color(0, 0, 0, 0.35f);
         bg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(bg);
+
+        _tableCardLayer = new Control();
+        _tableCardLayer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _tableCardLayer.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(_tableCardLayer);
+
+        _scorePopup = CreateLabel("", 16, Gold);
+        _scorePopup.HorizontalAlignment = HorizontalAlignment.Center;
+        _scorePopup.Size = new Vector2(280, 52);
+        _scorePopup.Visible = false;
+        _scorePopup.MouseFilter = MouseFilterEnum.Ignore;
+        _tableCardLayer.AddChild(_scorePopup);
 
         // Main layout
         var margin = new MarginContainer();
@@ -234,6 +264,16 @@ public partial class PokerUI : Control
         resRow.AddChild(_discardsLabel);
 
         mainVBox.AddChild(resRow);
+
+        _relicsLabel = CreateLabel("Relíquias: —", 7, new Color(0.62f, 0.5f, 0.92f));
+        _relicsLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _relicsLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        mainVBox.AddChild(_relicsLabel);
+
+        _opponentsLabel = CreateLabel("Oponente: 1 bot", 7, TextSecondary);
+        _opponentsLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _opponentsLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        mainVBox.AddChild(_opponentsLabel);
 
         // --- Dealer Cards ---
         var dealerCenter = new CenterContainer();
@@ -760,12 +800,15 @@ public partial class PokerUI : Control
         // Update resource labels
         _handsLabel.Text = $"Mãos: {_game.HandsRemaining}/{PokerGameManager.HandsPerRound}";
         _discardsLabel.Text = $"Descartes: {_game.DiscardsRemaining}/{PokerGameManager.DiscardsPerRound}";
+        _relicsLabel.Text = _game.Relics?.GetHudText() ?? "Relíquias: —";
+        _opponentsLabel.Text = $"Mesa: {_game.OpponentCount} bot{(_game.OpponentCount > 1 ? "s" : "")}";
     }
 
     // ===== EVENT HANDLERS =====
 
     private void OnHandDealt()
     {
+        ClearTableCards();
         RefreshCardDisplay();
         RefreshDealerDisplay();
     }
@@ -783,6 +826,7 @@ public partial class PokerUI : Control
     {
         _resultLabel.Text = $"{handName}!  +{score}";
         _breakdownLabel.Text = breakdown;
+        ShowScorePopup(handName, score, breakdown);
 
         // Reveal dealer cards
         var tween = CreateTween();
@@ -790,6 +834,7 @@ public partial class PokerUI : Control
         for (int i = 0; i < _dealerCardPanels.Count; i++)
         {
             var panel = _dealerCardPanels[i];
+            int cardIndex = i;
             // Set pivot for flip animation
             panel.PivotOffset = new Vector2(panel.Size.X / 2, panel.Size.Y / 2);
             float delay = i * 0.1f;
@@ -797,13 +842,36 @@ public partial class PokerUI : Control
             // Flip animation
             tween.TweenProperty(panel, "scale:x", 0.0f, 0.15f).SetDelay(delay);
             tween.TweenCallback(Callable.From(() => {
-                if (panel.GetChildCount() > 0 && panel.GetChild(0) is Label lbl) {
-                    lbl.Text = "★";
-                    lbl.AddThemeColorOverride("font_color", Gold);
-                }
+                if (cardIndex < _game.GetDealerHand().Count)
+                    RevealDealerCard(panel, _game.GetDealerHand()[cardIndex]);
             })).SetDelay(delay + 0.15f);
             tween.TweenProperty(panel, "scale:x", 1.0f, 0.15f).SetDelay(delay + 0.15f);
         }
+    }
+
+    private void RevealDealerCard(PanelContainer panel, CardData card)
+    {
+        while (panel.GetChildCount() > 0)
+        {
+            var child = panel.GetChild(0);
+            panel.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        bool isRed = card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds;
+        var color = isRed ? RedSuit : BlackSuit;
+        var cardContent = new VBoxContainer();
+        cardContent.Alignment = BoxContainer.AlignmentMode.Center;
+        cardContent.AddThemeConstantOverride("separation", -2);
+
+        var rank = CreateLabel(card.GetRankString(), 9, color);
+        rank.HorizontalAlignment = HorizontalAlignment.Center;
+        cardContent.AddChild(rank);
+
+        var suit = CreateLabel(card.GetSuitSymbol(), 12, color);
+        suit.HorizontalAlignment = HorizontalAlignment.Center;
+        cardContent.AddChild(suit);
+        panel.AddChild(cardContent);
     }
 
     private void OnRoundEnded(int round, bool passed)
@@ -860,7 +928,94 @@ public partial class PokerUI : Control
 
     private void OnPlayPressed()
     {
+        AnimatePlayedCards();
         _game.PlayHand();
+    }
+
+    private void AnimatePlayedCards()
+    {
+        var selected = _game.GetSelectedIndices().OrderBy(index => index).ToList();
+        if (selected.Count == 0) return;
+
+        ClearTableCards();
+        var hand = _game.GetPlayerHand();
+        float duration = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.01f : 0.42f;
+        var center = GetViewportRect().Size / 2f;
+
+        for (int i = 0; i < selected.Count; i++)
+        {
+            int index = selected[i];
+            if (index >= hand.Count || index >= _cardPanels.Count) continue;
+
+            var source = _cardPanels[index].GetGlobalRect();
+            var tableCard = CreateTableCard(hand[index]);
+            tableCard.Position = source.GetCenter() - tableCard.Size / 2f;
+            tableCard.Rotation = Mathf.DegToRad(-9 + i * 4);
+            _tableCardLayer.AddChild(tableCard);
+
+            float spacing = 42f;
+            var target = center + new Vector2((i - (selected.Count - 1) / 2f) * spacing, 8);
+            var tween = CreateTween();
+            tween.SetParallel(true);
+            tween.TweenProperty(tableCard, "position", target - tableCard.Size / 2f, duration)
+                .SetDelay(i * 0.07f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+            tween.TweenProperty(tableCard, "scale", new Vector2(1.22f, 1.22f), duration)
+                .SetDelay(i * 0.07f).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+        }
+    }
+
+    private PanelContainer CreateTableCard(CardData card)
+    {
+        var panel = new PanelContainer();
+        panel.CustomMinimumSize = new Vector2(34, 50);
+        panel.Size = panel.CustomMinimumSize;
+        var style = new StyleBoxFlat();
+        style.BgColor = new Color(0.96f, 0.95f, 0.88f);
+        style.BorderColor = Gold;
+        style.SetBorderWidthAll(2);
+        style.SetCornerRadiusAll(4);
+        panel.AddThemeStyleboxOverride("panel", style);
+
+        bool isRed = card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds;
+        var color = isRed ? new Color(0.75f, 0.12f, 0.16f) : new Color(0.08f, 0.1f, 0.18f);
+        var box = new VBoxContainer();
+        box.Alignment = BoxContainer.AlignmentMode.Center;
+        box.AddThemeConstantOverride("separation", -3);
+        var rank = CreateLabel(card.GetRankString(), 10, color);
+        rank.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(rank);
+        var suit = CreateLabel(card.GetSuitSymbol(), 14, color);
+        suit.HorizontalAlignment = HorizontalAlignment.Center;
+        box.AddChild(suit);
+        panel.AddChild(box);
+        return panel;
+    }
+
+    private void ShowScorePopup(string handName, int score, string breakdown)
+    {
+        _scorePopup.Text = $"{handName}\n+{score}  {breakdown}";
+        _scorePopup.Position = GetViewportRect().Size / 2f + new Vector2(-140, -84);
+        _scorePopup.Modulate = new Color(1, 1, 1, 0);
+        _scorePopup.Scale = new Vector2(0.65f, 0.65f);
+        _scorePopup.Visible = true;
+        float duration = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.01f : 0.25f;
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(_scorePopup, "modulate:a", 1.0f, duration);
+        tween.TweenProperty(_scorePopup, "scale", Vector2.One, duration).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+        tween.Chain().TweenInterval(0.8f);
+        tween.TweenProperty(_scorePopup, "modulate:a", 0.0f, duration);
+        tween.TweenCallback(Callable.From(() => _scorePopup.Visible = false));
+    }
+
+    private void ClearTableCards()
+    {
+        if (_tableCardLayer == null) return;
+        foreach (var child in _tableCardLayer.GetChildren())
+        {
+            if (child != _scorePopup)
+                child.QueueFree();
+        }
     }
 
     private void OnDiscardPressed()

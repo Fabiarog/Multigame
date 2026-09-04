@@ -15,12 +15,19 @@ public partial class LobbyState : Node
         Sequential
     }
 
+    public enum TeamAssignmentMode
+    {
+        Random,
+        HostChooses
+    }
+
     // Match configuration (set by host before starting)
     public string SelectedGameId { get; set; } = "poker_roguelike";
     public string SelectedScenarioId { get; set; } = "casino";
     public int TargetScore { get; set; } = 300;
     public TurnMode SelectedTurnMode { get; set; } = TurnMode.Simultaneous;
     public int MaxPlayers { get; set; } = 6;
+    public TeamAssignmentMode TeamAssignment { get; set; } = TeamAssignmentMode.Random;
 
     // Player slots
     public Dictionary<long, LobbyPlayerSlot> PlayerSlots { get; private set; } = new();

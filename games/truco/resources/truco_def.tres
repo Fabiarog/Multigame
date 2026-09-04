@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="GameDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/registry/GameDefinition.cs" id="1_gd"]
+
+[resource]
+script = ExtResource("1_gd")
+GameId = "truco"
+GameName = "Truco"
+Description = "Truco paulista contra IA, com vira, manilhas e aumentos de aposta."
+MinPlayers = 1
+MaxPlayers = 2
+MainScenePath = "res://games/truco/scenes/TrucoGame.tscn"
+Version = "0.1.0"

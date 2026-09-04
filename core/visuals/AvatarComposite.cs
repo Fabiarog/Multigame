@@ -20,7 +20,8 @@ public partial class AvatarComposite : Node3D
     {
         Idle,       // Standing front-facing (frame 0)
         React,      // Celebration/surprise (row 3 frames)
-        Action      // Playing card gesture  (row 3 frames, cycling)
+        Action,     // Playing card gesture  (row 3 frames, cycling)
+        Truco       // Calling Truco / card-game emote (row 3 frames, cycling)
     }
 
     private AnimState _currentState = AnimState.Idle;
@@ -73,7 +74,9 @@ public partial class AvatarComposite : Node3D
     {
         var sprite = new Sprite3D();
         sprite.Name = name;
-        sprite.PixelSize = 0.01f;
+        // A 1024px sheet has 256px frames; 0.004 keeps the avatar proportional
+        // to the table instead of filling the entire foreground.
+        sprite.PixelSize = 0.004f;
         sprite.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
         sprite.Transparent = true;
         sprite.AlphaCut = SpriteBase3D.AlphaCutMode.Discard;
@@ -92,18 +95,21 @@ public partial class AvatarComposite : Node3D
         var settings = Systems.SettingsManager.Instance;
         if (settings == null) return;
 
-        SetLayerTexture(BaseLayer,  $"res://assets/sprites/characters/base/{settings.AvatarBase}.jpg");
-        SetLayerTexture(PantsLayer, $"res://assets/sprites/characters/pants/{settings.AvatarPants}.jpg");
-        SetLayerTexture(ShirtLayer, $"res://assets/sprites/characters/shirt/{settings.AvatarShirt}.jpg");
-        SetLayerTexture(HairLayer,  $"res://assets/sprites/characters/hair/{settings.AvatarHair}.jpg");
+        LoadLayers(settings.AvatarBase, settings.AvatarPants, settings.AvatarShirt, settings.AvatarHair);
     }
 
     public void LoadLayers(string baseId, string pantsId, string shirtId, string hairId)
     {
         SetLayerTexture(BaseLayer,  $"res://assets/sprites/characters/base/{baseId}.jpg");
-        SetLayerTexture(PantsLayer, $"res://assets/sprites/characters/pants/{pantsId}.jpg");
+
+        // The supplied shirt and pants sheets are legacy full-body composites,
+        // not alpha-only cutouts. Showing both over the hair sheet hid the
+        // clothes. Use the outfit composite until true cutout assets are added.
         SetLayerTexture(ShirtLayer, $"res://assets/sprites/characters/shirt/{shirtId}.jpg");
-        SetLayerTexture(HairLayer,  $"res://assets/sprites/characters/hair/{hairId}.jpg");
+        PantsLayer.Texture = null;
+        PantsLayer.Visible = false;
+        HairLayer.Texture = null;
+        HairLayer.Visible = false;
     }
 
     private void SetLayerTexture(Sprite3D layer, string path)

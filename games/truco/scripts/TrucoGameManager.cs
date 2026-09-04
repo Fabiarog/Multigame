@@ -19,6 +19,7 @@ public partial class TrucoGameManager : Node
     {
         Dealing,
         Cutting,
+        PenaDecision,
         PlayerTurn,
         OpponentTurn,
         TrucoRequested,
@@ -32,6 +33,11 @@ public partial class TrucoGameManager : Node
     [Signal] public delegate void HandDealtEventHandler();
     [Signal] public delegate void DeckShuffledEventHandler();
     [Signal] public delegate void DeckCutEventHandler(int cutPosition);
+    [Signal] public delegate void PenaAvailableEventHandler(string recipient);
+    [Signal] public delegate void PenaDeliveredEventHandler(string cardDisplay, string recipient);
+    [Signal] public delegate void PenaResolvedEventHandler(bool kept, string cardDisplay);
+    [Signal] public delegate void DistributionStartedEventHandler(int cardCount, int penaRecipientSeat, bool penaKept);
+    [Signal] public delegate void HandCleanupStartedEventHandler(int nextDealerSeat, string nextDealerName);
     [Signal] public delegate void ViraRevealedEventHandler(string viraDisplay, string manilhaDisplay);
     [Signal] public delegate void ScoreUpdatedEventHandler(int team1, int team2);
     [Signal] public delegate void TrucoCalledEventHandler(int currentStakes, bool byPlayer);
@@ -47,6 +53,13 @@ public partial class TrucoGameManager : Node
     public int CurrentStakes { get; private set; } = 1;
     public int TeamSize { get; private set; } = 1;
     public int BotCount => TeamSize * 2 - 1;
+    public TrucoCardData PenaCard { get; private set; }
+    public bool PenaWasKept { get; private set; }
+    public List<TrucoCardData> AllyPenaCards { get; } = new();
+    public List<List<TrucoCardData>> TeamOneHands { get; } = new();
+    public List<List<TrucoCardData>> TeamTwoHands { get; } = new();
+    public int DealerSeatIndex { get; private set; }
+    public int PenaRecipientSeatIndex { get; private set; } = -1;
 
     // Hand state
     public List<TrucoCardData> PlayerHand { get; private set; } = new();
@@ -65,6 +78,7 @@ public partial class TrucoGameManager : Node
     private bool _trucoPendingByPlayer = false;
     private TrucoPhase _phaseAfterTrucoResponse = TrucoPhase.PlayerTurn;
     private List<TrucoCardData> _deck = new();
+    private bool _penaDelivered;
     private Core.Visuals.AvatarComposite _playerAvatar;
     private Core.Visuals.AvatarComposite _opponentAvatar;
     private readonly List<Sprite3D> _teamSeatSprites = new();
@@ -152,6 +166,7 @@ public partial class TrucoGameManager : Node
         PlayerScore = 0;
         OpponentScore = 0;
         _playerStartsNext = true;
+        DealerSeatIndex = 0;
 
         var bgSprite = GetNodeOrNull<Sprite3D>("../Environment/Background");
         if (bgSprite != null)
@@ -175,6 +190,9 @@ public partial class TrucoGameManager : Node
         CurrentStakes = 1;
         CurrentRound = 0;
         _waitingTrucoResponse = false;
+        ViraCard = null;
+        PenaCard = null;
+        AllyPenaCards.Clear();
         for (int i = 0; i < 3; i++)
         {
             PlayerPlayed[i] = null;
@@ -191,7 +209,7 @@ public partial class TrucoGameManager : Node
         EmitSignal(SignalName.DeckShuffled);
     }
 
-    public void CutDeck()
+    public async void CutDeck()
     {
         if (CurrentPhase != TrucoPhase.Cutting || _deck.Count == 0) return;
 
@@ -200,11 +218,90 @@ public partial class TrucoGameManager : Node
         _deck.RemoveRange(0, cutPosition);
         _deck.AddRange(top);
         EmitSignal(SignalName.DeckCut, cutPosition);
+        await WaitForAnimation(0.45f);
 
-        PlayerHand = _deck.GetRange(0, 3);
-        OpponentHand = _deck.GetRange(3, 3);
-        ViraCard = _deck[6];
+        if (TeamSize > 1)
+        {
+            // Seats alternate between teams. The closest team-mate in the
+            // anti-clockwise direction is therefore two seats from the dealer.
+            PenaRecipientSeatIndex = (DealerSeatIndex + 2) % (TeamSize * 2);
+            PenaCard = _deck[0];
+            _deck.RemoveAt(0);
+            PenaWasKept = false;
+            _penaDelivered = false;
+            CurrentPhase = TrucoPhase.PenaDecision;
+            EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
+            EmitSignal(SignalName.PenaAvailable, GetSeatName(PenaRecipientSeatIndex));
+            return;
+        }
+
+        PenaRecipientSeatIndex = -1;
+        DealAfterCut();
+    }
+
+    public void GivePena()
+    {
+        if (CurrentPhase != TrucoPhase.PenaDecision || _penaDelivered || PenaCard == null) return;
+        _penaDelivered = true;
+        EmitSignal(SignalName.PenaDelivered, PenaCard.ToString(), GetSeatName(PenaRecipientSeatIndex));
+    }
+
+    public async void ResolvePena(bool keep)
+    {
+        if (CurrentPhase != TrucoPhase.PenaDecision) return;
+        if (!_penaDelivered)
+        {
+            keep = false;
+            if (PenaCard != null)
+                _deck.Insert(0, PenaCard);
+        }
+        PenaWasKept = keep;
+        if (keep && PenaCard != null)
+            AllyPenaCards.Add(PenaCard);
+        if (!keep && _penaDelivered)
+            ViraCard = PenaCard;
+        EmitSignal(SignalName.PenaResolved, PenaWasKept, PenaCard?.ToString() ?? "");
+        await WaitForAnimation(0.45f);
+        DealAfterCut();
+    }
+
+    private async void DealAfterCut()
+    {
+        TeamOneHands.Clear();
+        TeamTwoHands.Clear();
+        for (int i = 0; i < TeamSize; i++)
+        {
+            TeamOneHands.Add(new List<TrucoCardData>());
+            TeamTwoHands.Add(new List<TrucoCardData>());
+        }
+
+        if (PenaWasKept && PenaCard != null && PenaRecipientSeatIndex >= 0)
+            GetHandForSeat(PenaRecipientSeatIndex).Add(PenaCard);
+
+        int totalSeats = TeamSize * 2;
+        int distributedCards = 0;
+        for (int pass = 0; pass < 3; pass++)
+        {
+            for (int offset = 1; offset <= totalSeats; offset++)
+            {
+                int seat = (DealerSeatIndex + offset) % totalSeats;
+                var hand = GetHandForSeat(seat);
+                if (hand.Count >= 3) continue;
+                if (_deck.Count == 0) break;
+                hand.Add(_deck[0]);
+                _deck.RemoveAt(0);
+                distributedCards++;
+            }
+        }
+
+        PlayerHand = TeamOneHands[0];
+        OpponentHand = TeamTwoHands[0];
+        ViraCard ??= _deck[0];
         ManilhaRank = TrucoCardData.GetManilhaRank(ViraCard.Rank);
+        ValidateDistributedHands();
+
+        EmitSignal(SignalName.DistributionStarted, distributedCards, PenaRecipientSeatIndex, PenaWasKept);
+        await WaitForAnimation(0.45f + distributedCards * 0.045f);
 
         CurrentPhase = TrucoPhase.PlayerTurn;
         EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
@@ -421,6 +518,15 @@ public partial class TrucoGameManager : Node
 
     private void EndHand(bool playerWon)
     {
+        FinishHandSequence(playerWon);
+    }
+
+    private async void FinishHandSequence(bool playerWon)
+    {
+        int totalSeats = TeamSize * 2;
+        DealerSeatIndex = (DealerSeatIndex + 1) % totalSeats;
+        EmitSignal(SignalName.HandCleanupStarted, DealerSeatIndex, GetSeatName(DealerSeatIndex));
+        await WaitForAnimation(0.9f);
         EmitSignal(SignalName.HandEnded, playerWon, CurrentStakes);
 
         if (PlayerScore >= WinScore || OpponentScore >= WinScore)
@@ -435,6 +541,36 @@ public partial class TrucoGameManager : Node
             CurrentPhase = TrucoPhase.HandEnd;
             EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
         }
+    }
+
+    private List<TrucoCardData> GetHandForSeat(int seat)
+    {
+        return seat % 2 == 0 ? TeamOneHands[seat / 2] : TeamTwoHands[seat / 2];
+    }
+
+    private void ValidateDistributedHands()
+    {
+        for (int i = 0; i < TeamSize; i++)
+        {
+            if (TeamOneHands[i].Count != 3 || TeamTwoHands[i].Count != 3)
+                GD.PushError($"[Truco] Invalid distribution at pair {i}: {TeamOneHands[i].Count}/{TeamTwoHands[i].Count} cards.");
+        }
+
+        if (PenaWasKept && PenaRecipientSeatIndex >= 0 && !GetHandForSeat(PenaRecipientSeatIndex).Contains(PenaCard))
+            GD.PushError("[Truco] The kept pena was not included in its recipient's three-card hand.");
+    }
+
+    public string GetSeatName(int seat)
+    {
+        if (seat == 0) return "Você";
+        string team = seat % 2 == 0 ? "Aliado" : "Adversário";
+        return $"{team} {(seat / 2) + 1}";
+    }
+
+    private async System.Threading.Tasks.Task WaitForAnimation(float seconds)
+    {
+        if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true) return;
+        await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
     }
 
     // ===== AI =====

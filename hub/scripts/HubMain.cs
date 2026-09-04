@@ -56,7 +56,6 @@ public partial class HubMain : Control
     private Label _lobbyStatusLabel;
     private HBoxContainer _ipRow;
     private OptionButton _teamAssignmentSelect;
-    private OptionButton _teamAssignmentSelect;
     private bool _isHosting = false;
     private string _selectedGameId = "poker_roguelike";
 
@@ -208,6 +207,8 @@ public partial class HubMain : Control
             LobbyManager.Instance.LobbyUpdated += OnLobbyUpdated;
             LobbyManager.Instance.MatchStarting += OnMatchStarting;
         }
+
+        Core.Visuals.AccessibilityVisuals.AddGlobalFilter(this);
     }
 
     // ==================== MAIN MENU ====================
@@ -562,7 +563,7 @@ public partial class HubMain : Control
         _teamAssignmentSelect.ItemSelected += index =>
         {
             if (_isHosting)
-                LobbyManager.Instance?.SetTeamAssignment((LobbyState.TeamAssignmentMode)_teamAssignmentSelect.GetItemId(index));
+                LobbyManager.Instance?.SetTeamAssignment((LobbyState.TeamAssignmentMode)(int)_teamAssignmentSelect.GetItemId((int)index));
         };
         teamModeRow.AddChild(_teamAssignmentSelect);
         vbox.AddChild(teamModeRow);
@@ -836,7 +837,7 @@ public partial class HubMain : Control
         SettingsManager.Instance.ColorblindMode = _colorblindSelect.Selected;
         SettingsManager.Instance.ColorblindScope = _colorblindScopeSelect.GetItemId(_colorblindScopeSelect.Selected);
         SettingsManager.Instance.SaveSettings();
-        ShowMenu(HubState.MainMenu);
+        GetTree().ReloadCurrentScene();
     }
 
     // ==================== LOBBY LOGIC ====================

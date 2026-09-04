@@ -23,6 +23,14 @@ public partial class TrucoUI : Control
     private Button _trucoBtn;
     private Button _cutDeckBtn;
     private CenterContainer _viraCardContainer;
+    private Control _penaOverlay;
+    private Label _penaLabel;
+    private Button _givePenaBtn;
+    private Button _skipPenaBtn;
+    private Button _keepPenaBtn;
+    private Button _tomboPenaBtn;
+    private Control _dealAnimationLayer;
+    private PanelContainer _deckStackVisual;
 
     // Overlay
     private Control _trucoOverlay;
@@ -77,6 +85,11 @@ public partial class TrucoUI : Control
         _game.HandDealt += OnHandDealt;
         _game.DeckShuffled += OnDeckShuffled;
         _game.DeckCut += OnDeckCut;
+        _game.PenaAvailable += OnPenaAvailable;
+        _game.PenaDelivered += OnPenaDelivered;
+        _game.PenaResolved += OnPenaResolved;
+        _game.DistributionStarted += OnDistributionStarted;
+        _game.HandCleanupStarted += OnHandCleanupStarted;
         _game.ScoreUpdated += OnScoreUpdated;
         _game.ViraRevealed += OnViraRevealed;
         _game.TrucoCalled += OnTrucoCalled;
@@ -94,6 +107,11 @@ public partial class TrucoUI : Control
             _game.HandDealt -= OnHandDealt;
             _game.DeckShuffled -= OnDeckShuffled;
             _game.DeckCut -= OnDeckCut;
+            _game.PenaAvailable -= OnPenaAvailable;
+            _game.PenaDelivered -= OnPenaDelivered;
+            _game.PenaResolved -= OnPenaResolved;
+            _game.DistributionStarted -= OnDistributionStarted;
+            _game.HandCleanupStarted -= OnHandCleanupStarted;
             _game.ScoreUpdated -= OnScoreUpdated;
             _game.ViraRevealed -= OnViraRevealed;
             _game.TrucoCalled -= OnTrucoCalled;
@@ -124,6 +142,11 @@ public partial class TrucoUI : Control
         bg.Color = new Color(0, 0, 0, 0.2f);
         bg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(bg);
+
+        _dealAnimationLayer = new Control();
+        _dealAnimationLayer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _dealAnimationLayer.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(_dealAnimationLayer);
 
         var margin = new MarginContainer();
         margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -288,6 +311,40 @@ public partial class TrucoUI : Control
         // --- Overlays ---
         BuildTrucoOverlay();
         BuildHandOverlay();
+        BuildPenaOverlay();
+        Core.Visuals.AccessibilityVisuals.AddGlobalFilter(this);
+    }
+
+    private void BuildPenaOverlay()
+    {
+        _penaOverlay = new ColorRect { Color = new Color(0, 0, 0, 0.78f) };
+        _penaOverlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _penaOverlay.Visible = false;
+        _penaOverlay.MouseFilter = MouseFilterEnum.Stop;
+        AddChild(_penaOverlay);
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _penaOverlay.AddChild(center);
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(270, 135) };
+        var style = new StyleBoxFlat { BgColor = PanelBg, BorderColor = Gold };
+        style.SetBorderWidthAll(2); style.SetCornerRadiusAll(8);
+        style.ContentMarginLeft = 16; style.ContentMarginRight = 16;
+        style.ContentMarginTop = 14; style.ContentMarginBottom = 14;
+        panel.AddThemeStyleboxOverride("panel", style);
+        center.AddChild(panel);
+        var box = new VBoxContainer(); box.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(box);
+        var title = CreateLabel("PENA", 14, Gold); title.HorizontalAlignment = HorizontalAlignment.Center; box.AddChild(title);
+        _penaLabel = CreateLabel("", 8, TextPrimary); _penaLabel.HorizontalAlignment = HorizontalAlignment.Center; box.AddChild(_penaLabel);
+        var row = new HBoxContainer(); row.Alignment = BoxContainer.AlignmentMode.Center; row.AddThemeConstantOverride("separation", 6); box.AddChild(row);
+        _givePenaBtn = CreateStyledButton("Entregar", BtnGreen, BtnGreenHover, new Vector2(62, 20));
+        _givePenaBtn.Pressed += () => _game.GivePena(); row.AddChild(_givePenaBtn);
+        _skipPenaBtn = CreateStyledButton("Sem pena", BtnPurple, BtnPurpleHover, new Vector2(62, 20));
+        _skipPenaBtn.Pressed += () => _game.ResolvePena(false); row.AddChild(_skipPenaBtn);
+        _keepPenaBtn = CreateStyledButton("Ficar", BtnGreen, BtnGreenHover, new Vector2(55, 20));
+        _keepPenaBtn.Pressed += () => _game.ResolvePena(true); _keepPenaBtn.Visible = false; row.AddChild(_keepPenaBtn);
+        _tomboPenaBtn = CreateStyledButton("Virar tombo", BtnRed, BtnRedHover, new Vector2(75, 20));
+        _tomboPenaBtn.Pressed += () => _game.ResolvePena(false); _tomboPenaBtn.Visible = false; row.AddChild(_tomboPenaBtn);
     }
 
     private void BuildTrucoOverlay()
@@ -496,17 +553,225 @@ public partial class TrucoUI : Control
         _statusLabel.Text = "Baralho embaralhado — corte para distribuir";
         _statusLabel.AddThemeColorOverride("font_color", Gold);
         _cutDeckBtn.Visible = true;
-        _cutDeckBtn.Disabled = false;
-        var tween = CreateTween();
-        _cutDeckBtn.Scale = new Vector2(0.8f, 0.8f);
-        tween.TweenProperty(_cutDeckBtn, "scale", Vector2.One, 0.25f)
-            .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+        AnimateShuffle();
     }
 
     private void OnDeckCut(int cutPosition)
     {
         _statusLabel.Text = "Corte feito — distribuindo cartas...";
         _cutDeckBtn.Visible = false;
+        AnimateCut();
+    }
+
+    private void OnPenaAvailable(string recipient)
+    {
+        _penaLabel.Text = $"Você pode entregar a pena para\n{recipient}.";
+        _givePenaBtn.Visible = true; _skipPenaBtn.Visible = true;
+        _keepPenaBtn.Visible = false; _tomboPenaBtn.Visible = false;
+        _penaOverlay.Visible = true;
+    }
+
+    private void OnPenaDelivered(string cardDisplay, string recipient)
+    {
+        _penaLabel.Text = $"{recipient} recebeu {cardDisplay}.\nFica com a carta ou ela vira tombo?";
+        _givePenaBtn.Visible = false; _skipPenaBtn.Visible = false;
+        _keepPenaBtn.Visible = true; _tomboPenaBtn.Visible = true;
+        AnimatePenaDelivery();
+    }
+
+    private void OnPenaResolved(bool kept, string cardDisplay)
+    {
+        _penaOverlay.Visible = false;
+        _statusLabel.Text = kept ? $"Pena {cardDisplay} ficou com o aliado." : "A pena virou a carta do tombo.";
+        AnimatePenaResolution(kept);
+    }
+
+    private void OnDistributionStarted(int cardCount, int penaRecipientSeat, bool penaKept)
+    {
+        _statusLabel.Text = penaKept
+            ? "Pena guardada: o aliado receberá só mais 2 cartas."
+            : "Distribuindo 3 cartas para cada jogador...";
+        AnimateDistribution(cardCount, penaRecipientSeat, penaKept);
+    }
+
+    private void OnHandCleanupStarted(int nextDealerSeat, string nextDealerName)
+    {
+        _statusLabel.Text = $"Recolhendo cartas — próximo distribuidor: {nextDealerName}";
+        AnimateCleanupAndPass(nextDealerSeat);
+    }
+
+    private float MotionDuration(float regular) =>
+        Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.01f : regular;
+
+    private void AnimateShuffle()
+    {
+        ClearDealAnimationLayer();
+        _cutDeckBtn.Disabled = true;
+        Vector2 center = GetViewportRect().Size / 2f + new Vector2(0, 25);
+        for (int i = 0; i < 8; i++)
+        {
+            var card = CreateAnimatedCardBack();
+            card.Position = center - card.Size / 2f + new Vector2((i % 2 == 0 ? -1 : 1) * 72, -i * 1.5f);
+            card.Rotation = Mathf.DegToRad(i % 2 == 0 ? -12 : 12);
+            _dealAnimationLayer.AddChild(card);
+            var tween = CreateTween();
+            tween.SetParallel(true);
+            tween.TweenProperty(card, "position", center - card.Size / 2f + new Vector2(i * 0.7f, -i * 0.8f), MotionDuration(0.32f)).SetDelay(i * 0.035f);
+            tween.TweenProperty(card, "rotation", 0f, MotionDuration(0.32f)).SetDelay(i * 0.035f);
+        }
+
+        _deckStackVisual = CreateAnimatedCardBack();
+        _deckStackVisual.Position = center - _deckStackVisual.Size / 2f;
+        _deckStackVisual.Modulate = new Color(1, 1, 1, 0);
+        _dealAnimationLayer.AddChild(_deckStackVisual);
+        var finish = CreateTween();
+        finish.TweenInterval(MotionDuration(0.65f));
+        finish.TweenProperty(_deckStackVisual, "modulate:a", 1f, MotionDuration(0.1f));
+        finish.TweenCallback(Callable.From(() =>
+        {
+            foreach (var child in _dealAnimationLayer.GetChildren())
+                if (child != _deckStackVisual) child.QueueFree();
+            _cutDeckBtn.Disabled = false;
+            PulseControl(_cutDeckBtn);
+        }));
+    }
+
+    private void AnimateCut()
+    {
+        if (_deckStackVisual == null || !IsInstanceValid(_deckStackVisual)) return;
+        Vector2 basePosition = _deckStackVisual.Position;
+        var upperHalf = CreateAnimatedCardBack();
+        upperHalf.Position = basePosition;
+        _dealAnimationLayer.AddChild(upperHalf);
+        var tween = CreateTween();
+        tween.TweenProperty(upperHalf, "position", basePosition + new Vector2(65, -16), MotionDuration(0.18f)).SetTrans(Tween.TransitionType.Quad);
+        tween.TweenProperty(upperHalf, "position", basePosition + new Vector2(0, -5), MotionDuration(0.18f)).SetTrans(Tween.TransitionType.Quad);
+        tween.TweenCallback(Callable.From(upperHalf.QueueFree));
+    }
+
+    private void AnimatePenaDelivery()
+    {
+        if (_game.PenaCard == null) return;
+        var card = CreateCardPanel(_game.PenaCard, -1);
+        card.MouseFilter = MouseFilterEnum.Ignore;
+        card.Size = new Vector2(34, 50);
+        card.Position = GetViewportRect().Size / 2f - card.Size / 2f;
+        _dealAnimationLayer.AddChild(card);
+        var target = GetSeatScreenPosition(_game.PenaRecipientSeatIndex) - card.Size / 2f;
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(card, "position", target, MotionDuration(0.38f)).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(card, "rotation", Mathf.DegToRad(-8), MotionDuration(0.38f));
+    }
+
+    private void AnimatePenaResolution(bool kept)
+    {
+        if (kept) return;
+        // A declined pena returns from the ally and settles at the vira/tombo.
+        var cards = _dealAnimationLayer.GetChildren();
+        if (cards.Count == 0) return;
+        if (cards[cards.Count - 1] is not Control card) return;
+        var target = GetViewportRect().Size / 2f + new Vector2(75, -15) - card.Size / 2f;
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(card, "position", target, MotionDuration(0.4f)).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(card, "rotation", Mathf.DegToRad(7), MotionDuration(0.4f));
+    }
+
+    private void AnimateDistribution(int cardCount, int penaRecipientSeat, bool penaKept)
+    {
+        int totalSeats = _game.TeamSize * 2;
+        Vector2 deckPosition = GetViewportRect().Size / 2f + new Vector2(0, 25);
+        int emitted = 0;
+        for (int pass = 0; pass < 3; pass++)
+        {
+            for (int offset = 1; offset <= totalSeats && emitted < cardCount; offset++)
+            {
+                int seat = (_game.DealerSeatIndex + offset) % totalSeats;
+                if (penaKept && seat == penaRecipientSeat && pass == 2) continue;
+                var card = CreateAnimatedCardBack();
+                card.Position = deckPosition - card.Size / 2f;
+                card.Scale = new Vector2(0.78f, 0.78f);
+                _dealAnimationLayer.AddChild(card);
+                Vector2 target = GetSeatScreenPosition(seat) + new Vector2(pass * 10 - 10, pass * -2) - card.Size / 2f;
+                var tween = CreateTween();
+                tween.SetParallel(true);
+                float delay = emitted * 0.045f;
+                tween.TweenProperty(card, "position", target, MotionDuration(0.3f)).SetDelay(delay).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+                tween.TweenProperty(card, "rotation", Mathf.DegToRad((pass - 1) * 5), MotionDuration(0.3f)).SetDelay(delay);
+                emitted++;
+            }
+        }
+    }
+
+    private void AnimateCleanupAndPass(int nextDealerSeat)
+    {
+        Vector2 center = GetViewportRect().Size / 2f + new Vector2(0, 25);
+        foreach (var row in new[] { _tablePlayerRow, _tableOpponentRow })
+        {
+            foreach (var child in row.GetChildren())
+            {
+                if (child is not Control source) continue;
+                var ghost = CreateAnimatedCardBack();
+                ghost.Position = source.GetGlobalRect().GetCenter() - ghost.Size / 2f;
+                _dealAnimationLayer.AddChild(ghost);
+                CreateTween().TweenProperty(ghost, "position", center - ghost.Size / 2f, MotionDuration(0.32f)).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.In);
+            }
+        }
+        var pass = CreateTween();
+        pass.TweenInterval(MotionDuration(0.4f));
+        if (_deckStackVisual == null || !IsInstanceValid(_deckStackVisual))
+        {
+            _deckStackVisual = CreateAnimatedCardBack();
+            _deckStackVisual.Position = center - _deckStackVisual.Size / 2f;
+            _dealAnimationLayer.AddChild(_deckStackVisual);
+        }
+        pass.TweenProperty(_deckStackVisual, "position", GetSeatScreenPosition(nextDealerSeat) - _deckStackVisual.Size / 2f, MotionDuration(0.38f)).SetTrans(Tween.TransitionType.Cubic);
+        pass.TweenCallback(Callable.From(ClearDealAnimationLayer));
+    }
+
+    private PanelContainer CreateAnimatedCardBack()
+    {
+        var panel = new PanelContainer();
+        panel.CustomMinimumSize = new Vector2(34, 50);
+        panel.Size = panel.CustomMinimumSize;
+        panel.MouseFilter = MouseFilterEnum.Ignore;
+        var style = new StyleBoxFlat { BgColor = new Color(0.09f, 0.12f, 0.24f), BorderColor = Gold };
+        style.SetBorderWidthAll(2); style.SetCornerRadiusAll(4);
+        panel.AddThemeStyleboxOverride("panel", style);
+        var mark = CreateLabel("✦", 13, new Color(0.55f, 0.5f, 0.75f));
+        mark.HorizontalAlignment = HorizontalAlignment.Center; mark.VerticalAlignment = VerticalAlignment.Center;
+        panel.AddChild(mark);
+        return panel;
+    }
+
+    private Vector2 GetSeatScreenPosition(int seat)
+    {
+        Vector2 size = GetViewportRect().Size;
+        Vector2[] positions =
+        {
+            new(size.X * 0.50f, size.Y * 0.84f),
+            new(size.X * 0.50f, size.Y * 0.16f),
+            new(size.X * 0.16f, size.Y * 0.65f),
+            new(size.X * 0.84f, size.Y * 0.35f),
+            new(size.X * 0.16f, size.Y * 0.35f),
+            new(size.X * 0.84f, size.Y * 0.65f)
+        };
+        return positions[Mathf.PosMod(seat, positions.Length)];
+    }
+
+    private void PulseControl(Control control)
+    {
+        control.PivotOffset = control.Size / 2f;
+        control.Scale = new Vector2(0.82f, 0.82f);
+        CreateTween().TweenProperty(control, "scale", Vector2.One, MotionDuration(0.2f)).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+    }
+
+    private void ClearDealAnimationLayer()
+    {
+        if (_dealAnimationLayer == null) return;
+        foreach (var child in _dealAnimationLayer.GetChildren()) child.QueueFree();
+        _deckStackVisual = null;
     }
 
     private void OnScoreUpdated(int team1, int team2)
@@ -668,7 +933,7 @@ public partial class TrucoUI : Control
         vbox.AddThemeConstantOverride("separation", -2);
 
         bool isRed = card.Suit == TrucoSuit.Hearts || card.Suit == TrucoSuit.Diamonds;
-        var suitColor = isRed ? RedSuit : BlackSuit;
+        var suitColor = Core.Visuals.AccessibilityVisuals.GetCardSuitColor(isRed, RedSuit, BlackSuit);
 
         // Check if manilha
         bool isManilha = card.Rank == _game.ManilhaRank;
@@ -771,7 +1036,7 @@ public partial class TrucoUI : Control
             vbox.AddThemeConstantOverride("separation", -3);
 
             bool isRed = card.Suit == TrucoSuit.Hearts || card.Suit == TrucoSuit.Diamonds;
-            var suitColor = isRed ? RedSuit : BlackSuit;
+            var suitColor = Core.Visuals.AccessibilityVisuals.GetCardSuitColor(isRed, RedSuit, BlackSuit);
 
             var rankLbl = new Label();
             rankLbl.Text = card.GetRankString();

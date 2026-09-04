@@ -334,6 +334,7 @@ public partial class PokerUI : Control
 
         // --- Tutorial Panel ---
         BuildTutorialPanel();
+        Core.Visuals.AccessibilityVisuals.AddGlobalFilter(this);
     }
 
     private void BuildOverlay()
@@ -697,7 +698,7 @@ public partial class PokerUI : Control
         vbox.AddThemeConstantOverride("separation", -2);
 
         bool isRed = card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds;
-        var suitColor = isRed ? RedSuit : BlackSuit;
+        var suitColor = Core.Visuals.AccessibilityVisuals.GetCardSuitColor(isRed, RedSuit, BlackSuit);
 
         var rankLbl = new Label();
         rankLbl.Text = card.GetRankString();
@@ -859,7 +860,7 @@ public partial class PokerUI : Control
         }
 
         bool isRed = card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds;
-        var color = isRed ? RedSuit : BlackSuit;
+        var color = Core.Visuals.AccessibilityVisuals.GetCardSuitColor(isRed, RedSuit, BlackSuit);
         var cardContent = new VBoxContainer();
         cardContent.Alignment = BoxContainer.AlignmentMode.Center;
         cardContent.AddThemeConstantOverride("separation", -2);
@@ -977,7 +978,8 @@ public partial class PokerUI : Control
         panel.AddThemeStyleboxOverride("panel", style);
 
         bool isRed = card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds;
-        var color = isRed ? new Color(0.75f, 0.12f, 0.16f) : new Color(0.08f, 0.1f, 0.18f);
+        var color = Core.Visuals.AccessibilityVisuals.GetCardSuitColor(
+            isRed, new Color(0.75f, 0.12f, 0.16f), new Color(0.08f, 0.1f, 0.18f));
         var box = new VBoxContainer();
         box.Alignment = BoxContainer.AlignmentMode.Center;
         box.AddThemeConstantOverride("separation", -3);

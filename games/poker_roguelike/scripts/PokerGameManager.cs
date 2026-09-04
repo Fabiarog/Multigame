@@ -78,9 +78,7 @@ public partial class PokerGameManager : Node
     private SyncRng _rng;
 
     private PokerBossAI _boss;
-    private Sprite3D _playerSprite;
-    private float _frameTimer = 0f;
-    private int _currentFrame = 0;
+    private Core.Visuals.AvatarComposite _playerAvatar;
 
     // ===== LIFECYCLE =====
 
@@ -97,53 +95,12 @@ public partial class PokerGameManager : Node
         }
 
         // Load Player Avatar
-        _playerSprite = GetNodeOrNull<Sprite3D>("../Environment/PlayerSprite");
-        if (_playerSprite != null)
-        {
-            string avatar = Core.Systems.SettingsManager.Instance?.AvatarId ?? "default";
-            string texPath = avatar switch
-            {
-                "spider" => "res://assets/sprites/characters/spider/spider_spritesheet.jpg",
-                _ => "res://assets/sprites/characters/turtle/turtle_spritesheet.jpg" // Default to turtle
-            };
-            if (ResourceLoader.Exists(texPath))
-            {
-                _playerSprite.Texture = ResourceLoader.Load<Texture2D>(texPath);
-
-                var shader = ResourceLoader.Load<Shader>("res://assets/shaders/SpatialChromaKey.gdshader");
-                if (shader != null)
-                {
-                    var mat = new ShaderMaterial();
-                    mat.Shader = shader;
-                    mat.SetShaderParameter("chroma_color", new Color(0.0f, 1.0f, 0.0f)); 
-                    mat.SetShaderParameter("chroma_threshold", 0.35f);
-                    mat.SetShaderParameter("chroma_smoothing", 0.1f);
-                    mat.SetShaderParameter("hframes", 2);
-                    mat.SetShaderParameter("vframes", 2);
-                    mat.SetShaderParameter("sprite_texture", _playerSprite.Texture);
-                    _playerSprite.MaterialOverride = mat;
-                }
-            }
-        }
+        _playerAvatar = GetNodeOrNull<Core.Visuals.AvatarComposite>("../Environment/PlayerSprite");
     }
 
     public override void _Process(double delta)
     {
-        if (_playerSprite != null && _playerSprite.Texture != null && _playerSprite.Visible)
-        {
-            _frameTimer += (float)delta;
-            if (_frameTimer >= 0.2f)
-            {
-                _frameTimer = 0f;
-                _currentFrame = (_currentFrame + 1) % 4;
-                _playerSprite.Frame = _currentFrame;
-
-                if (_playerSprite.MaterialOverride is ShaderMaterial smat)
-                {
-                    smat.SetShaderParameter("frame", _currentFrame);
-                }
-            }
-        }
+        // Animation is now handled by AvatarComposite internally.
     }
 
     // ===== PUBLIC API =====
@@ -244,7 +201,7 @@ public partial class PokerGameManager : Node
             && DiscardsRemaining > 0;
     }
 
-    public void PlayHand()
+    public async void PlayHand()
     {
         if (!CanPlayHand()) return;
 
@@ -268,14 +225,18 @@ public partial class PokerGameManager : Node
         }
         _selectedIndices.Clear();
 
-        // Draw new cards to refill hand
-        DrawCardsToFillHand();
-
         // Emit scoring signals
         EmitSignal(SignalName.HandScored, result.HandName, result.TotalScore, result.GetScoreBreakdown());
         EmitSignal(SignalName.ScoreUpdated, RoundScore, RoundTarget);
 
         _boss?.ReactToPlayerHand(RoundScore, RoundTarget);
+
+        // Wait to show the result
+        await ToSignal(GetTree().CreateTimer(1.5f), SceneTreeTimer.SignalName.Timeout);
+
+        // Draw new cards to refill hand
+        DrawCardsToFillHand();
+        EmitSignal(SignalName.HandDealt);
 
         // Check win condition
         if (RoundScore >= RoundTarget)

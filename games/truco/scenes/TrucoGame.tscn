@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://games/truco/scripts/TrucoGameManager.cs" id="1_mgr"]
 [ext_resource type="Script" path="res://games/truco/scripts/TrucoUI.cs" id="2_ui"]
 [ext_resource type="Texture2D" uid="uid://cxbgtexture" path="res://assets/sprites/backgrounds/cyber_casino.jpg" id="3_bg"]
+[ext_resource type="Script" path="res://core/visuals/AvatarComposite.cs" id="4_avatar"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_table"]
 albedo_color = Color(0.12, 0.45, 0.2, 1.0)
@@ -48,6 +49,10 @@ outer_radius = 5.1
 sides = 32
 ring_sides = 12
 material = SubResource("StandardMaterial3D_rim")
+
+[node name="OpponentSprite" type="Node3D" parent="Environment"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -2.0)
+script = ExtResource("4_avatar")
 
 [node name="Camera3D" type="Camera3D" parent="Environment"]
 transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 4.0, 5.5)

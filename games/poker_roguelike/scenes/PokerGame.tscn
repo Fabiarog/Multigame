@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://games/poker_roguelike/scripts/PokerUI.cs" id="3_ui"]
 [ext_resource type="Texture2D" uid="uid://cxbgtexture" path="res://assets/sprites/backgrounds/cyber_casino.jpg" id="4_bg"]
 [ext_resource type="Texture2D" uid="uid://cxbosstexture" path="res://assets/sprites/characters/turtle/turtle_spritesheet.jpg" id="5_boss"]
+[ext_resource type="Script" path="res://core/visuals/AvatarComposite.cs" id="6_avatar"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_table"]
 albedo_color = Color(0.12, 0.45, 0.2, 1.0)
@@ -51,14 +52,9 @@ sides = 32
 ring_sides = 12
 material = SubResource("StandardMaterial3D_rim")
 
-[node name="PlayerSprite" type="Sprite3D" parent="Environment"]
+[node name="PlayerSprite" type="Node3D" parent="Environment"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.0, 1.5, 2.0)
-pixel_size = 0.004
-billboard = 1
-transparent = true
-texture = ExtResource("5_boss")
-hframes = 2
-vframes = 2
+script = ExtResource("6_avatar")
 
 [node name="BossAI" type="Node3D" parent="Environment"]
 script = ExtResource("1_boss")

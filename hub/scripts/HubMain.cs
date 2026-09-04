@@ -611,7 +611,7 @@ public partial class HubMain : Control
         _nicknameEdit.Text = SettingsManager.Instance.PlayerNickname;
         
         // Match avatar ID
-        string avatar = SettingsManager.Instance.AvatarId;
+        string avatar = SettingsManager.Instance.AvatarBase;
         if (avatar == "turtle") _avatarSelect.Selected = 1;
         else if (avatar == "spider") _avatarSelect.Selected = 2;
         else _avatarSelect.Selected = 0;
@@ -627,11 +627,15 @@ public partial class HubMain : Control
         if (SettingsManager.Instance == null) return;
         SettingsManager.Instance.PlayerNickname = _nicknameEdit.Text;
         
-        SettingsManager.Instance.AvatarId = _avatarSelect.Selected switch {
+        SettingsManager.Instance.AvatarBase = _avatarSelect.Selected switch {
             1 => "turtle",
             2 => "spider",
-            _ => "default"
+            _ => "default_base"
         };
+        // Ensure clothes are loaded for default base
+        SettingsManager.Instance.AvatarShirt = "default_shirt";
+        SettingsManager.Instance.AvatarPants = "default_pants";
+        SettingsManager.Instance.AvatarHair = "default_hair";
 
         SettingsManager.Instance.MasterVolume = (float)_masterSlider.Value / 100f;
         SettingsManager.Instance.MusicVolume = (float)_musicSlider.Value / 100f;

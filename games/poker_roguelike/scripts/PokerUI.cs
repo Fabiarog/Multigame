@@ -33,6 +33,7 @@ public partial class PokerUI : Control
     private Button _nextRoundBtn;
     private Button _newGameBtn;
     private Button _backMenuBtn;
+    private TextureRect _bossDefeatPortrait;
 
     // Card tracking
     private List<PanelContainer> _cardPanels = new();
@@ -323,10 +324,23 @@ public partial class PokerUI : Control
         panel.AddThemeStyleboxOverride("panel", panelStyle);
         center.AddChild(panel);
 
+        var hbox = new HBoxContainer();
+        hbox.Alignment = BoxContainer.AlignmentMode.Center;
+        hbox.AddThemeConstantOverride("separation", 16);
+        panel.AddChild(hbox);
+
+        _bossDefeatPortrait = new TextureRect();
+        _bossDefeatPortrait.CustomMinimumSize = new Vector2(100, 100);
+        _bossDefeatPortrait.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+        _bossDefeatPortrait.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+        _bossDefeatPortrait.Texture = ResourceLoader.Load<Texture2D>("res://assets/sprites/portraits/truco_player.jpg");
+        _bossDefeatPortrait.Visible = false; // Only show on win
+        hbox.AddChild(_bossDefeatPortrait);
+
         var vbox = new VBoxContainer();
         vbox.AddThemeConstantOverride("separation", 8);
         vbox.Alignment = BoxContainer.AlignmentMode.Center;
-        panel.AddChild(vbox);
+        hbox.AddChild(vbox);
 
         _overlayTitle = CreateLabel("", 14, Gold);
         _overlayTitle.HorizontalAlignment = HorizontalAlignment.Center;
@@ -794,6 +808,8 @@ public partial class PokerUI : Control
 
     private void OnRoundEnded(int round, bool passed)
     {
+        _bossDefeatPortrait.Visible = false;
+        
         if (passed)
         {
             _overlayTitle.Text = $"Rodada {round} Completa!";
@@ -820,12 +836,14 @@ public partial class PokerUI : Control
             _overlayTitle.Text = "Vitória!";
             _overlayTitle.AddThemeColorOverride("font_color", Gold);
             _overlaySubtitle.Text = $"Pontuação total: {totalScore}";
+            _bossDefeatPortrait.Visible = true;
         }
         else
         {
             _overlayTitle.Text = "Derrota";
             _overlayTitle.AddThemeColorOverride("font_color", Accent);
             _overlaySubtitle.Text = $"Pontuação: {_game.RoundScore}/{_game.RoundTarget}";
+            _bossDefeatPortrait.Visible = false;
         }
         _nextRoundBtn.Visible = false;
         _newGameBtn.Visible = true;

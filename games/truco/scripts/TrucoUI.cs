@@ -29,6 +29,7 @@ public partial class TrucoUI : Control
     private Button _acceptBtn;
     private Button _declineBtn;
     private Button _raiseBtn;
+    private TextureRect _trucoPortrait;
 
     // Hand end overlay
     private Control _handOverlay;
@@ -295,10 +296,22 @@ public partial class TrucoUI : Control
         panel.AddThemeStyleboxOverride("panel", panelStyle);
         center.AddChild(panel);
 
+        var hbox = new HBoxContainer();
+        hbox.Alignment = BoxContainer.AlignmentMode.Center;
+        hbox.AddThemeConstantOverride("separation", 16);
+        panel.AddChild(hbox);
+        
+        _trucoPortrait = new TextureRect();
+        _trucoPortrait.CustomMinimumSize = new Vector2(100, 100);
+        _trucoPortrait.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+        _trucoPortrait.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+        _trucoPortrait.Texture = ResourceLoader.Load<Texture2D>("res://assets/sprites/portraits/truco_player.jpg");
+        hbox.AddChild(_trucoPortrait);
+
         var vbox = new VBoxContainer();
         vbox.AddThemeConstantOverride("separation", 8);
         vbox.Alignment = BoxContainer.AlignmentMode.Center;
-        panel.AddChild(vbox);
+        hbox.AddChild(vbox);
 
         _trucoOverlayLabel = CreateLabel("TRUCO!", 14, TrucoOrange);
         _trucoOverlayLabel.HorizontalAlignment = HorizontalAlignment.Center;

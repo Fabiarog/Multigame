@@ -153,7 +153,7 @@ public partial class TrucoGameManager : Node
     /// <summary>
     /// Player plays a card at the given index from their hand.
     /// </summary>
-    public void PlayerPlayCard(int handIndex)
+    public async void PlayerPlayCard(int handIndex)
     {
         if (CurrentPhase != TrucoPhase.PlayerTurn) return;
         if (handIndex < 0 || handIndex >= PlayerHand.Count) return;
@@ -168,6 +168,7 @@ public partial class TrucoGameManager : Node
         // If opponent already played this round, resolve
         if (OpponentPlayed[CurrentRound] != null)
         {
+            await ToSignal(GetTree().CreateTimer(1.0f), SceneTreeTimer.SignalName.Timeout);
             ResolveCurrentRound();
         }
         else
@@ -364,7 +365,7 @@ public partial class TrucoGameManager : Node
         _aiThinkTimer = (float)GD.RandRange(0.8, 2.0);
     }
 
-    private void ExecuteAITurn()
+    private async void ExecuteAITurn()
     {
         if (OpponentHand.Count == 0) return;
 
@@ -403,6 +404,7 @@ public partial class TrucoGameManager : Node
         // If player already played, resolve
         if (PlayerPlayed[CurrentRound] != null)
         {
+            await ToSignal(GetTree().CreateTimer(1.0f), SceneTreeTimer.SignalName.Timeout);
             ResolveCurrentRound();
         }
         else

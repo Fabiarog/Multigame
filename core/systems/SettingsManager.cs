@@ -15,7 +15,10 @@ public partial class SettingsManager : Node
 
     // -- Profile --
     public string PlayerNickname { get; set; } = "Player";
-    public string AvatarId { get; set; } = "default";
+    public string AvatarBase { get; set; } = "default_base";
+    public string AvatarShirt { get; set; } = "default_shirt";
+    public string AvatarPants { get; set; } = "default_pants";
+    public string AvatarHair { get; set; } = "default_hair";
 
     // -- Visuals --
     public bool IsFullscreen { get; set; } = true;
@@ -51,7 +54,10 @@ public partial class SettingsManager : Node
         {
             // Profile
             PlayerNickname = (string)_config.GetValue("Profile", "Nickname", PlayerNickname);
-            AvatarId = (string)_config.GetValue("Profile", "AvatarId", AvatarId);
+            AvatarBase = (string)_config.GetValue("Profile", "AvatarBase", AvatarBase);
+            AvatarShirt = (string)_config.GetValue("Profile", "AvatarShirt", AvatarShirt);
+            AvatarPants = (string)_config.GetValue("Profile", "AvatarPants", AvatarPants);
+            AvatarHair = (string)_config.GetValue("Profile", "AvatarHair", AvatarHair);
 
             // Visuals
             IsFullscreen = (bool)_config.GetValue("Visuals", "Fullscreen", IsFullscreen);
@@ -80,7 +86,10 @@ public partial class SettingsManager : Node
     public void SaveSettings()
     {
         _config.SetValue("Profile", "Nickname", PlayerNickname);
-        _config.SetValue("Profile", "AvatarId", AvatarId);
+        _config.SetValue("Profile", "AvatarBase", AvatarBase);
+        _config.SetValue("Profile", "AvatarShirt", AvatarShirt);
+        _config.SetValue("Profile", "AvatarPants", AvatarPants);
+        _config.SetValue("Profile", "AvatarHair", AvatarHair);
 
         _config.SetValue("Visuals", "Fullscreen", IsFullscreen);
         _config.SetValue("Visuals", "ResolutionScale", ResolutionScale);

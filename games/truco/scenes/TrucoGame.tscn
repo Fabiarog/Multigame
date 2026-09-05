@@ -1,8 +1,8 @@
-[gd_scene load_steps=7 format=3 uid="uid://cxtrucoscene"]
+[gd_scene load_steps=8 format=3 uid="uid://cxtrucoscene"]
 
 [ext_resource type="Script" path="res://games/truco/scripts/TrucoGameManager.cs" id="1_mgr"]
 [ext_resource type="Script" path="res://games/truco/scripts/TrucoUI.cs" id="2_ui"]
-[ext_resource type="Texture2D" uid="uid://cxbgtexture" path="res://assets/sprites/backgrounds/cyber_casino.jpg" id="3_bg"]
+[ext_resource type="Texture2D" path="res://assets/sprites/backgrounds/cyber_casino.jpg" id="3_bg"]
 [ext_resource type="Script" path="res://core/visuals/AvatarComposite.cs" id="4_avatar"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_table"]

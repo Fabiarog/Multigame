@@ -1,124 +1,56 @@
 using Godot;
 using System.Collections.Generic;
 using System.Linq;
+using GameHub.Core.Visuals;
 
 namespace GameHub.Games.PokerRoguelike;
 
-/// <summary>
-/// Programmatically-built UI for the Poker Roguelike game.
-/// Handles all visual display, card interaction, and score presentation.
-/// </summary>
+/// <summary>Presentation for the Poker run. Game state remains in PokerGameManager.</summary>
 public partial class PokerUI : Control
 {
     private PokerGameManager _game;
-
-    // ===== UI REFS =====
-    private Label _titleLabel;
-    private Label _roundLabel;
-    private Label _scoreLabel;
-    private Label _targetLabel;
-    private Label _handsLabel;
-    private Label _discardsLabel;
-    private Label _relicsLabel;
-    private Label _opponentsLabel;
-    private Label _resultLabel;
-    private Label _breakdownLabel;
+    private Label _roundLabel, _scoreLabel, _targetLabel, _handsLabel, _discardsLabel;
+    private Label _relicsLabel, _opponentsLabel, _resultLabel, _breakdownLabel, _walletLabel;
+    private Label _bossName, _selectionLabel;
+    private TextureRect _bossPortrait;
     private ProgressBar _scoreBar;
-    private HBoxContainer _dealerCardContainer;
-    private HBoxContainer _cardContainer;
-    private Control _tableCardLayer;
+    private HBoxContainer _dealerCardContainer, _cardContainer;
+    private Control _tableArea, _tableCardLayer;
     private Label _scorePopup;
-    private Button _playBtn;
-    private Button _discardBtn;
+    private Button _playBtn, _discardBtn;
+    private readonly List<PanelContainer> _cardPanels = new();
+    private readonly List<PanelContainer> _dealerCardPanels = new();
+    private bool _ignoreInput;
+    private Tween _popupTween;
+    private TableStage _stage;
 
-    // Overlay
-    private Control _overlayPanel;
-    private Label _overlayTitle;
-    private Label _overlaySubtitle;
-    private Button _nextRoundBtn;
-    private Button _newGameBtn;
-    private Button _backMenuBtn;
-    private TextureRect _bossDefeatPortrait;
-
-    // Card tracking
-    private List<PanelContainer> _cardPanels = new();
-    private List<PanelContainer> _dealerCardPanels = new();
-    private HashSet<int> _hoveredCards = new();
-    private bool _ignoreInput = false;
-
-    // Tutorial
-    private Control _tutorialPanel;
-    private Label _tutorialTitle;
-    private Label _tutorialDesc;
-    private Button _tutorialNextBtn;
-    private Button _tutorialSkipBtn;
+    private Control _overlayPanel, _shopOverlay, _tutorialPanel;
+    private Label _overlayTitle, _overlaySubtitle, _goldLabel, _shopMessage;
+    private Button _nextRoundBtn, _newGameBtn, _backMenuBtn;
+    private Button _buyMultBtn, _buyHandBtn, _buyDiscardBtn, _shopNextRoundBtn;
+    private Label _tutorialTitle, _tutorialDesc;
     private Core.AI.TutorialController _tutorialController;
-
-    // Shop
-    private Control _shopOverlay;
-    private Label _goldLabel;
-    private Button _buyMultBtn;
-    private Button _buyHandBtn;
-    private Button _buyDiscardBtn;
-    private Button _shopNextRoundBtn;
-
-    // ===== THEME COLORS =====
-    private static readonly Color BgDark = new(0.05f, 0.05f, 0.09f);
-    private static readonly Color PanelBg = new(0.09f, 0.09f, 0.15f);
-    private static readonly Color CardBg = new(0.09f, 0.12f, 0.22f);
-    private static readonly Color CardBorder = new(0.17f, 0.2f, 0.35f);
-    private static readonly Color CardHoverBg = new(0.12f, 0.15f, 0.28f);
-    private static readonly Color CardHoverBorder = new(0.3f, 0.34f, 0.55f);
-    private static readonly Color CardSelectedBg = new(0.11f, 0.14f, 0.26f);
-    private static readonly Color Gold = new(0.97f, 0.82f, 0.38f);
-    private static readonly Color Accent = new(0.91f, 0.27f, 0.37f);
-    private static readonly Color BtnPurple = new(0.32f, 0.2f, 0.51f);
-    private static readonly Color BtnPurpleHover = new(0.42f, 0.29f, 0.71f);
-    private static readonly Color BtnGreen = new(0.13f, 0.55f, 0.33f);
-    private static readonly Color BtnGreenHover = new(0.17f, 0.7f, 0.42f);
-    private static readonly Color BtnRed = new(0.65f, 0.15f, 0.2f);
-    private static readonly Color BtnRedHover = new(0.8f, 0.2f, 0.25f);
-    private static readonly Color SuccessGreen = new(0.18f, 0.8f, 0.44f);
-    private static readonly Color TextPrimary = new(0.93f, 0.93f, 0.95f);
-    private static readonly Color TextSecondary = new(0.5f, 0.5f, 0.65f);
-    private static readonly Color RedSuit = new(1f, 0.4f, 0.4f);
-    private static readonly Color BlackSuit = new(0.88f, 0.88f, 0.93f);
-    private static readonly Color BarBg = new(0.08f, 0.08f, 0.14f);
-    private static readonly Color BarFill = new(0.97f, 0.82f, 0.38f);
-
-    // ===== LIFECYCLE =====
 
     public override void _Ready()
     {
         _game = GetNode<PokerGameManager>("../../GameManager");
+        Theme = ClubTheme.Create();
+        Core.Systems.AudioManager.Instance?.PlayMusic("velvet-table");
         BuildUI();
-        ConnectSignals();
-
-        // Check for tutorial mode
-        _tutorialController = GetNodeOrNull<Core.AI.TutorialController>("../../TutorialController");
-        if (_tutorialController != null)
-        {
-            _tutorialController.TutorialStepChanged += OnTutorialStep;
-            _tutorialController.TutorialComplete += OnTutorialComplete;
-            _tutorialPanel.Visible = true;
-        }
-
-        _game.StartNewGame();
-    }
-
-    private void ConnectSignals()
-    {
         _game.HandDealt += OnHandDealt;
         _game.ScoreUpdated += OnScoreUpdated;
         _game.HandScored += OnHandScored;
         _game.RoundEnded += OnRoundEnded;
         _game.GameEnded += OnGameEnded;
         _game.PhaseChanged += OnPhaseChanged;
+        _game.StartNewGame();
+        // The manager adds this node deferred, so attach after it enters the tree.
+        CallDeferred(nameof(AttachTutorial));
     }
 
     public override void _ExitTree()
     {
-        if (_game != null)
+        if (IsInstanceValid(_game))
         {
             _game.HandDealt -= OnHandDealt;
             _game.ScoreUpdated -= OnScoreUpdated;
@@ -127,796 +59,550 @@ public partial class PokerUI : Control
             _game.GameEnded -= OnGameEnded;
             _game.PhaseChanged -= OnPhaseChanged;
         }
-        if (_tutorialController != null)
+        if (IsInstanceValid(_tutorialController))
         {
             _tutorialController.TutorialStepChanged -= OnTutorialStep;
             _tutorialController.TutorialComplete -= OnTutorialComplete;
         }
     }
 
-    // ===== UI CONSTRUCTION =====
-
     private void BuildUI()
     {
-        // A full-screen 2D backdrop keeps the casino visible on every aspect
-        // ratio; the 3D Sprite3D is retained only as scene depth.
-        var backdrop = new TextureRect();
-        backdrop.Texture = ResourceLoader.Load<Texture2D>("res://assets/sprites/backgrounds/cyber_casino.jpg");
+        var backdrop = new ClubBackdrop { ShowTable = false, MouseFilter = MouseFilterEnum.Ignore };
         backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        backdrop.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
-        // Scale fills every viewport. The old aspect-preserving mode left the
-        // casino as a thin strip behind the 3D table on some resolutions.
-        backdrop.StretchMode = TextureRect.StretchModeEnum.Scale;
-        backdrop.Modulate = new Color(1, 1, 1, 0.55f);
-        backdrop.MouseFilter = MouseFilterEnum.Ignore;
         AddChild(backdrop);
 
-        // Slight darkening keeps controls legible without replacing the scene.
-        var bg = new ColorRect();
-        bg.Color = new Color(0, 0, 0, 0.35f);
-        bg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(bg);
-
-        _tableCardLayer = new Control();
-        _tableCardLayer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _tableCardLayer.MouseFilter = MouseFilterEnum.Ignore;
-        AddChild(_tableCardLayer);
-
-        _scorePopup = CreateLabel("", 16, Gold);
-        _scorePopup.HorizontalAlignment = HorizontalAlignment.Center;
-        _scorePopup.Size = new Vector2(280, 52);
-        _scorePopup.Visible = false;
-        _scorePopup.MouseFilter = MouseFilterEnum.Ignore;
-        _tableCardLayer.AddChild(_scorePopup);
-
-        // Main layout
         var margin = new MarginContainer();
         margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 14);
-        margin.AddThemeConstantOverride("margin_right", 14);
-        margin.AddThemeConstantOverride("margin_top", 8);
-        margin.AddThemeConstantOverride("margin_bottom", 8);
+        foreach (var edge in new[] { "left", "right", "top", "bottom" })
+            margin.AddThemeConstantOverride("margin_" + edge, 24);
         AddChild(margin);
+        var columns = new HBoxContainer();
+        columns.AddThemeConstantOverride("separation", 24);
+        margin.AddChild(columns);
+        BuildSidebar(columns);
 
-        var mainVBox = new VBoxContainer();
-        mainVBox.AddThemeConstantOverride("separation", 5);
-        margin.AddChild(mainVBox);
+        var main = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        main.AddThemeConstantOverride("separation", 12);
+        columns.AddChild(main);
+        var heading = new HBoxContainer();
+        heading.AddChild(DisplayLabel("Pôquer", 40));
+        heading.AddChild(Spacer());
+        var mode = ClubTheme.Label("ROGUELIKE  /  CORRIDA DE PONTOS", 13, ClubTheme.Muted);
+        mode.VerticalAlignment = VerticalAlignment.Center;
+        heading.AddChild(mode);
+        main.AddChild(heading);
 
-        // --- Top bar ---
-        var topBar = new HBoxContainer();
-        topBar.AddThemeConstantOverride("separation", 8);
-
-        _titleLabel = CreateLabel("♠ POKER ROGUELIKE", 8, Gold);
-        topBar.AddChild(_titleLabel);
-
-        topBar.AddChild(CreateExpandSpacer());
-
-        var backBtn = CreateStyledButton("Menu", BtnRed, BtnRedHover, new Vector2(40, 16));
-        backBtn.AddThemeFontSizeOverride("font_size", 8);
-        backBtn.Pressed += () => GetTree().ChangeSceneToFile("res://hub/scenes/HubMain.tscn");
-        topBar.AddChild(backBtn);
-
-        mainVBox.AddChild(topBar);
-
-        // --- Decorative line ---
-        var separator = new HSeparator();
-        separator.AddThemeConstantOverride("separation", 2);
-        var sepStyle = new StyleBoxFlat();
-        sepStyle.BgColor = new Color(0.2f, 0.2f, 0.35f);
-        sepStyle.ContentMarginTop = 1;
-        sepStyle.ContentMarginBottom = 1;
-        separator.AddThemeStyleboxOverride("separator", sepStyle);
-        mainVBox.AddChild(separator);
-
-        // --- Score row ---
-        var scoreRow = new HBoxContainer();
-        scoreRow.AddThemeConstantOverride("separation", 10);
-
-        _roundLabel = CreateLabel("Rodada 1", 8, TextPrimary);
-        scoreRow.AddChild(_roundLabel);
-
-        scoreRow.AddChild(CreateExpandSpacer());
-
-        _scoreLabel = CreateLabel("0", 12, Gold);
-        scoreRow.AddChild(_scoreLabel);
-
-        var slashLabel = CreateLabel("/", 8, TextSecondary);
-        scoreRow.AddChild(slashLabel);
-
-        _targetLabel = CreateLabel("300", 9, TextSecondary);
-        scoreRow.AddChild(_targetLabel);
-
-        scoreRow.AddChild(CreateExpandSpacer());
-
-        mainVBox.AddChild(scoreRow);
-
-        // --- Score bar ---
-        _scoreBar = new ProgressBar();
-        _scoreBar.CustomMinimumSize = new Vector2(0, 8);
-        _scoreBar.MinValue = 0;
-        _scoreBar.MaxValue = 300;
-        _scoreBar.Value = 0;
-        _scoreBar.ShowPercentage = false;
-        _scoreBar.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-
-        var barBgStyle = new StyleBoxFlat();
-        barBgStyle.BgColor = BarBg;
-        barBgStyle.SetCornerRadiusAll(4);
-        _scoreBar.AddThemeStyleboxOverride("background", barBgStyle);
-
-        var barFillStyle = new StyleBoxFlat();
-        barFillStyle.BgColor = BarFill;
-        barFillStyle.SetCornerRadiusAll(4);
-        _scoreBar.AddThemeStyleboxOverride("fill", barFillStyle);
-
-        mainVBox.AddChild(_scoreBar);
-
-        // --- Resource row ---
-        var resRow = new HBoxContainer();
-        resRow.AddThemeConstantOverride("separation", 8);
-
-        _handsLabel = CreateLabel("Mãos: 4", 8, TextSecondary);
-        resRow.AddChild(_handsLabel);
-
-        resRow.AddChild(CreateExpandSpacer());
-
-        _discardsLabel = CreateLabel("Descartes: 3", 8, TextSecondary);
-        resRow.AddChild(_discardsLabel);
-
-        mainVBox.AddChild(resRow);
-
-        _relicsLabel = CreateLabel("Relíquias: —", 7, new Color(0.62f, 0.5f, 0.92f));
-        _relicsLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _relicsLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        mainVBox.AddChild(_relicsLabel);
-
-        _opponentsLabel = CreateLabel("Oponente: 1 bot", 7, TextSecondary);
-        _opponentsLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _opponentsLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        mainVBox.AddChild(_opponentsLabel);
-
-        // --- Dealer Cards ---
-        var dealerCenter = new CenterContainer();
-        dealerCenter.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        var dealerPanel = Panel(new Color("102c26"), ClubTheme.Border, 12);
+        var dealerRow = new HBoxContainer();
+        dealerRow.AddThemeConstantOverride("separation", 14);
+        dealerPanel.AddChild(dealerRow);
+        _bossPortrait = new TextureRect
+        {
+            CustomMinimumSize = new Vector2(92, 92),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        var chroma = ResourceLoader.Load<Shader>("res://assets/shaders/CanvasChromaKey.gdshader");
+        if (chroma != null)
+            _bossPortrait.Material = new ShaderMaterial { Shader = chroma };
+        dealerRow.AddChild(_bossPortrait);
+        var bossInfo = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        bossInfo.AddThemeConstantOverride("separation", 5);
+        bossInfo.AddChild(ClubTheme.Label("CHEFE DA MESA", 12, ClubTheme.Gold));
+        _bossName = ClubTheme.Label("Tartaruga", 24);
+        bossInfo.AddChild(_bossName);
+        _opponentsLabel = ClubTheme.Label("1 bot à mesa", 13, ClubTheme.Muted);
+        bossInfo.AddChild(_opponentsLabel);
+        dealerRow.AddChild(bossInfo);
+        dealerRow.AddChild(Spacer());
+        var rack = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        rack.AddThemeConstantOverride("separation", 5);
         _dealerCardContainer = new HBoxContainer();
-        _dealerCardContainer.AddThemeConstantOverride("separation", 5);
-        dealerCenter.AddChild(_dealerCardContainer);
-        mainVBox.AddChild(dealerCenter);
+        _dealerCardContainer.AddThemeConstantOverride("separation", 6);
+        rack.AddChild(_dealerCardContainer);
+        var dealerHint = ClubTheme.Label("CARTAS DO CHEFE", 11, ClubTheme.Muted);
+        dealerHint.HorizontalAlignment = HorizontalAlignment.Center;
+        rack.AddChild(dealerHint);
+        dealerRow.AddChild(rack);
+        main.AddChild(dealerPanel);
 
-        // --- Flexible spacer (pushes everything below to bottom) ---
-        mainVBox.AddChild(CreateExpandSpacer());
+        _tableArea = new Control
+        {
+            CustomMinimumSize = new Vector2(0, 140),
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        main.AddChild(_tableArea);
+        _stage = new TableStage { SeatCount = 2, RivalIndex = 2 };
+        _tableArea.AddChild(_stage);
+        var tableHint = ClubTheme.Label("FORME SUA MÃO. SUPERE A META.", 12, new Color("718c77"));
+        tableHint.HorizontalAlignment = HorizontalAlignment.Center;
+        tableHint.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        tableHint.VerticalAlignment = VerticalAlignment.Bottom;
+        _tableArea.AddChild(tableHint);
 
-        // --- Action buttons (above cards) ---
-        var actionCenter = new CenterContainer();
-        actionCenter.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-
-        var actionRow = new HBoxContainer();
-        actionRow.AddThemeConstantOverride("separation", 14);
-
-        _playBtn = CreateStyledButton("Jogar Mão", BtnGreen, BtnGreenHover, new Vector2(70, 20));
-        _playBtn.Pressed += OnPlayPressed;
-        actionRow.AddChild(_playBtn);
-
-        _discardBtn = CreateStyledButton("Descartar", BtnPurple, BtnPurpleHover, new Vector2(70, 20));
-        _discardBtn.Pressed += OnDiscardPressed;
-        actionRow.AddChild(_discardBtn);
-
-        actionCenter.AddChild(actionRow);
-        mainVBox.AddChild(actionCenter);
-
-        // --- Spacer ---
-        mainVBox.AddChild(CreateFixedSpacer(4));
-
-        // --- Card row (Player) ---
+        var tray = Panel(ClubTheme.Panel, ClubTheme.Border, 16);
+        var trayBox = new VBoxContainer();
+        trayBox.AddThemeConstantOverride("separation", 10);
+        tray.AddChild(trayBox);
+        var handHeading = new HBoxContainer();
+        handHeading.AddChild(ClubTheme.Label("SUA MÃO", 13, ClubTheme.Gold));
+        handHeading.AddChild(Spacer());
+        _selectionLabel = ClubTheme.Label("0 / 5 selecionadas", 13, ClubTheme.Muted);
+        handHeading.AddChild(_selectionLabel);
+        trayBox.AddChild(handHeading);
         var cardCenter = new CenterContainer();
-        cardCenter.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _cardContainer = new HBoxContainer();
-        _cardContainer.AddThemeConstantOverride("separation", 5);
+        _cardContainer.AddThemeConstantOverride("separation", 10);
         cardCenter.AddChild(_cardContainer);
-        mainVBox.AddChild(cardCenter);
+        trayBox.AddChild(cardCenter);
+        var actions = new HBoxContainer();
+        actions.AddThemeConstantOverride("separation", 12);
+        var preview = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        preview.AddThemeConstantOverride("separation", 2);
+        _resultLabel = ClubTheme.Label("Escolha suas cartas", 18);
+        _breakdownLabel = ClubTheme.Label("De 1 a 5 cartas para formar uma combinação.", 13, ClubTheme.Muted);
+        _breakdownLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        preview.AddChild(_resultLabel);
+        preview.AddChild(_breakdownLabel);
+        actions.AddChild(preview);
+        _discardBtn = ClubTheme.Button("Descartar");
+        _discardBtn.CustomMinimumSize = new Vector2(132, 46);
+        _discardBtn.Pressed += OnDiscardPressed;
+        actions.AddChild(_discardBtn);
+        _playBtn = ClubTheme.Button("Jogar mão", true);
+        _playBtn.CustomMinimumSize = new Vector2(156, 46);
+        _playBtn.Pressed += OnPlayPressed;
+        actions.AddChild(_playBtn);
+        trayBox.AddChild(actions);
+        main.AddChild(tray);
 
-        // --- Result label ---
-        _resultLabel = CreateLabel("", 10, SuccessGreen);
-        _resultLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _resultLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        mainVBox.AddChild(_resultLabel);
-
-        _breakdownLabel = CreateLabel("Selecione cartas e jogue sua mão!", 8, TextSecondary);
-        _breakdownLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _breakdownLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        mainVBox.AddChild(_breakdownLabel);
-
-        // --- Overlay ---
-        BuildOverlay();
-
-        // --- Shop Overlay ---
+        // Overlay cards use global coordinates; layout controls remain in their containers.
+        _tableCardLayer = new Control { MouseFilter = MouseFilterEnum.Ignore };
+        _tableCardLayer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(_tableCardLayer);
+        _scorePopup = ClubTheme.Label("", 24, ClubTheme.Gold);
+        _scorePopup.HorizontalAlignment = HorizontalAlignment.Center;
+        _scorePopup.MouseFilter = MouseFilterEnum.Ignore;
+        _scorePopup.Visible = false;
+        _tableCardLayer.AddChild(_scorePopup);
+        BuildResultOverlay();
         BuildShopOverlay();
-
-        // --- Tutorial Panel ---
         BuildTutorialPanel();
-        Core.Visuals.AccessibilityVisuals.AddGlobalFilter(this);
+        AccessibilityVisuals.AddGlobalFilter(this);
     }
 
-    private void BuildOverlay()
+    private void BuildSidebar(HBoxContainer columns)
     {
-        _overlayPanel = new ColorRect();
-        ((ColorRect)_overlayPanel).Color = new Color(0, 0, 0, 0.75f);
-        _overlayPanel.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _overlayPanel.Visible = false;
-        _overlayPanel.MouseFilter = MouseFilterEnum.Stop;
-        AddChild(_overlayPanel);
+        var side = Panel(ClubTheme.Panel, ClubTheme.Border, 20);
+        side.CustomMinimumSize = new Vector2(260, 0);
+        columns.AddChild(side);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 12);
+        side.AddChild(box);
+        box.AddChild(ClubTheme.Label("A SUA CORRIDA", 12, ClubTheme.Gold));
+        _roundLabel = ClubTheme.Label("Rodada 1 / 8", 24);
+        box.AddChild(_roundLabel);
+        box.AddChild(ClubTheme.Label("Alcance a meta antes\nde acabar suas mãos.", 14, ClubTheme.Muted));
+        box.AddChild(Rule());
+        box.AddChild(ClubTheme.Label("PONTOS NA MESA", 12, ClubTheme.Muted));
+        _scoreLabel = ClubTheme.Label("0", 44, ClubTheme.Paper);
+        _scoreLabel.AddThemeFontOverride("font", ClubTheme.MonoFont);
+        box.AddChild(_scoreLabel);
+        _targetLabel = ClubTheme.Label("META  300", 17, ClubTheme.Gold);
+        box.AddChild(_targetLabel);
+        _scoreBar = new ProgressBar
+        {
+            CustomMinimumSize = new Vector2(0, 8),
+            MinValue = 0, MaxValue = 300, ShowPercentage = false
+        };
+        _scoreBar.AddThemeStyleboxOverride("background", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Ink, 0, 3));
+        _scoreBar.AddThemeStyleboxOverride("fill", ClubTheme.Box(ClubTheme.Gold, ClubTheme.Gold, 0, 3));
+        box.AddChild(_scoreBar);
+        box.AddChild(Rule());
+        _handsLabel = ClubTheme.Label("MÃOS  4", 19);
+        _discardsLabel = ClubTheme.Label("DESCARTES  3", 19);
+        _walletLabel = ClubTheme.Label("FICHAS  0", 19, ClubTheme.Gold);
+        box.AddChild(_handsLabel);
+        box.AddChild(_discardsLabel);
+        box.AddChild(_walletLabel);
+        box.AddChild(Rule());
+        box.AddChild(ClubTheme.Label("RELÍQUIAS ATIVAS", 12, ClubTheme.Gold));
+        _relicsLabel = ClubTheme.Label("Ás de sorte\n+1 Mult ao jogar um Ás", 14, ClubTheme.Muted);
+        _relicsLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _relicsLabel.CustomMinimumSize = new Vector2(210, 54);
+        box.AddChild(_relicsLabel);
+        box.AddChild(Spacer());
+        var exit = ClubTheme.Button("Voltar ao clube");
+        exit.Pressed += ReturnToHub;
+        box.AddChild(exit);
+    }
 
-        var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _overlayPanel.AddChild(center);
-
-        var panel = new PanelContainer();
-        panel.CustomMinimumSize = new Vector2(280, 180);
-
-        var panelStyle = new StyleBoxFlat();
-        panelStyle.BgColor = PanelBg;
-        panelStyle.SetCornerRadiusAll(8);
-        panelStyle.SetBorderWidthAll(2);
-        panelStyle.BorderColor = Gold;
-        panelStyle.ContentMarginLeft = 30;
-        panelStyle.ContentMarginRight = 30;
-        panelStyle.ContentMarginTop = 20;
-        panelStyle.ContentMarginBottom = 20;
-        panel.AddThemeStyleboxOverride("panel", panelStyle);
-        center.AddChild(panel);
-
-        var hbox = new HBoxContainer();
-        hbox.Alignment = BoxContainer.AlignmentMode.Center;
-        hbox.AddThemeConstantOverride("separation", 16);
-        panel.AddChild(hbox);
-
-        _bossDefeatPortrait = new TextureRect();
-        _bossDefeatPortrait.CustomMinimumSize = new Vector2(100, 100);
-        _bossDefeatPortrait.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
-        _bossDefeatPortrait.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
-        _bossDefeatPortrait.Texture = ResourceLoader.Load<Texture2D>("res://assets/sprites/portraits/truco_player.jpg");
-        _bossDefeatPortrait.Visible = false; // Only show on win
-        hbox.AddChild(_bossDefeatPortrait);
-
-        var vbox = new VBoxContainer();
-        vbox.AddThemeConstantOverride("separation", 8);
-        vbox.Alignment = BoxContainer.AlignmentMode.Center;
-        hbox.AddChild(vbox);
-
-        _overlayTitle = CreateLabel("", 14, Gold);
-        _overlayTitle.HorizontalAlignment = HorizontalAlignment.Center;
-        vbox.AddChild(_overlayTitle);
-
-        _overlaySubtitle = CreateLabel("", 8, TextSecondary);
-        _overlaySubtitle.HorizontalAlignment = HorizontalAlignment.Center;
-        vbox.AddChild(_overlaySubtitle);
-
-        vbox.AddChild(CreateFixedSpacer(6));
-
-        _nextRoundBtn = CreateStyledButton("Próxima Rodada", BtnGreen, BtnGreenHover, new Vector2(100, 22));
+    private void BuildResultOverlay()
+    {
+        var box = CreateModal(out _overlayPanel, new Vector2(580, 0));
+        box.AddChild(ClubTheme.Label("FIM DA RODADA", 12, ClubTheme.Gold));
+        _overlayTitle = DisplayLabel("", 42);
+        _overlaySubtitle = ClubTheme.Label("", 17, ClubTheme.Muted);
+        _overlaySubtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(_overlayTitle);
+        box.AddChild(_overlaySubtitle);
+        box.AddChild(Rule());
+        _nextRoundBtn = ClubTheme.Button("Visitar a loja", true);
         _nextRoundBtn.Pressed += () =>
         {
             _overlayPanel.Visible = false;
-            _resultLabel.Text = "";
-            _breakdownLabel.Text = "Selecione cartas e jogue sua mão!";
-            _game.StartNextRound();
+            RefreshShopUI();
+            _shopOverlay.Visible = true;
+            _shopNextRoundBtn.GrabFocus();
         };
-        vbox.AddChild(_nextRoundBtn);
-
-        _newGameBtn = CreateStyledButton("Nova Partida", BtnPurple, BtnPurpleHover, new Vector2(100, 22));
+        box.AddChild(_nextRoundBtn);
+        _newGameBtn = ClubTheme.Button("Começar nova corrida", true);
         _newGameBtn.Pressed += () =>
         {
             _overlayPanel.Visible = false;
-            _resultLabel.Text = "";
-            _breakdownLabel.Text = "Selecione cartas e jogue sua mão!";
+            _shopOverlay.Visible = false;
             _game.StartNewGame();
         };
-        vbox.AddChild(_newGameBtn);
-
-        _backMenuBtn = CreateStyledButton("Voltar ao Menu", BtnRed, BtnRedHover, new Vector2(100, 22));
-        _backMenuBtn.Pressed += () => GetTree().ChangeSceneToFile("res://hub/scenes/HubMain.tscn");
-        vbox.AddChild(_backMenuBtn);
+        box.AddChild(_newGameBtn);
+        _backMenuBtn = ClubTheme.Button("Voltar ao clube");
+        _backMenuBtn.Pressed += ReturnToHub;
+        box.AddChild(_backMenuBtn);
     }
 
     private void BuildShopOverlay()
     {
-        _shopOverlay = new ColorRect();
-        ((ColorRect)_shopOverlay).Color = new Color(0, 0, 0, 0.85f);
-        _shopOverlay.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _shopOverlay.Visible = false;
-        _shopOverlay.MouseFilter = MouseFilterEnum.Stop;
-        AddChild(_shopOverlay);
-
-        var center = new CenterContainer();
-        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        _shopOverlay.AddChild(center);
-
-        var panel = new PanelContainer();
-        panel.CustomMinimumSize = new Vector2(280, 180);
-        var panelStyle = new StyleBoxFlat();
-        panelStyle.BgColor = PanelBg;
-        panelStyle.SetCornerRadiusAll(8);
-        panelStyle.SetBorderWidthAll(2);
-        panelStyle.BorderColor = Gold;
-        panelStyle.ContentMarginLeft = 24;
-        panelStyle.ContentMarginRight = 24;
-        panelStyle.ContentMarginTop = 16;
-        panelStyle.ContentMarginBottom = 16;
-        panel.AddThemeStyleboxOverride("panel", panelStyle);
-        center.AddChild(panel);
-
-        var vbox = new VBoxContainer();
-        vbox.AddThemeConstantOverride("separation", 10);
-        vbox.Alignment = BoxContainer.AlignmentMode.Center;
-        panel.AddChild(vbox);
-
-        var title = CreateLabel("LOJA (SHOP)", 14, Gold);
-        title.HorizontalAlignment = HorizontalAlignment.Center;
-        vbox.AddChild(title);
-
-        _goldLabel = CreateLabel("Fichas (Gold): 0", 10, SuccessGreen);
-        _goldLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        vbox.AddChild(_goldLabel);
-
-        vbox.AddChild(CreateFixedSpacer(6));
-
-        // Upgrades
-        var grid = new GridContainer();
-        grid.Columns = 2;
-        grid.AddThemeConstantOverride("h_separation", 16);
-        grid.AddThemeConstantOverride("v_separation", 12);
-        grid.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
-
-        // Upgrade 1
-        var multBox = new VBoxContainer();
-        multBox.Alignment = BoxContainer.AlignmentMode.Center;
-        multBox.AddChild(CreateLabel("+1 Multiplicador", 8, Accent));
-        _buyMultBtn = CreateStyledButton("Comprar (10g)", BtnPurple, BtnPurpleHover, new Vector2(80, 20));
-        _buyMultBtn.Pressed += () => TryBuy("multiplier", 10);
-        multBox.AddChild(_buyMultBtn);
-        grid.AddChild(multBox);
-
-        // Upgrade 2
-        var handBox = new VBoxContainer();
-        handBox.Alignment = BoxContainer.AlignmentMode.Center;
-        handBox.AddChild(CreateLabel("+1 Mão/Rodada", 8, Accent));
-        _buyHandBtn = CreateStyledButton("Comprar (15g)", BtnPurple, BtnPurpleHover, new Vector2(80, 20));
-        _buyHandBtn.Pressed += () => TryBuy("hand", 15);
-        handBox.AddChild(_buyHandBtn);
-        grid.AddChild(handBox);
-
-        // Upgrade 3
-        var discardBox = new VBoxContainer();
-        discardBox.Alignment = BoxContainer.AlignmentMode.Center;
-        discardBox.AddChild(CreateLabel("+1 Descarte/Rodada", 8, Accent));
-        _buyDiscardBtn = CreateStyledButton("Comprar (8g)", BtnPurple, BtnPurpleHover, new Vector2(80, 20));
-        _buyDiscardBtn.Pressed += () => TryBuy("discard", 8);
-        discardBox.AddChild(_buyDiscardBtn);
-        grid.AddChild(discardBox);
-
-        vbox.AddChild(grid);
-        vbox.AddChild(CreateFixedSpacer(10));
-
-        _shopNextRoundBtn = CreateStyledButton("Próxima Rodada", BtnGreen, BtnGreenHover, new Vector2(100, 24));
+        var box = CreateModal(out _shopOverlay, new Vector2(880, 0));
+        box.AddChild(ClubTheme.Label("ENTRE RODADAS", 12, ClubTheme.Gold));
+        var heading = new HBoxContainer();
+        heading.AddChild(DisplayLabel("A banca", 42));
+        heading.AddChild(Spacer());
+        _goldLabel = ClubTheme.Label("0 fichas", 24, ClubTheme.Gold);
+        heading.AddChild(_goldLabel);
+        box.AddChild(heading);
+        box.AddChild(ClubTheme.Label("Invista suas fichas. Os bônus duram até o fim desta corrida.", 16, ClubTheme.Muted));
+        var offers = new HBoxContainer();
+        offers.AddThemeConstantOverride("separation", 16);
+        _buyMultBtn = ShopOffer(offers, "×", "+1 Multiplicador", "Mais força em toda\ncombinação jogada.", 10, "multiplier");
+        _buyHandBtn = ShopOffer(offers, "01", "+1 Mão", "Uma jogada a mais\nem cada nova rodada.", 15, "hand");
+        _buyDiscardBtn = ShopOffer(offers, "↻", "+1 Descarte", "Mais uma chance de\nrenovar suas cartas.", 8, "discard");
+        box.AddChild(offers);
+        _shopMessage = ClubTheme.Label("", 14, ClubTheme.Muted);
+        box.AddChild(_shopMessage);
+        _shopNextRoundBtn = ClubTheme.Button("Próxima rodada  →", true);
         _shopNextRoundBtn.Pressed += () =>
         {
             _shopOverlay.Visible = false;
             _game.StartNextRound();
         };
-        _shopNextRoundBtn.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
-        vbox.AddChild(_shopNextRoundBtn);
+        box.AddChild(_shopNextRoundBtn);
     }
 
-    private void TryBuy(string type, int cost)
+    private Button ShopOffer(HBoxContainer row, string icon, string title, string description, int cost, string type)
     {
-        if (_game.BuyUpgrade(type, cost))
+        var panel = Panel(ClubTheme.Ink, ClubTheme.Border, 18);
+        panel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 14);
+        box.AddChild(ClubTheme.Label(icon, 40, ClubTheme.Gold));
+        box.AddChild(ClubTheme.Label(title, 19));
+        box.AddChild(ClubTheme.Label(description, 14, ClubTheme.Muted));
+        var buy = ClubTheme.Button($"Comprar · {cost} fichas");
+        buy.Pressed += () =>
         {
+            if (!_game.BuyUpgrade(type, cost)) return;
             RefreshShopUI();
-            // Optional: play sound or particle
-        }
+            _shopMessage.Text = $"{title} adquirido. O bônus já está ativo para a próxima rodada.";
+        };
+        box.AddChild(buy);
+        panel.AddChild(box);
+        row.AddChild(panel);
+        return buy;
     }
 
     private void RefreshShopUI()
     {
-        _goldLabel.Text = $"Fichas (Gold): {_game.Gold}";
+        _goldLabel.Text = $"{_game.Gold} fichas";
         _buyMultBtn.Disabled = _game.Gold < 10;
         _buyHandBtn.Disabled = _game.Gold < 15;
         _buyDiscardBtn.Disabled = _game.Gold < 8;
+        _shopMessage.Text = $"Bônus: +{_game.BaseMultiplierBonus} Mult · +{_game.ExtraHands} mãos · +{_game.ExtraDiscards} descartes";
+        _shopNextRoundBtn.Text = _game.CurrentRound >= PokerGameManager.MaxRounds ? "Concluir a corrida  →" : "Próxima rodada  →";
+        RefreshResources();
     }
 
     private void BuildTutorialPanel()
     {
-        _tutorialPanel = new PanelContainer();
-        _tutorialPanel.SetAnchorsPreset(LayoutPreset.BottomWide);
-        _tutorialPanel.AnchorTop = 0.72f;
-        _tutorialPanel.AnchorBottom = 0.95f;
-        _tutorialPanel.AnchorLeft = 0.15f;
-        _tutorialPanel.AnchorRight = 0.85f;
-        _tutorialPanel.OffsetTop = 0;
-        _tutorialPanel.OffsetBottom = 0;
-        _tutorialPanel.OffsetLeft = 0;
-        _tutorialPanel.OffsetRight = 0;
-        _tutorialPanel.Visible = false;
-        _tutorialPanel.MouseFilter = MouseFilterEnum.Stop;
-
-        var panelStyle = new StyleBoxFlat();
-        panelStyle.BgColor = new Color(0.06f, 0.06f, 0.12f, 0.92f);
-        panelStyle.SetCornerRadiusAll(8);
-        panelStyle.SetBorderWidthAll(2);
-        panelStyle.BorderColor = new Color(0.3f, 0.7f, 1f);
-        panelStyle.ContentMarginLeft = 16;
-        panelStyle.ContentMarginRight = 16;
-        panelStyle.ContentMarginTop = 10;
-        panelStyle.ContentMarginBottom = 10;
-        _tutorialPanel.AddThemeStyleboxOverride("panel", panelStyle);
-        AddChild(_tutorialPanel);
-
-        var vbox = new VBoxContainer();
-        vbox.AddThemeConstantOverride("separation", 4);
-        _tutorialPanel.AddChild(vbox);
-
-        // Icon + title row
-        var titleRow = new HBoxContainer();
-        titleRow.AddThemeConstantOverride("separation", 6);
-        var icon = CreateLabel("📖", 10, new Color(0.3f, 0.7f, 1f));
-        titleRow.AddChild(icon);
-        _tutorialTitle = CreateLabel("Tutorial", 10, new Color(0.3f, 0.7f, 1f));
-        titleRow.AddChild(_tutorialTitle);
-        vbox.AddChild(titleRow);
-
-        _tutorialDesc = CreateLabel("", 7, TextPrimary);
+        var panel = Panel(ClubTheme.Panel, ClubTheme.Gold, 18);
+        panel.SetAnchorsAndOffsetsPreset(LayoutPreset.TopRight);
+        panel.OffsetLeft = -760;
+        panel.OffsetRight = -28;
+        panel.OffsetTop = 200;
+        panel.OffsetBottom = 390;
+        panel.Visible = false;
+        _tutorialPanel = panel;
+        AddChild(panel);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 10);
+        panel.AddChild(box);
+        _tutorialTitle = ClubTheme.Label("Bem-vindo à mesa", 22, ClubTheme.Gold);
+        box.AddChild(_tutorialTitle);
+        _tutorialDesc = ClubTheme.Label("Escolha até cinco cartas. Forme combinações para alcançar a meta da rodada.", 15);
         _tutorialDesc.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _tutorialDesc.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        vbox.AddChild(_tutorialDesc);
+        box.AddChild(_tutorialDesc);
+        var actions = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+        actions.AddThemeConstantOverride("separation", 12);
+        var skip = ClubTheme.Button("Fechar tutorial");
+        skip.Pressed += () => _tutorialPanel.Visible = false;
+        actions.AddChild(skip);
+        var next = ClubTheme.Button("Continuar", true);
+        next.Pressed += () => _tutorialController?.AdvanceStep();
+        actions.AddChild(next);
+        box.AddChild(actions);
+    }
 
-        var btnRow = new HBoxContainer();
-        btnRow.Alignment = BoxContainer.AlignmentMode.End;
-        btnRow.AddThemeConstantOverride("separation", 8);
-
-        _tutorialSkipBtn = CreateStyledButton("Pular Tutorial", BtnRed, BtnRedHover, new Vector2(70, 18));
-        _tutorialSkipBtn.Pressed += () =>
-        {
-            _tutorialPanel.Visible = false;
-        };
-        btnRow.AddChild(_tutorialSkipBtn);
-
-        _tutorialNextBtn = CreateStyledButton("Próximo ➜", BtnGreen, BtnGreenHover, new Vector2(70, 18));
-        _tutorialNextBtn.Pressed += () =>
-        {
-            _tutorialController?.AdvanceStep();
-        };
-        btnRow.AddChild(_tutorialNextBtn);
-
-        vbox.AddChild(btnRow);
+    private void AttachTutorial()
+    {
+        _tutorialController = GetNodeOrNull<Core.AI.TutorialController>("../../TutorialController");
+        if (_tutorialController == null) return;
+        _tutorialController.TutorialStepChanged += OnTutorialStep;
+        _tutorialController.TutorialComplete += OnTutorialComplete;
+        _tutorialPanel.Visible = true;
     }
 
     private void OnTutorialStep(int step, string title, string desc)
     {
         _tutorialTitle.Text = title;
-        _tutorialDesc.Text = desc;
+        // Keep instructions aligned with the features available in this build.
+        _tutorialDesc.Text = step switch
+        {
+            3 => "A pontuação combina fichas da mão e das cartas, multiplicadas pelo Mult. A prévia mostra o valor exato antes de jogar.",
+            5 => "Sua corrida dura oito rodadas. A meta aumenta e as relíquias e compras ajudam a fortalecer suas mãos.",
+            6 => "Entre rodadas, compre multiplicador, mãos extras ou descartes com as fichas que você ganhou.",
+            8 => "Tutorial completo. Continue a corrida e tente vencer todas as oito rodadas.",
+            _ => desc
+        };
         _tutorialPanel.Visible = true;
     }
 
-    private void OnTutorialComplete()
+    private void OnTutorialComplete() => _tutorialPanel.Visible = false;
+
+    private void OnHandDealt()
     {
-        _tutorialPanel.Visible = false;
-    }
-
-    // ===== CARD DISPLAY =====
-
-    private void RefreshDealerDisplay()
-    {
-        while (_dealerCardContainer.GetChildCount() > 0)
-        {
-            var child = _dealerCardContainer.GetChild(0);
-            _dealerCardContainer.RemoveChild(child);
-            child.QueueFree();
-        }
-        _dealerCardPanels.Clear();
-
-        // Spawn 5 face-down cards for the dealer
-        var tween = CreateTween();
-        tween.SetParallel(true);
-        for (int i = 0; i < 5; i++)
-        {
-            var panel = new PanelContainer();
-            panel.CustomMinimumSize = new Vector2(30, 44);
-            var style = new StyleBoxFlat();
-            style.BgColor = new Color(0.1f, 0.12f, 0.2f);
-            style.BorderColor = new Color(0.3f, 0.3f, 0.45f);
-            style.SetBorderWidthAll(1);
-            style.SetCornerRadiusAll(4);
-            panel.AddThemeStyleboxOverride("panel", style);
-            
-            // Add a cross hatch or back design
-            var backLabel = new Label();
-            backLabel.Text = "✧";
-            backLabel.HorizontalAlignment = HorizontalAlignment.Center;
-            backLabel.VerticalAlignment = VerticalAlignment.Center;
-            backLabel.AddThemeFontSizeOverride("font_size", 14);
-            backLabel.AddThemeColorOverride("font_color", new Color(0.4f, 0.4f, 0.5f));
-            panel.AddChild(backLabel);
-
-            _dealerCardContainer.AddChild(panel);
-            _dealerCardPanels.Add(panel);
-
-            // Animation
-            panel.Modulate = new Color(1, 1, 1, 0);
-            panel.Position = new Vector2(panel.Position.X, -30); // Start above
-            float delay = i * 0.1f;
-            tween.TweenProperty(panel, "modulate", new Color(1, 1, 1, 1), 0.3f).SetDelay(delay);
-            tween.TweenProperty(panel, "position:y", 0.0f, 0.3f).SetDelay(delay).SetTrans(Tween.TransitionType.Bounce).SetEase(Tween.EaseType.Out);
-        }
-    }
-
-    private void RefreshCardDisplay()
-    {
-        // Clear existing cards
-        while (_cardContainer.GetChildCount() > 0)
-        {
-            var child = _cardContainer.GetChild(0);
-            _cardContainer.RemoveChild(child);
-            child.QueueFree();
-        }
+        _ignoreInput = _game.CurrentPhase != PokerGameManager.GamePhase.PlayerTurn;
+        ClearTableCards();
+        ClearContainer(_cardContainer);
         _cardPanels.Clear();
-        _hoveredCards.Clear();
-
-        // Create new card panels
         var hand = _game.GetPlayerHand();
-        var tween = CreateTween();
-        tween.SetParallel(true);
-        
         for (int i = 0; i < hand.Count; i++)
         {
             var panel = CreateCardPanel(hand[i], i);
             _cardContainer.AddChild(panel);
             _cardPanels.Add(panel);
-            
-            // Slide in animation
-            panel.Modulate = new Color(1, 1, 1, 0);
-            panel.Position = new Vector2(panel.Position.X, 50); // Start below
-            
-            float delay = i * 0.05f;
-            tween.TweenProperty(panel, "modulate", new Color(1, 1, 1, 1), 0.3f).SetDelay(delay).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-            tween.TweenProperty(panel, "position:y", 0.0f, 0.3f).SetDelay(delay).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            FadeIn(panel, .28f + i * .035f);
+            int order = i;
+            Callable.From(() => AnimateDealToHand(panel, order)).CallDeferred();
         }
-
+        RefreshDealerDisplay();
+        RefreshBoss();
+        RefreshResources();
         UpdateActionButtons();
+        RefreshPreview();
+    }
+
+    private void AnimateDealToHand(PanelContainer target, int order)
+    {
+        if (!IsInstanceValid(target) || !target.IsInsideTree() || Core.Systems.SettingsManager.Instance?.ReduceMotion == true) return;
+        var back = WrapCard(null, new Vector2(78, 110), true);
+        back.Size = back.CustomMinimumSize;
+        back.Position = _stage.DeckScreenPosition() - back.Size / 2;
+        back.Scale = new Vector2(.7f, .7f);
+        _tableCardLayer.AddChild(back);
+        var tween = CreateTween();
+        tween.TweenInterval(order * .035f);
+        tween.TweenProperty(back, "position", target.GlobalPosition, .28f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        tween.Parallel().TweenProperty(back, "scale", Vector2.One, .28f);
+        tween.TweenCallback(Callable.From(() => { if (IsInstanceValid(back)) back.QueueFree(); }));
     }
 
     private PanelContainer CreateCardPanel(CardData card, int index)
     {
-        var panel = new PanelContainer();
-        panel.CustomMinimumSize = new Vector2(30, 44);
+        var panel = WrapCard(card, new Vector2(78, 110));
         panel.MouseFilter = MouseFilterEnum.Stop;
         panel.MouseDefaultCursorShape = CursorShape.PointingHand;
-
-        // Content
-        var vbox = new VBoxContainer();
-        vbox.MouseFilter = MouseFilterEnum.Ignore;
-        vbox.Alignment = BoxContainer.AlignmentMode.Center;
-        vbox.AddThemeConstantOverride("separation", -2);
-
-        bool isRed = card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds;
-        var suitColor = Core.Visuals.AccessibilityVisuals.GetCardSuitColor(isRed, RedSuit, BlackSuit);
-
-        var rankLbl = new Label();
-        rankLbl.Text = card.GetRankString();
-        rankLbl.HorizontalAlignment = HorizontalAlignment.Center;
-        rankLbl.AddThemeFontSizeOverride("font_size", 9);
-        rankLbl.AddThemeColorOverride("font_color", suitColor);
-        rankLbl.MouseFilter = MouseFilterEnum.Ignore;
-        vbox.AddChild(rankLbl);
-
-        var suitLbl = new Label();
-        suitLbl.Text = card.GetSuitSymbol();
-        suitLbl.HorizontalAlignment = HorizontalAlignment.Center;
-        suitLbl.AddThemeFontSizeOverride("font_size", 12);
-        suitLbl.AddThemeColorOverride("font_color", suitColor);
-        suitLbl.MouseFilter = MouseFilterEnum.Ignore;
-        vbox.AddChild(suitLbl);
-
-        panel.AddChild(vbox);
-
-        // Initial style
-        ApplyCardStyle(panel, false, false);
-
-        // Input handling
-        int cardIdx = index;
-        panel.GuiInput += (@event) =>
+        panel.FocusMode = FocusModeEnum.All;
+        panel.TooltipText = $"{card} — clique ou pressione Enter para selecionar";
+        panel.GuiInput += input =>
         {
             if (_ignoreInput) return;
-            if (@event is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
-            {
-                ToggleCardSelection(cardIdx);
-            }
+            bool click = input is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left;
+            bool keyboard = input.IsActionPressed("ui_accept");
+            if (!click && !keyboard) return;
+            _game.ToggleCard(index);
+            ApplyCardStyle(panel, _game.GetSelectedIndices().Contains(index), panel.HasFocus());
+            UpdateActionButtons();
+            RefreshPreview();
+            panel.AcceptEvent();
         };
-        panel.MouseEntered += () =>
-        {
-            _hoveredCards.Add(cardIdx);
-            bool selected = _game.GetSelectedIndices().Contains(cardIdx);
-            ApplyCardStyle(_cardPanels[cardIdx], selected, true);
-        };
-        panel.MouseExited += () =>
-        {
-            _hoveredCards.Remove(cardIdx);
-            bool selected = _game.GetSelectedIndices().Contains(cardIdx);
-            ApplyCardStyle(_cardPanels[cardIdx], selected, false);
-        };
-
+        panel.MouseEntered += () => ApplyCardStyle(panel, _game.GetSelectedIndices().Contains(index), true);
+        panel.MouseExited += () => ApplyCardStyle(panel, _game.GetSelectedIndices().Contains(index), panel.HasFocus());
+        panel.FocusEntered += () => ApplyCardStyle(panel, _game.GetSelectedIndices().Contains(index), true);
+        panel.FocusExited += () => ApplyCardStyle(panel, _game.GetSelectedIndices().Contains(index), false);
         return panel;
     }
 
-    private void ApplyCardStyle(PanelContainer panel, bool selected, bool hovered)
+    private PanelContainer WrapCard(CardData card, Vector2 size, bool faceDown = false)
     {
-        var style = new StyleBoxFlat();
-
-        if (selected)
+        var panel = new PanelContainer { CustomMinimumSize = size, MouseFilter = MouseFilterEnum.Ignore };
+        panel.AddThemeStyleboxOverride("panel", ClubTheme.Box(Colors.Transparent, Colors.Transparent, 3, 6));
+        panel.AddChild(new PlayingCard
         {
-            style.BgColor = hovered ? new Color(0.14f, 0.17f, 0.32f) : CardSelectedBg;
-            style.BorderColor = Gold;
-            style.SetBorderWidthAll(2);
-        }
-        else
-        {
-            style.BgColor = hovered ? CardHoverBg : CardBg;
-            style.BorderColor = hovered ? CardHoverBorder : CardBorder;
-            style.SetBorderWidthAll(1);
-        }
-
-        style.SetCornerRadiusAll(4);
-        style.ContentMarginLeft = 4;
-        style.ContentMarginRight = 4;
-        style.ContentMarginTop = 4;
-        style.ContentMarginBottom = 4;
-
-        panel.AddThemeStyleboxOverride("panel", style);
+            RankText = card?.GetRankString() ?? "",
+            SuitSymbol = card?.GetSuitSymbol() ?? "♠",
+            FaceDown = faceDown,
+            MouseFilter = MouseFilterEnum.Ignore,
+            CustomMinimumSize = size - new Vector2(6, 6)
+        });
+        return panel;
     }
 
-    private void ToggleCardSelection(int index)
+    private void ApplyCardStyle(PanelContainer panel, bool selected, bool highlighted)
     {
-        if (_game.CurrentPhase != PokerGameManager.GamePhase.PlayerTurn) return;
+        if (!IsInstanceValid(panel)) return;
+        var border = selected || highlighted ? ClubTheme.Gold : Colors.Transparent;
+        panel.AddThemeStyleboxOverride("panel", ClubTheme.Box(Colors.Transparent, border, 3, 7));
+        if (panel.GetChildOrNull<PlayingCard>(0) is PlayingCard face)
+        {
+            face.Selected = selected;
+            face.QueueRedraw();
+        }
+    }
 
-        _game.ToggleCard(index);
+    private void RefreshDealerDisplay()
+    {
+        ClearContainer(_dealerCardContainer);
+        _dealerCardPanels.Clear();
+        foreach (var card in _game.GetDealerHand())
+        {
+            var panel = WrapCard(card, new Vector2(48, 68), true);
+            _dealerCardContainer.AddChild(panel);
+            _dealerCardPanels.Add(panel);
+        }
+    }
 
-        // Sync visual with actual state
-        bool isSelected = _game.GetSelectedIndices().Contains(index);
-        bool isHovered = _hoveredCards.Contains(index);
-        ApplyCardStyle(_cardPanels[index], isSelected, isHovered);
+    private void RefreshBoss()
+    {
+        int rival = (_game.CurrentRound + 1) % 4;
+        _stage.SetCast(rival, Mathf.Clamp(_game.OpponentCount + 1, 2, 4));
+        _stage.SetCardCount(0, _game.GetPlayerHand().Count);
+        _stage.SetCardCount(1, _game.GetDealerHand().Count);
+        _bossName.Text = CharacterCatalog.Names[rival];
+        _bossPortrait.Material = null;
+        _bossPortrait.Texture = CharacterCatalog.Portrait(rival);
+        _opponentsLabel.Text = $"{_game.OpponentCount} bot{(_game.OpponentCount == 1 ? "" : "s")} à mesa · vença a meta";
+    }
 
-        UpdateActionButtons();
+    private void RefreshResources()
+    {
+        _handsLabel.Text = $"MÃOS  {_game.HandsRemaining}";
+        _discardsLabel.Text = $"DESCARTES  {_game.DiscardsRemaining}";
+        _walletLabel.Text = $"FICHAS  {_game.Gold}";
+        _relicsLabel.Text = _game.Relics?.GetHudText().Replace("Relíquias: ", "") ?? "Nenhuma relíquia";
+        _relicsLabel.TooltipText = "Ás +1 Mult: jogar pelo menos um Ás acrescenta 1 ao multiplicador da mão.";
     }
 
     private void UpdateActionButtons()
     {
-        int selectedCount = _game.GetSelectedIndices().Count;
-        
-        _playBtn.Disabled = !_game.CanPlayHand();
-        _discardBtn.Disabled = !_game.CanDiscard();
-
-        // Update button text with counts
-        _playBtn.Text = selectedCount > 0 ? $"Jogar Mão ({selectedCount})" : "Jogar Mão";
-        _discardBtn.Text = $"Descartar ({_game.DiscardsRemaining})";
-
-        // Update resource labels
-        _handsLabel.Text = $"Mãos: {_game.HandsRemaining}/{PokerGameManager.HandsPerRound}";
-        _discardsLabel.Text = $"Descartes: {_game.DiscardsRemaining}/{PokerGameManager.DiscardsPerRound}";
-        _relicsLabel.Text = _game.Relics?.GetHudText() ?? "Relíquias: —";
-        _opponentsLabel.Text = $"Mesa: {_game.OpponentCount} bot{(_game.OpponentCount > 1 ? "s" : "")}";
+        _playBtn.Disabled = _ignoreInput || !_game.CanPlayHand();
+        _discardBtn.Disabled = _ignoreInput || !_game.CanDiscard();
+        int count = _game.GetSelectedIndices().Count;
+        _selectionLabel.Text = $"{count} / {PokerGameManager.MaxPlayCards} selecionadas";
+        _playBtn.Text = count > 0 ? $"Jogar mão · {count}" : "Jogar mão";
     }
 
-    // ===== EVENT HANDLERS =====
-
-    private void OnHandDealt()
+    private void RefreshPreview()
     {
-        ClearTableCards();
-        RefreshCardDisplay();
-        RefreshDealerDisplay();
+        if (_ignoreInput) return;
+        var hand = _game.GetPlayerHand();
+        var cards = _game.GetSelectedIndices().Where(i => i >= 0 && i < hand.Count).Select(i => hand[i]).ToList();
+        if (cards.Count == 0)
+        {
+            _resultLabel.Text = "Escolha suas cartas";
+            _breakdownLabel.Text = "De 1 a 5 cartas para formar uma combinação.";
+            return;
+        }
+        var preview = HandEvaluator.Evaluate(cards);
+        preview.Mult += _game.BaseMultiplierBonus;
+        _game.Relics?.ApplyHandEffects(preview, cards);
+        _resultLabel.Text = preview.HandName;
+        _breakdownLabel.Text = $"{preview.BaseChips + preview.CardChips} fichas × {preview.Mult} Mult = {preview.TotalScore} pontos";
     }
 
     private void OnScoreUpdated(int roundScore, int roundTarget)
     {
-        _roundLabel.Text = $"Rodada {_game.CurrentRound}/{PokerGameManager.MaxRounds}";
-        _scoreLabel.Text = roundScore.ToString();
-        _targetLabel.Text = roundTarget.ToString();
+        _roundLabel.Text = $"Rodada {_game.CurrentRound} / {PokerGameManager.MaxRounds}";
+        _scoreLabel.Text = roundScore.ToString("N0");
+        _targetLabel.Text = $"META  {roundTarget:N0}";
         _scoreBar.MaxValue = roundTarget;
         _scoreBar.Value = Mathf.Min(roundScore, roundTarget);
+        RefreshResources();
     }
 
     private void OnHandScored(string handName, int score, string breakdown)
     {
-        _resultLabel.Text = $"{handName}!  +{score}";
+        _stage.React(1);
+        Core.Systems.AudioManager.Instance?.PlaySound("score");
+        _ignoreInput = true;
+        UpdateActionButtons();
+        _resultLabel.Text = $"{handName} · +{score} pontos";
         _breakdownLabel.Text = breakdown;
-        ShowScorePopup(handName, score, breakdown);
-
-        // Reveal dealer cards
-        var tween = CreateTween();
-        tween.SetParallel(true);
-        for (int i = 0; i < _dealerCardPanels.Count; i++)
+        ShowScorePopup(handName, score);
+        var hand = _game.GetDealerHand();
+        for (int i = 0; i < _dealerCardPanels.Count && i < hand.Count; i++)
         {
             var panel = _dealerCardPanels[i];
-            int cardIndex = i;
-            // Set pivot for flip animation
-            panel.PivotOffset = new Vector2(panel.Size.X / 2, panel.Size.Y / 2);
-            float delay = i * 0.1f;
-            
-            // Flip animation
-            tween.TweenProperty(panel, "scale:x", 0.0f, 0.15f).SetDelay(delay);
-            tween.TweenCallback(Callable.From(() => {
-                if (cardIndex < _game.GetDealerHand().Count)
-                    RevealDealerCard(panel, _game.GetDealerHand()[cardIndex]);
-            })).SetDelay(delay + 0.15f);
-            tween.TweenProperty(panel, "scale:x", 1.0f, 0.15f).SetDelay(delay + 0.15f);
+            var card = hand[i];
+            if (panel.GetChildOrNull<PlayingCard>(0) is PlayingCard face)
+            {
+                face.RankText = card.GetRankString();
+                face.SuitSymbol = card.GetSuitSymbol();
+                face.FaceDown = false;
+                face.QueueRedraw();
+            }
         }
-    }
-
-    private void RevealDealerCard(PanelContainer panel, CardData card)
-    {
-        while (panel.GetChildCount() > 0)
-        {
-            var child = panel.GetChild(0);
-            panel.RemoveChild(child);
-            child.QueueFree();
-        }
-
-        bool isRed = card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds;
-        var color = Core.Visuals.AccessibilityVisuals.GetCardSuitColor(isRed, RedSuit, BlackSuit);
-        var cardContent = new VBoxContainer();
-        cardContent.Alignment = BoxContainer.AlignmentMode.Center;
-        cardContent.AddThemeConstantOverride("separation", -2);
-
-        var rank = CreateLabel(card.GetRankString(), 9, color);
-        rank.HorizontalAlignment = HorizontalAlignment.Center;
-        cardContent.AddChild(rank);
-
-        var suit = CreateLabel(card.GetSuitSymbol(), 12, color);
-        suit.HorizontalAlignment = HorizontalAlignment.Center;
-        cardContent.AddChild(suit);
-        panel.AddChild(cardContent);
     }
 
     private void OnRoundEnded(int round, bool passed)
     {
-        _bossDefeatPortrait.Visible = false;
-        
-        if (passed)
-        {
-            _overlayTitle.Text = $"Rodada {round} Completa!";
-            _overlayTitle.AddThemeColorOverride("font_color", SuccessGreen);
-            _overlaySubtitle.Text = $"Pontuação: {_game.RoundScore}/{_game.RoundTarget}";
-            _nextRoundBtn.Visible = true;
-            _newGameBtn.Visible = false;
-        }
-        else
-        {
-            _overlayTitle.Text = "Rodada Falhou";
-            _overlayTitle.AddThemeColorOverride("font_color", Accent);
-            _overlaySubtitle.Text = $"Pontuação: {_game.RoundScore}/{_game.RoundTarget}";
-            _nextRoundBtn.Visible = false;
-            _newGameBtn.Visible = true;
-        }
+        if (passed) Core.Systems.AudioManager.Instance?.PlaySound("win");
+        _tutorialPanel.Visible = false;
+        _overlayTitle.Text = passed ? $"Mesa {round} vencida" : "A mesa levou a melhor";
+        _overlayTitle.AddThemeColorOverride("font_color", passed ? ClubTheme.Gold : new Color("#e29a86"));
+        _overlaySubtitle.Text = passed
+            ? $"{_game.RoundScore:N0} de {_game.RoundTarget:N0} pontos.\nVocê tem {_game.Gold} fichas para investir na banca."
+            : $"{_game.RoundScore:N0} de {_game.RoundTarget:N0} pontos. Tente uma nova combinação de estratégias.";
+        _nextRoundBtn.Visible = passed;
+        _newGameBtn.Visible = !passed;
         _overlayPanel.Visible = true;
+        if (passed) _nextRoundBtn.GrabFocus(); else _newGameBtn.GrabFocus();
     }
 
     private void OnGameEnded(bool won, int totalScore)
     {
-        if (won)
-        {
-            _overlayTitle.Text = "Vitória!";
-            _overlayTitle.AddThemeColorOverride("font_color", Gold);
-            _overlaySubtitle.Text = $"Pontuação total: {totalScore}";
-            _bossDefeatPortrait.Visible = true;
-        }
-        else
-        {
-            _overlayTitle.Text = "Derrota";
-            _overlayTitle.AddThemeColorOverride("font_color", Accent);
-            _overlaySubtitle.Text = $"Pontuação: {_game.RoundScore}/{_game.RoundTarget}";
-            _bossDefeatPortrait.Visible = false;
-        }
+        _shopOverlay.Visible = false;
+        _tutorialPanel.Visible = false;
+        _overlayTitle.Text = won ? "O clube é seu." : "Fim da corrida";
+        _overlayTitle.AddThemeColorOverride("font_color", won ? ClubTheme.Gold : new Color("#e29a86"));
+        _overlaySubtitle.Text = won
+            ? $"Oito mesas vencidas. {totalScore:N0} pontos conquistados."
+            : $"Você chegou à mesa {_game.CurrentRound}.\n{_game.RoundScore:N0} de {_game.RoundTarget:N0} pontos nesta rodada.";
         _nextRoundBtn.Visible = false;
         _newGameBtn.Visible = true;
         _overlayPanel.Visible = true;
+        _newGameBtn.GrabFocus();
     }
 
     private void OnPhaseChanged(int phase)
@@ -925,165 +611,125 @@ public partial class PokerUI : Control
         UpdateActionButtons();
     }
 
-    // ===== BUTTON HANDLERS =====
-
     private void OnPlayPressed()
     {
+        if (_ignoreInput || !_game.CanPlayHand()) return;
+        _ignoreInput = true;
+        _stage.React(0);
+        Core.Systems.AudioManager.Instance?.PlaySound("play");
+        UpdateActionButtons();
         AnimatePlayedCards();
         _game.PlayHand();
     }
 
+    private void OnDiscardPressed()
+    {
+        if (!_ignoreInput && _game.CanDiscard()) _game.DiscardCards();
+    }
+
     private void AnimatePlayedCards()
     {
-        var selected = _game.GetSelectedIndices().OrderBy(index => index).ToList();
-        if (selected.Count == 0) return;
-
         ClearTableCards();
+        var selected = _game.GetSelectedIndices().OrderBy(i => i).ToList();
         var hand = _game.GetPlayerHand();
-        float duration = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.01f : 0.42f;
-        var center = GetViewportRect().Size / 2f;
-
+        var center = _tableArea.GetGlobalRect().GetCenter() + new Vector2(0, 24);
         for (int i = 0; i < selected.Count; i++)
         {
             int index = selected[i];
             if (index >= hand.Count || index >= _cardPanels.Count) continue;
-
-            var source = _cardPanels[index].GetGlobalRect();
-            var tableCard = CreateTableCard(hand[index]);
-            tableCard.Position = source.GetCenter() - tableCard.Size / 2f;
-            tableCard.Rotation = Mathf.DegToRad(-9 + i * 4);
-            _tableCardLayer.AddChild(tableCard);
-
-            float spacing = 42f;
-            var target = center + new Vector2((i - (selected.Count - 1) / 2f) * spacing, 8);
+            var card = WrapCard(hand[index], new Vector2(78, 110));
+            card.Size = card.CustomMinimumSize;
+            card.Position = _cardPanels[index].GlobalPosition;
+            card.MouseFilter = MouseFilterEnum.Ignore;
+            _tableCardLayer.AddChild(card);
+            var target = center + new Vector2((i - (selected.Count - 1) / 2f) * 88, 0) - card.Size / 2;
             var tween = CreateTween();
             tween.SetParallel(true);
-            tween.TweenProperty(tableCard, "position", target - tableCard.Size / 2f, duration)
-                .SetDelay(i * 0.07f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
-            tween.TweenProperty(tableCard, "scale", new Vector2(1.22f, 1.22f), duration)
-                .SetDelay(i * 0.07f).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            tween.TweenProperty(card, "position", target, MotionDuration(0.35f)).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+            tween.TweenProperty(card, "rotation", Mathf.DegToRad((i - selected.Count / 2f) * 2), MotionDuration(0.35f));
         }
     }
 
-    private PanelContainer CreateTableCard(CardData card)
+    private void ShowScorePopup(string handName, int score)
     {
-        var panel = new PanelContainer();
-        panel.CustomMinimumSize = new Vector2(34, 50);
-        panel.Size = panel.CustomMinimumSize;
-        var style = new StyleBoxFlat();
-        style.BgColor = new Color(0.96f, 0.95f, 0.88f);
-        style.BorderColor = Gold;
-        style.SetBorderWidthAll(2);
-        style.SetCornerRadiusAll(4);
-        panel.AddThemeStyleboxOverride("panel", style);
-
-        bool isRed = card.Suit == Suit.Hearts || card.Suit == Suit.Diamonds;
-        var color = Core.Visuals.AccessibilityVisuals.GetCardSuitColor(
-            isRed, new Color(0.75f, 0.12f, 0.16f), new Color(0.08f, 0.1f, 0.18f));
-        var box = new VBoxContainer();
-        box.Alignment = BoxContainer.AlignmentMode.Center;
-        box.AddThemeConstantOverride("separation", -3);
-        var rank = CreateLabel(card.GetRankString(), 10, color);
-        rank.HorizontalAlignment = HorizontalAlignment.Center;
-        box.AddChild(rank);
-        var suit = CreateLabel(card.GetSuitSymbol(), 14, color);
-        suit.HorizontalAlignment = HorizontalAlignment.Center;
-        box.AddChild(suit);
-        panel.AddChild(box);
-        return panel;
-    }
-
-    private void ShowScorePopup(string handName, int score, string breakdown)
-    {
-        _scorePopup.Text = $"{handName}\n+{score}  {breakdown}";
-        _scorePopup.Position = GetViewportRect().Size / 2f + new Vector2(-140, -84);
-        _scorePopup.Modulate = new Color(1, 1, 1, 0);
-        _scorePopup.Scale = new Vector2(0.65f, 0.65f);
+        _popupTween?.Kill();
+        _scorePopup.Text = $"{handName}  +{score:N0}";
+        var area = _tableArea.GetGlobalRect();
+        _scorePopup.Position = new Vector2(area.Position.X, area.Position.Y + 4);
+        _scorePopup.Size = new Vector2(area.Size.X, 36);
         _scorePopup.Visible = true;
-        float duration = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.01f : 0.25f;
-        var tween = CreateTween();
-        tween.SetParallel(true);
-        tween.TweenProperty(_scorePopup, "modulate:a", 1.0f, duration);
-        tween.TweenProperty(_scorePopup, "scale", Vector2.One, duration).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-        tween.Chain().TweenInterval(0.8f);
-        tween.TweenProperty(_scorePopup, "modulate:a", 0.0f, duration);
-        tween.TweenCallback(Callable.From(() => _scorePopup.Visible = false));
+        _scorePopup.Modulate = Colors.White;
+        _popupTween = CreateTween();
+        _popupTween.TweenInterval(1.1f);
+        _popupTween.TweenProperty(_scorePopup, "modulate:a", 0.0f, MotionDuration(0.2f));
     }
 
     private void ClearTableCards()
     {
         if (_tableCardLayer == null) return;
+        _popupTween?.Kill();
+        _scorePopup.Visible = false;
         foreach (var child in _tableCardLayer.GetChildren())
         {
-            if (child != _scorePopup)
-                child.QueueFree();
+            if (child == _scorePopup) continue;
+            _tableCardLayer.RemoveChild(child);
+            child.QueueFree();
         }
     }
 
-    private void OnDiscardPressed()
+    private void FadeIn(Control node, float delay)
     {
-        _game.DiscardCards();
+        if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true) return;
+        node.Modulate = new Color(1, 1, 1, 0);
+        CreateTween().TweenProperty(node, "modulate:a", 1.0f, 0.18f).SetDelay(delay);
     }
 
-    // ===== HELPERS =====
+    private float MotionDuration(float duration) => Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.01f : duration;
 
-    private Label CreateLabel(string text, int fontSize, Color color)
+    private void ReturnToHub() => GetTree().ChangeSceneToFile("res://hub/scenes/HubMain.tscn");
+
+    private VBoxContainer CreateModal(out Control overlay, Vector2 minSize)
     {
-        var lbl = new Label();
-        lbl.Text = text;
-        lbl.AddThemeFontSizeOverride("font_size", fontSize);
-        lbl.AddThemeColorOverride("font_color", color);
-        return lbl;
+        var shade = new ColorRect { Color = new Color(0.015f, 0.04f, 0.035f, 0.94f), Visible = false, MouseFilter = MouseFilterEnum.Stop };
+        shade.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(shade);
+        overlay = shade;
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        shade.AddChild(center);
+        var panel = Panel(ClubTheme.Panel, ClubTheme.Gold, 30);
+        panel.CustomMinimumSize = minSize;
+        center.AddChild(panel);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 18);
+        panel.AddChild(box);
+        return box;
     }
 
-    private Control CreateExpandSpacer()
+    private static Label DisplayLabel(string text, int size)
     {
-        var spacer = new Control();
-        spacer.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        spacer.SizeFlagsVertical = SizeFlags.ExpandFill;
-        return spacer;
+        var label = ClubTheme.Label(text, size);
+        label.AddThemeFontOverride("font", ClubTheme.DisplayFont);
+        return label;
     }
 
-    private Control CreateFixedSpacer(float height)
+    private static PanelContainer Panel(Color fill, Color border, int padding)
     {
-        var spacer = new Control();
-        spacer.CustomMinimumSize = new Vector2(0, height);
-        return spacer;
+        var panel = new PanelContainer();
+        panel.AddThemeStyleboxOverride("panel", ClubTheme.Box(fill, border, padding, 10));
+        return panel;
     }
 
-    private Button CreateStyledButton(string text, Color normalColor, Color hoverColor, Vector2 minSize)
+    private static Control Rule() => new ColorRect { Color = ClubTheme.Border, CustomMinimumSize = new Vector2(0, 1), MouseFilter = MouseFilterEnum.Ignore };
+
+    private static Control Spacer() => new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
+
+    private static void ClearContainer(Node container)
     {
-        var btn = new Button();
-        btn.Text = text;
-        btn.CustomMinimumSize = minSize;
-        btn.AddThemeFontSizeOverride("font_size", 8);
-        btn.AddThemeColorOverride("font_color", TextPrimary);
-        btn.AddThemeColorOverride("font_hover_color", Colors.White);
-        btn.AddThemeColorOverride("font_disabled_color", new Color(0.35f, 0.35f, 0.4f));
-
-        var normal = new StyleBoxFlat();
-        normal.BgColor = normalColor;
-        normal.SetCornerRadiusAll(4);
-        normal.ContentMarginLeft = 6;
-        normal.ContentMarginRight = 6;
-        normal.ContentMarginTop = 3;
-        normal.ContentMarginBottom = 3;
-        btn.AddThemeStyleboxOverride("normal", normal);
-
-        var hover = normal.Duplicate() as StyleBoxFlat;
-        hover.BgColor = hoverColor;
-        btn.AddThemeStyleboxOverride("hover", hover);
-
-        var pressed = normal.Duplicate() as StyleBoxFlat;
-        pressed.BgColor = normalColor.Darkened(0.3f);
-        btn.AddThemeStyleboxOverride("pressed", pressed);
-
-        var disabled = normal.Duplicate() as StyleBoxFlat;
-        disabled.BgColor = new Color(0.15f, 0.15f, 0.2f);
-        btn.AddThemeStyleboxOverride("disabled", disabled);
-
-        btn.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
-
-        return btn;
+        foreach (var child in container.GetChildren())
+        {
+            container.RemoveChild(child);
+            child.QueueFree();
+        }
     }
 }

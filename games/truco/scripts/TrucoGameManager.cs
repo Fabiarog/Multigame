@@ -79,6 +79,14 @@ public partial class TrucoGameManager : Node
     private TrucoPhase _phaseAfterTrucoResponse = TrucoPhase.PlayerTurn;
     private List<TrucoCardData> _deck = new();
     private bool _penaDelivered;
+    private bool _resolvingPena;
+    private readonly Dictionary<int, TrucoCardData> _playedSeats = new();
+    public int ActiveSeatIndex { get; private set; }
+    public int LastPlayedSeatIndex { get; private set; }
+    public bool PenaDecisionIsLocal => PenaRecipientSeatIndex == 0;
+    public bool PenaDecisionIsBot => PenaRecipientSeatIndex != 0;
+    public int GetSeatCardCount(int seat) => TeamOneHands.Count == 0 ? 0 : GetHandForSeat(seat).Count;
+    private int _roundLeaderSeat;
     private Core.Visuals.AvatarComposite _playerAvatar;
     private Core.Visuals.AvatarComposite _opponentAvatar;
     private readonly List<Sprite3D> _teamSeatSprites = new();
@@ -189,6 +197,9 @@ public partial class TrucoGameManager : Node
     {
         CurrentStakes = 1;
         CurrentRound = 0;
+        _resolvingPena = false;
+        _aiThinking = false;
+        _playedSeats.Clear();
         _waitingTrucoResponse = false;
         ViraCard = null;
         PenaCard = null;
@@ -213,12 +224,14 @@ public partial class TrucoGameManager : Node
     {
         if (CurrentPhase != TrucoPhase.Cutting || _deck.Count == 0) return;
 
+        CurrentPhase = TrucoPhase.Dealing;
         int cutPosition = _rng.RandiRange(4, _deck.Count - 4);
         var top = _deck.GetRange(0, cutPosition);
         _deck.RemoveRange(0, cutPosition);
         _deck.AddRange(top);
         EmitSignal(SignalName.DeckCut, cutPosition);
         await WaitForAnimation(0.45f);
+        if (!IsInsideTree()) return;
 
         if (TeamSize > 1)
         {
@@ -239,16 +252,25 @@ public partial class TrucoGameManager : Node
         DealAfterCut();
     }
 
-    public void GivePena()
+    public async void GivePena()
     {
         if (CurrentPhase != TrucoPhase.PenaDecision || _penaDelivered || PenaCard == null) return;
         _penaDelivered = true;
         EmitSignal(SignalName.PenaDelivered, PenaCard.ToString(), GetSeatName(PenaRecipientSeatIndex));
+        if (PenaDecisionIsBot)
+        {
+            await WaitForAnimation(.9f);
+            if (!IsInsideTree() || CurrentPhase != TrucoPhase.PenaDecision) return;
+            // The vira is not known yet: keep naturally strong cards, occasionally bluff.
+            bool keep = (int)PenaCard.Rank >= (int)TrucoRank.Ace || _rng.RandiRange(0, 99) < 24;
+            ResolvePena(keep);
+        }
     }
 
     public async void ResolvePena(bool keep)
     {
-        if (CurrentPhase != TrucoPhase.PenaDecision) return;
+        if (CurrentPhase != TrucoPhase.PenaDecision || _resolvingPena) return;
+        _resolvingPena = true;
         if (!_penaDelivered)
         {
             keep = false;
@@ -262,6 +284,7 @@ public partial class TrucoGameManager : Node
             ViraCard = PenaCard;
         EmitSignal(SignalName.PenaResolved, PenaWasKept, PenaCard?.ToString() ?? "");
         await WaitForAnimation(0.45f);
+        if (!IsInsideTree()) return;
         DealAfterCut();
     }
 
@@ -303,54 +326,52 @@ public partial class TrucoGameManager : Node
         EmitSignal(SignalName.DistributionStarted, distributedCards, PenaRecipientSeatIndex, PenaWasKept);
         await WaitForAnimation(0.45f + distributedCards * 0.045f);
 
-        CurrentPhase = TrucoPhase.PlayerTurn;
-        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
+        if (!IsInsideTree()) return;
+        _playedSeats.Clear();
         EmitSignal(SignalName.HandDealt);
         EmitSignal(SignalName.ViraRevealed, ViraCard.ToString(), $"Manilha: {ManilhaRank}");
-
-        GD.Print($"[Truco] New hand. Vira: {ViraCard}, Manilha rank: {ManilhaRank}");
-        GD.Print($"[Truco] Player hand: {string.Join(", ", PlayerHand)}");
-
-        if (!_playerStartsNext)
-        {
-            CurrentPhase = TrucoPhase.OpponentTurn;
-            EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
-            StartAIThinking();
-        }
-
+        _roundLeaderSeat = TeamSize == 1 ? (_playerStartsNext ? 0 : 1) : (DealerSeatIndex + 1) % (TeamSize * 2);
+        BeginSeatTurn(_roundLeaderSeat);
         _playerStartsNext = !_playerStartsNext;
+    }
+
+    private void BeginSeatTurn(int seat)
+    {
+        ActiveSeatIndex = seat;
+        CurrentPhase = seat == 0 ? TrucoPhase.PlayerTurn : TrucoPhase.OpponentTurn;
+        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
+        if (seat != 0) StartAIThinking();
     }
 
     /// <summary>
     /// Player plays a card at the given index from their hand.
     /// </summary>
-    public async void PlayerPlayCard(int handIndex)
+    public void PlayerPlayCard(int handIndex)
     {
-        if (CurrentPhase != TrucoPhase.PlayerTurn) return;
-        if (PlayerPlayed[CurrentRound] != null) return;
-        if (handIndex < 0 || handIndex >= PlayerHand.Count) return;
+        if (CurrentPhase != TrucoPhase.PlayerTurn || ActiveSeatIndex != 0) return;
+        PlaySeatCard(0, handIndex);
+    }
 
-        var card = PlayerHand[handIndex];
-        _playerAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Action);
-        PlayerHand.RemoveAt(handIndex);
-        PlayerPlayed[CurrentRound] = card;
-
-        EmitSignal(SignalName.CardPlayed, 0, card.ToString(), CurrentRound);
-        GD.Print($"[Truco] Player plays: {card}");
-
-        // If opponent already played this round, resolve
-        if (OpponentPlayed[CurrentRound] != null)
-        {
-            await ToSignal(GetTree().CreateTimer(1.0f), SceneTreeTimer.SignalName.Timeout);
-            ResolveCurrentRound();
-        }
-        else
-        {
-            // Opponent's turn
-            CurrentPhase = TrucoPhase.OpponentTurn;
-            EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
-            StartAIThinking();
-        }
+    private async void PlaySeatCard(int seat, int handIndex)
+    {
+        var hand = GetHandForSeat(seat);
+        if (_playedSeats.ContainsKey(seat) || handIndex < 0 || handIndex >= hand.Count) return;
+        _aiThinking = false;
+        CurrentPhase = TrucoPhase.RoundEnd;
+        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
+        var card = hand[handIndex];
+        hand.RemoveAt(handIndex);
+        _playedSeats[seat] = card;
+        LastPlayedSeatIndex = seat;
+        var bestCards = seat % 2 == 0 ? PlayerPlayed : OpponentPlayed;
+        if (bestCards[CurrentRound] == null || TrucoCardData.Compare(card, bestCards[CurrentRound], ManilhaRank) > 0)
+            bestCards[CurrentRound] = card;
+        EmitSignal(SignalName.CardPlayed, seat % 2, card.ToString(), CurrentRound);
+        GD.Print($"[Truco] Seat {seat} ({GetSeatName(seat)}) plays: {card}");
+        await WaitForAnimation(.65f);
+        if (!IsInsideTree()) return;
+        if (_playedSeats.Count == TeamSize * 2) ResolveCurrentRound();
+        else BeginSeatTurn((seat + 1) % (TeamSize * 2));
     }
 
     /// <summary>
@@ -488,7 +509,7 @@ public partial class TrucoGameManager : Node
                 // All ties or equal wins — first round winner takes it, or player who went first
                 if (RoundWinners[0] == 0) playerWonHand = true;
                 else if (RoundWinners[0] == 1) playerWonHand = false;
-                else playerWonHand = _playerStartsNext; // whoever started
+                else playerWonHand = _roundLeaderSeat % 2 == 0; // team that led the tied tombo
             }
         }
 
@@ -502,17 +523,13 @@ public partial class TrucoGameManager : Node
         }
         else
         {
-            // Next round
+            // All seats participate; the seat with the winning card leads next.
+            if (winner != 2)
+                _roundLeaderSeat = _playedSeats.Where(entry => entry.Key % 2 == winner)
+                    .OrderByDescending(entry => entry.Value.GetStrength(ManilhaRank)).First().Key;
             CurrentRound++;
-            CurrentPhase = TrucoPhase.PlayerTurn;
-            EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
-            // In truco, winner of round plays first next round
-            if (winner == 1)
-            {
-                CurrentPhase = TrucoPhase.OpponentTurn;
-                EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
-                StartAIThinking();
-            }
+            _playedSeats.Clear();
+            BeginSeatTurn(_roundLeaderSeat);
         }
     }
 
@@ -523,10 +540,14 @@ public partial class TrucoGameManager : Node
 
     private async void FinishHandSequence(bool playerWon)
     {
+        _aiThinking = false;
+        CurrentPhase = TrucoPhase.HandEnd;
+        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
         int totalSeats = TeamSize * 2;
         DealerSeatIndex = (DealerSeatIndex + 1) % totalSeats;
         EmitSignal(SignalName.HandCleanupStarted, DealerSeatIndex, GetSeatName(DealerSeatIndex));
         await WaitForAnimation(0.9f);
+        if (!IsInsideTree()) return;
         EmitSignal(SignalName.HandEnded, playerWon, CurrentStakes);
 
         if (PlayerScore >= WinScore || OpponentScore >= WinScore)
@@ -578,58 +599,28 @@ public partial class TrucoGameManager : Node
     private void StartAIThinking()
     {
         _aiThinking = true;
-        _aiThinkTimer = (float)GD.RandRange(0.8, 2.0);
+        _aiThinkTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? .12f : _rng.RandiRange(8, 14) / 10f;
     }
 
-    private async void ExecuteAITurn()
+    private void ExecuteAITurn()
     {
-        if (OpponentHand.Count == 0) return;
-        if (OpponentPlayed[CurrentRound] != null) return;
-
-        // Simple AI: play strongest card if losing, weakest if winning
-        int playerWins = RoundWinners.Count(w => w == 0);
-        int opponentWins = RoundWinners.Count(w => w == 1);
-
-        // Sort by strength
-        var sorted = OpponentHand.OrderBy(c => c.GetStrength(ManilhaRank)).ToList();
-
-        TrucoCardData chosen;
-        if (opponentWins > playerWins)
+        if (CurrentPhase != TrucoPhase.OpponentTurn || ActiveSeatIndex == 0) return;
+        var hand = GetHandForSeat(ActiveSeatIndex);
+        if (hand.Count == 0 || _playedSeats.ContainsKey(ActiveSeatIndex)) return;
+        int team = ActiveSeatIndex % 2;
+        var sorted = hand.OrderBy(card => card.GetStrength(ManilhaRank)).ToList();
+        var enemyBest = team == 0 ? OpponentPlayed[CurrentRound] : PlayerPlayed[CurrentRound];
+        var allyBest = team == 0 ? PlayerPlayed[CurrentRound] : OpponentPlayed[CurrentRound];
+        bool allyWinning = allyBest != null && (enemyBest == null || TrucoCardData.Compare(allyBest, enemyBest, ManilhaRank) > 0);
+        var chosen = allyWinning ? sorted.First() : enemyBest != null
+            ? sorted.FirstOrDefault(card => TrucoCardData.Compare(card, enemyBest, ManilhaRank) > 0) ?? sorted.First()
+            : sorted.Last();
+        if (team == 1 && CurrentStakes == 1 && sorted.Last().GetStrength(ManilhaRank) >= 100 && _rng.RandiRange(0, 99) > 65)
         {
-            // Winning: play weakest
-            chosen = sorted.First();
+            AICallTruco();
+            return;
         }
-        else
-        {
-            // Losing or tied: play strongest
-            chosen = sorted.Last();
-
-            // Chance to call truco if has strong cards
-            if (CurrentStakes == 1 && sorted.Last().GetStrength(ManilhaRank) >= 100 && GD.Randf() > 0.4f)
-            {
-                AICallTruco();
-                return;
-            }
-        }
-
-        OpponentHand.Remove(chosen);
-        _opponentAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Action);
-        OpponentPlayed[CurrentRound] = chosen;
-
-        EmitSignal(SignalName.CardPlayed, 1, chosen.ToString(), CurrentRound);
-        GD.Print($"[Truco] Opponent plays: {chosen}");
-
-        // If player already played, resolve
-        if (PlayerPlayed[CurrentRound] != null)
-        {
-            await ToSignal(GetTree().CreateTimer(1.0f), SceneTreeTimer.SignalName.Timeout);
-            ResolveCurrentRound();
-        }
-        else
-        {
-            CurrentPhase = TrucoPhase.PlayerTurn;
-            EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
-        }
+        PlaySeatCard(ActiveSeatIndex, hand.IndexOf(chosen));
     }
 
     private void AICallTruco()
@@ -657,6 +648,7 @@ public partial class TrucoGameManager : Node
     private async void RespondAIToTrucoDelayed()
     {
         await ToSignal(GetTree().CreateTimer(0.8f), SceneTreeTimer.SignalName.Timeout);
+        if (!IsInsideTree()) return;
         if (_waitingTrucoResponse && _trucoPendingByPlayer)
             AIRespondToTruco();
     }
@@ -664,7 +656,7 @@ public partial class TrucoGameManager : Node
     private void AIRespondToTruco()
     {
         // Simple: accept if has any manilha or 3
-        bool hasStrong = OpponentHand.Any(c => c.GetStrength(ManilhaRank) >= 13 || c.GetStrength(ManilhaRank) >= 100);
+        bool hasStrong = TeamTwoHands.SelectMany(hand => hand).Any(c => c.GetStrength(ManilhaRank) >= 13);
 
         if (hasStrong || GD.Randf() > 0.5f)
         {

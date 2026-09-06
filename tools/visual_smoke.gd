@@ -6,6 +6,7 @@ const SCENES = {
 	"abertura": "res://hub/scenes/HubMain.tscn",
 	"poker": "res://games/poker_roguelike/scenes/PokerGame.tscn",
 	"truco": "res://games/truco/scenes/TrucoGame.tscn",
+	"fodinha": "res://games/fodinha/scenes/FodinhaGame.tscn",
 }
 
 var output_dir: String
@@ -74,6 +75,22 @@ func run_checks() -> void:
 			await check_poker_actions()
 		elif scene_name == "truco":
 			await check_truco_actions()
+		elif scene_name == "fodinha":
+			if find_button("Pular entrada") != null: press_button("Pular entrada")
+			await wait_for_button("Palpite: 0", 5.0)
+			press_button("Como jogar")
+			await capture("fodinha-regras")
+			for dialog in current_scene.find_children("*", "AcceptDialog", true, false): dialog.hide(); dialog.queue_free()
+			press_button("Palpite: 0")
+			await settle(2.5)
+			var card = current_scene.find_child("HandCard0", true, false)
+			if card == null or card.disabled: fail("Fodinha did not enable the local card after bidding")
+			else: card.emit_signal("pressed"); report.actions.append("Played Fodinha card")
+			await wait_for_button("Próxima mão", 9.0)
+			await capture("fodinha-resultado")
+			press_button("Próxima mão")
+			await settle(.4)
+			await capture("fodinha-mao-2")
 	await check_team_tables()
 	await check_window_sizes()
 	var file := FileAccess.open(report_path, FileAccess.WRITE)

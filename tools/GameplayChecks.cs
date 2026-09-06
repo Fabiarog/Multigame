@@ -7,6 +7,7 @@ using GameHub.Core.Registry;
 using GameHub.Core.Systems;
 using GameHub.Games.Truco;
 using GameHub.Core.Visuals;
+using GameHub.Games.Fodinha;
 
 /// <summary>Integration checks for complete bot teams and ownership of the solo Pena decision.</summary>
 public partial class GameplayChecks : Node
@@ -15,6 +16,71 @@ public partial class GameplayChecks : Node
     private int _assertions;
 
     public void ConfigureTeams(int teamSize) => GameRegistry.TrucoTeamSize = teamSize;
+    public void ConfigureFidelity(float scale)
+    {
+        SettingsManager.Instance.ReduceMotion = true;
+        GameHub.Core.Graphics.VideoSettingsManager.Instance.RenderScale = scale;
+        var settings = new GameHub.Core.Graphics.RayTracingSettings();
+        settings.EnableAll(GameHub.Core.Graphics.RayTracingSettings.RtQualityLevel.Ultra);
+        GameHub.Core.Graphics.GraphicsQualityManager.Instance.ApplyNewSettings(settings);
+    }
+    public Godot.Collections.Dictionary CheckRenderResolution()
+    {
+        var table = GetTree().CurrentScene.FindChildren("*", "Control", true, false).OfType<TableStage>().Single();
+        var expected = table.Size * ((Vector2)GetTree().Root.Size / new Vector2(1280,720));
+        if (((Vector2)table.RenderTargetSize - expected).Length() > 3)
+            throw new InvalidOperationException($"Table must render at display pixels: {table.RenderTargetSize} vs {expected}");
+        return new Godot.Collections.Dictionary { ["table_logical_size"] = table.Size.ToString(), ["table_target_pixels"] = table.RenderTargetSize.ToString(),
+            ["render_scale"] = GameHub.Core.Graphics.VideoSettingsManager.Instance.RenderScale };
+    }
+
+    private void CheckFodinha()
+    {
+        Assert(FodinhaMatch.LifePenalty(0,3)==3 && FodinhaMatch.LifePenalty(4,1)==3 && FodinhaMatch.LifePenalty(2,2)==0, "Fodinha charges the absolute bid error");
+        var tied = new[] { (2, new TrucoCardData { Rank=TrucoRank.Ace, Suit=TrucoSuit.Hearts }), (0, new TrucoCardData { Rank=TrucoRank.Ace, Suit=TrucoSuit.Clubs }) };
+        Assert(FodinhaMatch.ResolveTrick(tied,TrucoRank.Two)==2 && FodinhaMatch.ResolveTrick(tied,TrucoRank.Ace)==0, "Ordinary ties go to first play; manilha suit breaks ties");
+        bool unique=true, losses=true, eliminated=true, turns=true, final=true, allSizes=false;
+        for(int seed=0;seed<100;seed++)
+        {
+            var match=new FodinhaMatch(seed); int rounds=0;
+            while(match.State!=FodinhaMatch.Phase.Finished && rounds++<10)
+            {
+                var cards=match.ActiveSeats.SelectMany(s=>match.Hand(s)).Select(c=>c.ToString()).Append(match.Vira.ToString()).ToArray();
+                unique &= cards.Distinct().Count()==cards.Length && match.ActiveSeats.All(s=>match.Hand(s).Count==match.CardsPerHand);
+                var lifeBefore=match.Lives.ToArray();
+                eliminated &= Enumerable.Range(0,4).Where(s=>match.Lives[s]==0).All(s=>match.Hand(s).Count==0);
+                turns &= !match.Bid((match.CurrentSeat+1)%4,0) && !match.Bid(match.CurrentSeat,-1) && !match.Bid(match.CurrentSeat,match.CardsPerHand+1);
+                while(match.State==FodinhaMatch.Phase.Bidding)
+                {
+                    int seat=match.CurrentSeat;
+                    match.Bid(seat,FodinhaBot.Predict(match.Hand(seat),match.Vira,match.ActiveSeats.Length));
+                }
+                while(match.State==FodinhaMatch.Phase.Playing)
+                {
+                    int seat=match.CurrentSeat;
+                    turns &= !match.Play((seat+1)%4,0) && !match.Play(seat,-1) && !match.Play(seat,match.Hand(seat).Count);
+                    match.Play(seat,FodinhaBot.Choose(match.Hand(seat),match.Trick,match.Manilha,match.Bids[seat],match.Wins[seat]));
+                    if(match.State==FodinhaMatch.Phase.TrickResult)
+                    {
+                        turns &= match.Trick.Select(p=>p.Seat).Distinct().Count()==match.ActiveSeats.Length;
+                        int winner=match.LastWinner; match.AdvanceTrick();
+                        turns &= match.State!=FodinhaMatch.Phase.Playing || match.CurrentSeat==winner;
+                    }
+                }
+                losses &= Enumerable.Range(0,4).All(s=>match.Lives[s]==Math.Max(0,lifeBefore[s]-match.Losses[s]));
+                losses &= match.Wins.Sum()==match.CardsPerHand;
+                allSizes |= match.RoundIndex==8;
+                if(match.State==FodinhaMatch.Phase.RoundResult) match.AdvanceRound();
+            }
+            final &= match.State==FodinhaMatch.Phase.Finished && match.Winners.All(s=>match.Lives[s]==match.Lives.Max());
+            final &= !match.AdvanceRound() && !match.AdvanceTrick() && !match.Bid(0,0) && !match.Play(0,0);
+        }
+        Assert(unique,"100 Fodinha games deal unique cards and a separate vira");
+        Assert(losses,"Each vaza has one winner and penalties reduce lives without going negative");
+        Assert(eliminated,"Eliminated Fodinha seats receive no cards");
+        Assert(turns,"Only the current seat may act; every active seat plays once; winner leads");
+        Assert(final && allSizes,"Fodinha terminates, protects final state, and exercises all nine hand sizes");
+    }
     public void ReleaseManagedResources()
     {
         // Rapid automated scene changes leave managed Resource wrappers waiting
@@ -28,7 +94,7 @@ public partial class GameplayChecks : Node
         var quality = new GameHub.Core.Graphics.RayTracingSettings();
         if (ultra) quality.EnableAll(GameHub.Core.Graphics.RayTracingSettings.RtQualityLevel.Ultra);
         GameHub.Core.Graphics.GraphicsQualityManager.Instance.ApplyNewSettings(quality);
-        foreach(var table in GetTree().CurrentScene.FindChildren("*", "SubViewportContainer", true, false).OfType<TableStage>())
+        foreach(var table in GetTree().CurrentScene.FindChildren("*", "Control", true, false).OfType<TableStage>())
         {
             var environment = table.FindChildren("TableLighting", "WorldEnvironment", true, false).OfType<WorldEnvironment>().Single().Environment;
             if (environment.SsaoEnabled != ultra || environment.SsrEnabled != ultra)
@@ -43,6 +109,7 @@ public partial class GameplayChecks : Node
         try
         {
             SettingsManager.Instance.ReduceMotion = true;
+            CheckFodinha();
             for (int character = 0; character < CharacterCatalog.Ids.Length; character++)
             {
                 var model = GD.Load<PackedScene>(CharacterCatalog.ModelPath(character)).Instantiate<Node3D>();
@@ -85,7 +152,7 @@ public partial class GameplayChecks : Node
                 Assert(!dealt.Contains(game.ViraCard.ToString()), "Vira is outside all hands");
                 var seats = new HashSet<int>();
                 var played = new HashSet<string>();
-                var table = GetTree().CurrentScene.FindChildren("*", "SubViewportContainer", true, false).OfType<TableStage>().First();
+                var table = GetTree().CurrentScene.FindChildren("*", "Control", true, false).OfType<TableStage>().First();
                 var environment = table.FindChildren("TableLighting", "WorldEnvironment", true, false).OfType<WorldEnvironment>().Single().Environment;
                 Assert(!environment.SsaoEnabled && !environment.SsrEnabled, "Default light settings disable costly screen-space effects");
                 var clockPlayer = table.FindChildren("ClubClock", "Node3D", true, false).First().FindChildren("*", "AnimationPlayer", true, false).OfType<AnimationPlayer>().Single();

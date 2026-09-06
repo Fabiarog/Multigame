@@ -35,6 +35,8 @@ Distribuídas sob SIL Open Font License 1.1; os textos de licença acompanham ca
 
 ## Acervo anterior
 
+O Patch 9 usa os mesmos fontes recebidos, via Blender MCP local, para subdivisão seletiva dos rostos e chanfros/normalização de superfícies nas quatro salas e poltronas. Fontes finais `art/blender/*_fidelity.blend`, entradas de cenário preservadas em `fidelity-inputs`, script `tools/refine_fidelity_mcp.py`. Não utiliza assets externos novos. Fodinha reutiliza cartas, personagens, música e efeitos originais já distribuídos.
+
 Em 06/09/2026, o Patch 8 refinou os fontes Blender recebidos do usuário através do addon MCP local: mais geometria e acabamento nos oito personagens, novos gestos/detalhes em Corvo, Onça, Barão e Dama, correção de repouso nos oito GLBs e relógio original com pêndulo. Scripts `tools/refine_club_mcp.py` e `tools/polish_cast_mcp.py`, fontes separados `art/blender/*_mcp.blend` e `club_clock.blend`. O gerador base recebido também foi corrigido para aplicar materiais e modificadores corretamente. Nenhum modelo, textura ou música de serviço externo foi baixado nesta etapa. O atlas pixel art atualizado pelo usuário foi preservado.
 
 Os JPGs de cenários, cartas, avatares e roupas existentes foram preservados. Sua autoria/licença não foi alterada nem inferida. Alguns têm fundo verde ou quadriculado incorporado e precisam de tratamento/fonte com alfa para uso como recortes. O novo elenco e as cartas desenhadas em código evitam depender dessas limitações na mesa principal.

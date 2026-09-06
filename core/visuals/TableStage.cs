@@ -8,7 +8,7 @@ using GameHub.Core.Graphics;
 namespace GameHub.Core.Visuals;
 
 /// <summary>Orthographic 2.5D table: Blender actors, physical card piles and lightweight stage light.</summary>
-public partial class TableStage : SubViewportContainer
+public partial class TableStage : Control
 {
     private SubViewport _viewport;
     private Node3D _world;
@@ -32,12 +32,13 @@ public partial class TableStage : SubViewportContainer
     private bool _intro, _skip;
     private float _time;
     public bool IsPresenting => _intro;
+    public Vector2I RenderTargetSize => _viewport?.Size ?? Vector2I.Zero;
     public int PlayedCardCount => _played.Count + _discards.Count + _collecting.Count;
     public int SeatCount { get; set; } = 2;
     public int RivalIndex { get; set; } = 2;
     public TableStage()
     {
-        Stretch = true;
+        ClipContents = true;
         MouseFilter = MouseFilterEnum.Ignore;
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
     }
@@ -49,6 +50,16 @@ public partial class TableStage : SubViewportContainer
         _viewport.Msaa3D = Viewport.Msaa.Msaa4X;
         _viewport.ScreenSpaceAA = Viewport.ScreenSpaceAAEnum.Disabled;
         AddChild(_viewport);
+        _viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Always;
+        var picture = new TextureRect {
+            Name = "TablePicture", Texture = _viewport.GetTexture(),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.Scale,
+            TextureFilter = TextureFilterEnum.Linear,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        AddChild(picture);
+        picture.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         _world = new Node3D(); _viewport.AddChild(_world);
 
         // Raster lighting with optional screen-space effects; no hardware ray tracing.
@@ -232,10 +243,20 @@ public partial class TableStage : SubViewportContainer
         bool detailed = enhanced && settings?.RayTracingEnabled == true;
         _viewport.Scaling3DScale = VideoSettingsManager.Instance?.RenderScale ?? 1;
         _viewport.Msaa3D = detailed ? Viewport.Msaa.Msaa4X : Viewport.Msaa.Msaa2X;
-        _viewport.ScreenSpaceAA = detailed ? Viewport.ScreenSpaceAAEnum.Fxaa : Viewport.ScreenSpaceAAEnum.Disabled;
-        _key.ShadowEnabled = detailed;
+        _viewport.ScreenSpaceAA = Viewport.ScreenSpaceAAEnum.Disabled;
+        _key.ShadowEnabled = enhanced;
         _pendant.ShadowEnabled = detailed && settings.RtaoQuality >= RayTracingSettings.RtQualityLevel.High;
         _key.DirectionalShadowMaxDistance = 24;
+        _key.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal;
+        _key.ShadowBias = .12f;
+        _key.ShadowNormalBias = 1.5f;
+        _viewport.PositionalShadowAtlasSize = detailed ? 4096 : 2048;
+        if (forward)
+        {
+            RenderingServer.DirectionalShadowAtlasSetSize(detailed ? 4096 : 2048, false);
+            RenderingServer.DirectionalSoftShadowFilterSetQuality(detailed ? RenderingServer.ShadowQuality.SoftMedium : RenderingServer.ShadowQuality.SoftLow);
+            RenderingServer.PositionalSoftShadowFilterSetQuality(RenderingServer.ShadowQuality.SoftLow);
+        }
         _environment.SsaoEnabled = detailed && settings.RtaoEnabled;
         _environment.SsaoRadius = .85f; _environment.SsaoIntensity = 1.4f;
         _environment.SsrEnabled = detailed && settings.RtReflectionsEnabled;
@@ -272,7 +293,7 @@ public partial class TableStage : SubViewportContainer
             material.Metallic = .15f;
         }
         _world.AddChild(new MeshInstance3D { Name = name, Position = position, Scale = new Vector3(1, 1, depth),
-            Mesh = new CylinderMesh { TopRadius = radius, BottomRadius = radius, Height = height, RadialSegments = 48 }, MaterialOverride = material });
+            Mesh = new CylinderMesh { TopRadius = radius, BottomRadius = radius, Height = height, RadialSegments = name == "Chip" ? 48 : 192 }, MaterialOverride = material });
     }
 
     public void SetCast(int rival, int seats)
@@ -656,6 +677,16 @@ public partial class TableStage : SubViewportContainer
 
     public override void _Process(double delta)
     {
+        // Canvas stretch keeps layout at 1280x720. Render the embedded world at
+        // its physical display size, including window stretch and parent scale.
+        // A SubViewportContainer would force this back to logical Control.Size.
+        if (_viewport != null && Size.X > 0 && Size.Y > 0)
+        {
+            var screen = GetViewport().GetFinalTransform() * GetGlobalTransformWithCanvas();
+            var pixels = new Vector2I(Mathf.Clamp(Mathf.RoundToInt(Size.X * screen.X.Length()), 2, 7680),
+                Mathf.Clamp(Mathf.RoundToInt(Size.Y * screen.Y.Length()), 2, 4320));
+            if (_viewport.Size != pixels) _viewport.Size = pixels;
+        }
         if(_camera==null)return;
         bool motion = SettingsManager.Instance?.ReduceMotion != true;
         if (_clockAnimator != null && _clockClip != null && motion != _clockMoving)

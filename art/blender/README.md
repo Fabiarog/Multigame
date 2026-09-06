@@ -18,3 +18,5 @@ O **Patch 8** refina os fontes recebidos pelo servidor Blender MCP. Os arquivos 
 ```
 
 Referência técnica utilizada: [exportador glTF oficial do Blender](https://docs.blender.org/api/main/bpy.ops.export_scene.html). Os `.blend` ficam fora da importação do Godot por `art/.gdignore`; o jogo carrega apenas GLB e PNG.
+
+O **Patch 9** acrescenta `*_fidelity.blend`: fontes atuais dos oito personagens, quatro salas e poltrona. `tools/refine_fidelity_mcp.py` parte dos personagens `_mcp.blend` e dos GLBs preservados em `fidelity-inputs`, refina a geometria de pequenos detalhes dos rostos e arredonda quinas arquitetônicas. O servidor MCP deve estar ativo na porta 9876. Execute com `python tools/blender_bridge.py execute_code --code-file tools/refine_fidelity_mcp.py --timeout 1200`. A cena aberta é restaurada ao terminar. Reexecuções recriam os outputs a partir desses inputs, por isso preserve alterações manuais em cópias separadas antes de regenerar. Medidas em faces Blender no manifesto `assets/models/club/fidelity-pass.json`; não confundir com triângulos efetivamente desenhados pelo LOD do Godot.

@@ -10,7 +10,8 @@ public partial class HubMain
 {
     private OptionButton _modeSelect, _botSelect, _difficultySelect, _teamSelect;
     private Control _botField, _difficultyField, _teamField;
-    private Button _pokerTile, _trucoTile, _playButton;
+    private Button _pokerTile, _trucoTile, _fodinhaTile, _playButton;
+    private Control _lanActions;
     private Label _gameDescription;
 
     private void BuildUI()
@@ -83,11 +84,9 @@ public partial class HubMain
         left.AddChild(choices);
         _pokerTile = GameTile("♠", "Pôquer", "ROGUELIKE", "01");
         _trucoTile = GameTile("♣", "Truco", "BLEFE & MANILHA", "02");
-        var future = GameTile("♦", "Fodinha", "EM BREVE", "03");
-        future.Disabled = true;
-        future.Modulate = new Color(1, 1, 1, .55f);
-        future.TooltipText = "Em planejamento: dê seu palpite de vitórias e tente acertar.";
-        choices.AddChild(_pokerTile); choices.AddChild(_trucoTile); choices.AddChild(future);
+        _fodinhaTile = GameTile("♦", "Fodinha", "PALPITES & VIDAS", "03");
+        choices.AddChild(_pokerTile); choices.AddChild(_trucoTile); choices.AddChild(_fodinhaTile);
+        _fodinhaTile.Pressed += () => SelectGame("fodinha");
         _pokerTile.Pressed += () => SelectGame("poker_roguelike");
         _trucoTile.Pressed += () => SelectGame("truco");
         var options = Row(10);
@@ -123,6 +122,7 @@ public partial class HubMain
         _gameDescription.CustomMinimumSize = new Vector2(0, 45);
         right.AddChild(_gameDescription);
         var lan = Row(10);
+        _lanActions = lan;
         lan.AddChild(Action("Criar sala LAN", HostSelectedLobby));
         lan.AddChild(Action("Entrar em sala", JoinSelectedLobby));
         foreach (Control control in lan.GetChildren()) control.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -142,8 +142,10 @@ public partial class HubMain
         _selectedGameId = id;
         bool poker = id == "poker_roguelike";
         _pokerTile.AddThemeStyleboxOverride("normal", ClubTheme.Box(poker ? ClubTheme.Green : ClubTheme.Panel, poker ? Gold : ClubTheme.Border, 12, 6));
-        _trucoTile.AddThemeStyleboxOverride("normal", ClubTheme.Box(!poker ? ClubTheme.Green : ClubTheme.Panel, !poker ? Gold : ClubTheme.Border, 12, 6));
+        _trucoTile.AddThemeStyleboxOverride("normal", ClubTheme.Box(id == "truco" ? ClubTheme.Green : ClubTheme.Panel, id == "truco" ? Gold : ClubTheme.Border, 12, 6));
+        _fodinhaTile.AddThemeStyleboxOverride("normal", ClubTheme.Box(id == "fodinha" ? ClubTheme.Green : ClubTheme.Panel, id == "fodinha" ? Gold : ClubTheme.Border, 12, 6));
         _gameDescription.Text = poker ? "01 / PÔQUER ROGUELIKE\nCombine cartas, supere metas e fortaleça sua próxima mão." : "02 / TRUCO\nCorte o baralho, descubra a manilha e sustente seu blefe.";
+        if (id == "fodinha") _gameDescription.Text = "03 / FODINHA · SOLO COM 3 IAs\nCinco vidas. Dê seu palpite e ganhe exatamente o que prometeu.";
         UpdateGameOptions();
     }
 
@@ -153,7 +155,11 @@ public partial class HubMain
         _modeSelect.SetItemDisabled(1, !poker);
         if (!poker && _modeSelect.Selected == 1) _modeSelect.Selected = 0;
         _botField.Visible = _difficultyField.Visible = poker && _modeSelect.Selected == 0;
-        _teamField.Visible = !poker;
+        bool fodinha = _selectedGameId == "fodinha";
+        _modeSelect.SetItemDisabled(2, fodinha);
+        if (fodinha) _modeSelect.Selected = 0;
+        _teamField.Visible = _selectedGameId == "truco";
+        if (_lanActions != null) _lanActions.Visible = !fodinha;
         if (_playButton != null) _playButton.Text = _modeSelect.Selected == 2 ? "Abrir sala LAN   →" : "Sentar à mesa   →";
     }
 
@@ -169,7 +175,8 @@ public partial class HubMain
     {
         ApplyGameSelection();
         if (_modeSelect.Selected == 2) { JoinSelectedLobby(); return; }
-        GetTree().ChangeSceneToFile(_selectedGameId == "truco" ? "res://games/truco/scenes/TrucoGame.tscn" : "res://games/poker_roguelike/scenes/PokerGame.tscn");
+        if (GameRegistry.Instance.AvailableGames.TryGetValue(_selectedGameId, out var definition))
+            GetTree().ChangeSceneToFile(definition.MainScenePath);
     }
 
     private void HostSelectedLobby()

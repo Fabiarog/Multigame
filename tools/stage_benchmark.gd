@@ -22,6 +22,7 @@ func run():
 		for ultra in [false,true]:
 			helper.ConfigureBenchmark(ultra)
 			for i in range(35): await process_frame
+			var resolution = helper.CheckRenderResolution()
 			var durations = []
 			var last = Time.get_ticks_usec()
 			for i in range(120):
@@ -31,6 +32,7 @@ func run():
 			durations.sort()
 			var label = "ultra" if ultra else "leve"
 			results.append({"size":str(size),"quality":label,"median_frame_ms":durations[60],"p95_frame_ms":durations[114],"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),"primitives":Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)})
+			results[-1].merge(resolution)
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png(args[0].path_join("mesa-%sx%s-%s.png" % [size.x,size.y,label]))
 	var file=FileAccess.open(args[1],FileAccess.WRITE)

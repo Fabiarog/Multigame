@@ -1,6 +1,6 @@
 # MultiGame — Clube de cartas
 
-Pôquer roguelike e truco em Godot .NET/C#, com mesas em **2.5D**, elenco articulado feito no Blender e uma identidade de clube brasileiro: feltro verde, papel creme e detalhes de latão. O acervo pixel art original foi preservado.
+Pôquer roguelike, truco e Fodinha em Godot .NET/C#, com mesas em **2.5D**, elenco articulado feito no Blender e uma identidade de clube brasileiro: feltro verde, papel creme e detalhes de latão. O acervo pixel art original foi preservado.
 
 ![Abertura do clube](docs/screenshots/abertura.png)
 
@@ -14,14 +14,15 @@ Pôquer roguelike e truco em Godot .NET/C#, com mesas em **2.5D**, elenco articu
 - **Refinamento MCP:** oito personagens com mais geometria e acabamento, preservando sua identidade; gestos próprios de Corvo, Onça, Barão e Dama, relógio de salão animado, poses de repouso corrigidas e opções de iluminação aplicadas à mesa. Histórico e reprodução no **Patch 8** do [registro cumulativo](AI_DEV_PATCH_NOTES.md).
 - **Pilhas e entradas:** cartas jogadas se acumulam sobre a mesa 3D; cutscenes apresentam os participantes e os bosses, com opção de pular. No truco, os resultados indicam a equipe vencedora.
 - **Áudio:** cinco loops originais sintetizados, efeitos de cartas e vinhetas de entrada; volumes de música/efeitos e seleção de faixa.
-- **Vídeo:** saída até 4K com escala de interface corrigida, escala 3D configurável e iluminação leve com opções extras em Forward+. Os controles gráficos herdados usam aproximações; não há ray tracing por hardware nesta revisão.
+- **Fodinha:** solo com três IAs, palpites antes das jogadas, cinco vidas e perda da diferença entre palpite e vitórias; nove mãos de 1→5→1 cartas, eliminação e resultado final. Regras completas no botão “Como jogar”.
+- **Vídeo:** mesa renderizada nos pixels reais de sua área na janela, inclusive 4K, com interface no tamanho original; escala 3D configurável, filtragem linear e sombras ajustadas. Mais detalhes nos rostos, molduras e poltronas via Blender MCP (Patch 9). Os efeitos gráficos continuam sendo rasterização, sem ray tracing por hardware.
 - **Ajustes:** perfil, áudio, opções visuais e acessibilidade, incluindo redução de movimento e modos de cor.
 
 ## Limites atuais
 
 **O multiplayer de partida ainda precisa de implementação.** A estrutura anterior de rede/lobby LAN foi preservada, mas não sincroniza turnos, baralho nem decisões entre computadores. Portanto, a decisão de pena pelo aliado humano remoto é uma entrega futura, detalhada no plano. Não considere o botão LAN uma partida multiplayer completa.
 
-**Fodinha** aparece como “em breve”, sem regras implementadas. A progressão roguelike completa do truco, habilidades exclusivas dos novos personagens e novos bosses mecânicos também estão no plano. Os novos retratos não representam novas habilidades de boss já prontas.
+**Fodinha está disponível em solo com IAs.** Rede, variantes regionais e progressão roguelike desse modo ficam para próximas etapas. A progressão roguelike completa do truco, habilidades exclusivas dos personagens e novos bosses mecânicos também estão no plano.
 
 ## Executar
 
@@ -62,6 +63,7 @@ O script compila C#, importa recursos, verifica duplas/trios e captura o renderi
 | `hub` | Abertura, coleção, ajustes e lobby |
 | `games/poker_roguelike` | Corrida de pôquer, pontuação e loja |
 | `games/truco` | Regras, turnos por lugar e apresentação do truco |
+| `games/fodinha` | Palpites, vazas, vidas, IAs e apresentação de quatro participantes |
 | `assets` | Acervo preservado e novos recursos visuais/sonoros |
 | `tools` | Launcher, geração de áudio e verificações |
 

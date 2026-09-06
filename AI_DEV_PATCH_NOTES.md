@@ -166,6 +166,47 @@ Para reconstruir também os fontes base pelo servidor, use `python tools/blender
 
 ---
 
+### Patch 9: Nitidez em 4K, Fodinha e Refinamento de Geometria — 06/09/2026
+
+**Base preservada:** `dd9f7bc` enviado à branch **Backup** antes das alterações. Trabalho na branch **review**; `main` preservada. Experimentos locais não rastreados do usuário não entram no commit.
+
+**Correção da imagem pixelada:** `TableStage` usava `SubViewportContainer.Stretch`, que impunha o tamanho lógico da interface ao render 3D. A janela 4K apenas ampliava essa textura pequena. Agora um `Control` apresenta a textura com filtragem linear, e o SubViewport recebe o tamanho físico da área da mesa, calculado a partir das transformações do canvas e da janela. A interface mantém seu tamanho de leitura. No pôquer em 4K, a mesa passa de **948×245 para 2844×735 pixels**; no truco, **724×375 para 2172×1125**; em Fodinha, **1002×421 para 3006×1263**. Esses são os pixels ocupados pela mesa, não o tamanho da janela inteira. A escala 3D de 50–100% continua disponível: para máxima nitidez, usar 100%. A correção também vale ao executar pelo editor; a prévia 3D nativa do editor continua sujeita às preferências próprias do Godot.
+
+**Geometria via Blender MCP:** `tools/refine_fidelity_mcp.py` executado na sessão local, porta 9876, restaurando a cena aberta. Subdivisão seletiva dos detalhes dos rostos dos oito personagens, mantendo silhuetas, materiais, roupas, quatro grupos articulados e cinco animações. Fontes separados `art/blender/*_fidelity.blend`; os `_mcp.blend` anteriores permanecem intactos. As quatro salas recebem chanfros nas molduras, colunas e arandelas, com vértices soldados antes do bevel e normais corrigidas. Poltronas também recebem esse acabamento. A mesa procedural usa 192 segmentos no aro/feltro, antes 48; fichas mantêm 48. LOD automático do Godot continua habilitado.
+
+| Modelo | Faces anteriores | Faces atuais |
+| --- | ---: | ---: |
+| Corvo | 63.184 | 64.336 |
+| Onça | 53.106 | 102.066 |
+| Nina | 57.112 | 80.152 |
+| Bento | 57.054 | 137.694 |
+| Iara | 47.506 | 93.586 |
+| Zeca | 43.802 | 82.394 |
+| Barão | 39.029 | 52.853 |
+| Dama | 44.987 | 70.547 |
+| Cada sala | 2.534 | 13.158 |
+| Poltrona | 1.704 | 4.488 |
+
+Contagens de faces no Blender, não triângulos desenhados após exportação/LOD. Manifesto: `assets/models/club/fidelity-pass.json`. Cenários partem de GLBs preservados em `art/blender/fidelity-inputs`. Retratos de estúdio foram reexportados. Não há novos assets de terceiros.
+
+**Sombreamento:** sombra da luz principal disponível no perfil básico com VFX/Forward+; mapa direcional 2048 no básico e 4096 no detalhado, filtro suave e bias ajustado para evitar autosombreamento triangular nas paredes. Atlas de sombras locais 2048/4096; luz central com sombra somente no detalhado. MSAA 2×/4×; FXAA removido da mesa para não suavizar detalhes em excesso. AO/reflexos continuam opcionais, GI usa preenchimento ambiente. Sem ray tracing por hardware e sem SDFGI.
+
+**Fodinha jogável:** novo módulo `games/fodinha`, registrado no hub. Solo com você e três IAs, cada um por si. Escolha confirmada pelo usuário: **cinco vidas, perda da diferença absoluta entre palpite e vitórias**. Nove mãos: 1, 2, 3, 4, 5, 4, 3, 2 e 1 cartas. Usa baralho de 40 cartas, vira/manilha do truco, qualquer naipe permitido, empate de cartas comuns vencido pela primeira carta jogada. Palpites livres, inclusive o último. A abertura gira; vencedor da vaza abre a seguinte. Zero vidas elimina; termina com um sobrevivente ou ao fim das nove mãos, vencendo quem tem mais vidas, com vitória compartilhada em igualdade. Essas escolhas da primeira variante estão expostas no botão **Como jogar**.
+
+O modo inclui entrada dos quatro personagens, leques dos adversários, cartas físicas que saem dos lugares e se acumulam no descarte, reações de vitória/palpite, placar de vidas/palpites/vitórias, passagem de mão e reinício. Reutiliza música Copper Steps e efeitos originais. IAs recebem apenas a própria mão e dados públicos; não acessam cartas privadas dos outros. Após a eliminação local, é possível acompanhar as mãos seguintes ou reiniciar. Vitória local conta para o floreio cosmético existente. LAN fica indisponível para Fodinha nesta primeira versão.
+
+**Validação:** compilação C# sem avisos/erros; 78 asserções, incluindo simulação de 100 partidas completas de Fodinha, limites de palpites, ordem de turnos, manilhas, desempate, baralho sem repetição, eliminação e encerramento. Capturas do renderer real: 24 telas/23 ações, sem falhas ou problemas de enquadramento detectados. `docs/qa-fodinha.json` e `docs/screenshots-fodinha`. Teste adicional dos três jogos em 1080p/4K, escalas 100%/50%, com dimensões registradas em `docs/resolution-fidelity.json`; imagens em `docs/screenshots-fidelity`. Permanecem avisos anteriores de 1–2 instâncias ObjectDB no encerramento, sem erro de recurso.
+
+**Desempenho:** teste sintético de seis personagens e 18 cartas, RTX 3050, Forward+/Vulkan, 120 quadros após aquecimento, VSync desligado. Em 4K, mediana/P95: básico **7,305/7,734 ms**, detalhado **11,153/11,516 ms**; em 720p: **1,330/1,638 ms** e **2,388/2,733 ms**. Registro em `docs/benchmark-fidelity.json`. Diferentemente do Patch 8, o alvo da mesa acompanha agora a densidade física da janela. São medições locais, sem garantia de FPS em outras máquinas; o pequeno ajuste final de bias não muda o orçamento de renderização.
+
+**Reprodução:** `python tools/blender_bridge.py execute_code --code-file tools/refine_fidelity_mcp.py --timeout 1200`, depois compilar/importar e executar `tools/visual_smoke.ps1`. O benchmark usa `-BenchmarkOnly`; `tools/fidelity_resolution.gd` faz a inspeção de pixels dos três jogos em APPDATA isolado. Arte manual deve ser preservada antes de regenerar outputs. `Game Hub.exe`/PCK e runtime local atualizados em debug para revisão, com a mesma limitação de templates release do Patch 8.
+
+**Próximas etapas planejadas:** variantes regionais de Fodinha (por exemplo, restrição do último palpite e carta na testa), rede com autoridade do servidor, progressão própria do modo; materiais com texturas e normais dedicadas a tecido/penas/pelagem, rig facial e novos gestos, mantendo o elenco atual. A melhoria entregue é de nitidez, geometria e luz; não há conversão fotorealista nem novas missões/bosses mecânicos nesta etapa.
+
+**Pacote de revisão:** os presets de exportação excluem `tools/*` e os experimentos `test_*.glb`; esses arquivos continuam disponíveis no projeto. O executável exportado inicializou o hub com sucesso. O fechamento rápido desse pacote ainda pode emitir até três avisos ObjectDB, já observados no build anterior.
+
+---
+
 ## 3. Guia de Operações e Comandos Essenciais
 
 Para qualquer IA ou desenvolvedor executando tarefas neste projeto, utilize sempre os comandos abaixo:

@@ -47,6 +47,7 @@ public partial class TableStage : Control
     public CameraPerspectiveMode CurrentCameraMode { get; set; } = CameraPerspectiveMode.FirstPersonPov;
     public int LocalSeatIndex { get; set; } = 0;
     private float _cameraBreathTime = 0f;
+    private float _tactileRecoilY = 0f;
     private Vector2 _lookTarget, _lookAngles, _lastLookPointer;
     private bool _dragLook, _motionWasEnabled;
     private Button _cameraModeButton;
@@ -860,7 +861,7 @@ public partial class TableStage : Control
             Vector3 eyePos = seatPos + Vector3.Up * (2.35f + bobY) + toCenter * .18f + right * lean;
             _camera.Projection = Camera3D.ProjectionType.Perspective;
             _camera.KeepAspect = Camera3D.KeepAspectEnum.Height;
-            _camera.Fov = 50.0f;
+            _camera.Fov = 54.0f;
             _camera.Near = .05f;
             _camera.Position = eyePos;
             _camera.LookAt(new Vector3(0, .65f, 0), Vector3.Up);
@@ -1092,7 +1093,19 @@ public partial class TableStage : Control
         }), 0f, 1f, .42f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
         tween.Parallel().TweenProperty(card, "rotation", targetRotation, .42f)
             .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-        tween.Chain().TweenCallback(Callable.From(() => AudioManager.Instance?.PlaySound("play")));
+        tween.Chain().TweenCallback(Callable.From(() =>
+        {
+            AudioManager.Instance?.PlaySound("play");
+            if (seat == LocalSeatIndex && CurrentCameraMode == CameraPerspectiveMode.FirstPersonPov && SettingsManager.Instance?.ReduceMotion != true)
+            {
+                var recoil = CreateTween();
+                _motions.Add(recoil);
+                recoil.TweenMethod(Callable.From<float>(v => _tactileRecoilY = v), 0f, -0.016f, 0.05f)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+                recoil.TweenMethod(Callable.From<float>(v => _tactileRecoilY = v), -0.016f, 0f, 0.16f)
+                    .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            }
+        }));
     }
 
     /// <summary>
@@ -1354,7 +1367,7 @@ public partial class TableStage : Control
             {
                 _cameraBreathTime += (float)delta * 1.6f;
             }
-            UpdateCameraPosition(motion ? Mathf.Sin(_cameraBreathTime) * .004f : 0f);
+            UpdateCameraPosition(motion ? (Mathf.Sin(_cameraBreathTime) * .004f + _tactileRecoilY) : 0f);
         }
         else
         {

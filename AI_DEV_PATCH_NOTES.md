@@ -282,7 +282,37 @@ O modo inclui entrada dos quatro personagens, leques dos adversários, cartas f�
 
 ---
 
-## 3. Guia de Operações e Comandos Essenciais
+### Patch 12: Mãos Articuladas com 5 Falanges, Carta Física na Mão, Acessórios Exclusivos e Recuo Táctil POV — 06/09/2026
+
+**Base preservada:** Executado e validado integralmente na branch **review** do repositório `Multigame`.
+
+1. **Mãos Articuladas em 5 Falanges Individuais (`tools/build_blender_cast.py`):**
+   * Substituição de blocos únicos de juntas por anatomia completa de 5 dígitos em cada mão (`ThumbProximal`, `ThumbDistal`, `IndexProximal`, `IndexDistal`, `MiddleProximal`, `MiddleDistal`, `RingProximal`, `RingDistal`, `PinkyProximal`, `PinkyDistal`).
+   * No Seu Corvo: garras de queratina negra polida em 3 articulações frontais e esporão traseiro (`DigitBase`, `DigitMid`, `ClawTip`, `SpurBase`, `SpurTip`).
+2. **Carta 3D Física na Mão Ativa (`HeldCardBack`, `HeldCardFace`, `HeldCardTrim`):**
+   * Modelada com espessura de papel e detalhes de corte fino, aninhada entre o polegar e os dedos indicador/médio na mão ativa de cada personagem.
+   * Na animação `play_card`, a carta é fisicamente transportada na mão até o instante do contato com o feltro (frame 26).
+3. **Acessórios Exclusivos de Braço e Mão por Personagem:**
+   * **Nina:** Luva de inventora sem dedos com costuras e rebites dourados sobre as juntas (`FingerlessGlove`, `GloveRivet`).
+   * **Bento:** Relógio clássico de pulso com aro de ouro e mostrador de esmalte marfim (`WatchBezel`, `WatchDial`, `LeatherStrap`) e anel no polegar direito (`BentoThumbRing`).
+   * **Seu Corvo:** Anel de sinete dourado com monograma lapidado em rubi no dedo indicador (`CorvoSignetRing`, `CorvoSignetSeal`) e penugem nas mangas.
+   * **Dona Onça:** Garras retráteis douradas na ponta de cada dedo e rosetas de pelagem no pulso.
+   * **Iara:** Pulseira de ouro com flor de lótus rosa esculpida e pérola no pulso direito (`LotusBangle`, `LotusBlossom`, `PearlBead`).
+   * **Zeca:** Luvas brancas de veludo de croupier com botões perolados no punho (`CroupierGlove`, `GlovePearlButton`).
+   * **Barão:** Anel imperial com safira azul profunda lapidada no indicador esquerdo (`SapphireRingBand`, `SapphireOvalGem`).
+   * **Dama:** Bracelete de serpente enrolada em ouro no antebraço direito com olhos de rubi (`SerpentCoil1`, `SerpentCoil2`, `SerpentHeadGold`, `SerpentRubyEye`).
+4. **Imersão Táctil POV com Micro-Recuo no Impacto (`core/visuals/TableStage.cs`):**
+   * Campo de visão (FOV) do POV ajustado para 54°, proporcionando melhor enquadramento periférico das mangas de alfaiataria, abotoaduras e mãos apoiadas na borda de couro da mesa.
+   * Ao bater a carta no feltro em primeira pessoa, um micro-recuo táctil (`_tactileRecoilY`) de -0.016f com retorno em transição `Back.Out` é aplicado à câmera, criando uma sensação física e satisfatória de autoridade e peso ao colocar a carta na mesa.
+5. **Verificação de QA & Build:**
+   * 0 avisos e 0 erros de compilação C#.
+   * `camera_smoke.gd`: 100% aprovado (`CAMERA_QA PASS []`).
+   * `visual_smoke.ps1`: 155 asserções aprovadas com êxito e 24 capturas de tela sem qualquer falha visual.
+   * Executável e pacote de assets (`Game Hub.exe` e `Game Hub.pck`) atualizados e prontos para distribuição.
+
+---
+314: 
+315: ## 3. Guia de Operações e Comandos Essenciais
 
 Para qualquer IA ou desenvolvedor executando tarefas neste projeto, utilize sempre os comandos abaixo:
 

@@ -156,6 +156,10 @@ def build(index, ident, species, skinhex, coathex, accenthex, sechex):
     glint_mat = mat('Glint', '#ffffff', rough=0.02, spec=1.0)
     ruby_mat = mat('RubyGem', '#c81428', metal=0.35, rough=0.08, spec=1.0, emit_hex='#a00818', emit_strength=0.25)
     emerald_mat = mat('EmeraldGem', '#167a48', metal=0.35, rough=0.08, spec=1.0, emit_hex='#0d5830', emit_strength=0.25)
+    sapphire_mat = mat('SapphireGem', '#1a3c78', metal=0.35, rough=0.08, spec=1.0, emit_hex='#0d224d', emit_strength=0.25)
+    pearl_mat = mat('PearlShimmer', '#faf6f0', metal=0.15, rough=0.22, spec=0.95)
+    card_back_mat = mat('HeldCardBack', '#821622', metal=0.10, rough=0.38)
+    card_face_mat = mat('HeldCardFace', '#faf8f2', metal=0.0, rough=0.60)
     white_fur = mat('WhiteFur', '#f5f0e8', rough=0.85)
 
     # Actor Hierarchy: Root -> Pelvis -> Body -> Head, ArmL, ArmR -> ForearmL, ForearmR -> HandL, HandR
@@ -234,15 +238,17 @@ def build(index, ident, species, skinhex, coathex, accenthex, sechex):
         shape('RoyalCape', (0, 0.16, 0.78), (0.54, 0.10, 0.60), mat('CapeVelvet', '#261220' if index == 7 else '#1c1426', rough=0.88), body, 'cylinder', rot=(-0.05, 0, 0), subsurf=1)
         shape('CapeBraid', (0, 0.10, 1.26), (0.44, 0.09, 0.10), accent_mat, body, 'torus')
 
-    # --- ARTICULATED ARMS, FOREARMS, AND MODULAR HANDS ---
+    # --- ARTICULATED ARMS, FOREARMS, AND MODULAR HANDS (5 DIGITS & EXCLUSIVE ACCESSORIES) ---
     for j, arm in enumerate(arms):
         forearm = forearms[j]
         hand = hands[j]
         side_f = -1 if j == 0 else 1
+        is_active = (j == (0 if index % 2 == 0 else 1))
 
         # 1. Upper Arm / Shoulder (parent: arm)
         shape('ShoulderJoint', (0, 0, 0), (0.14, 0.15, 0.14), coat_mat, arm, 'ico', subsurf=1)
         shape('UpperSleeve', (0, -0.01, -0.15), (0.12, 0.13, 0.14), coat_mat, arm, 'cylinder', subsurf=1)
+        shape('ShoulderPadCurved', (side_f * 0.03, 0.01, 0.02), (0.125, 0.135, 0.035), coat_mat, arm, 'cylinder', rot=(0, side_f * 0.18, 0), bevel=0.01)
 
         # 2. Forearm / Elbow (parent: forearm)
         shape('ElbowHinge', (0, 0, 0), (0.105, 0.11, 0.105), coat_mat, forearm, 'ico', subsurf=1)
@@ -255,28 +261,99 @@ def build(index, ident, species, skinhex, coathex, accenthex, sechex):
         shape('ShirtCuff', (0, -0.035, -0.28), (0.088, 0.092, 0.030), linen_mat, forearm, 'cylinder', rot=(0.08, 0, 0), bevel=0.01)
         shape('Cufflink', (side_f * 0.08, -0.035, -0.28), (0.016, 0.016, 0.016), accent_mat, forearm, 'ico')
 
-        # 3. Modular Hands & Fingers (parent: hand, located at (0, -0.035, -0.28) of forearm)
-        h_mat = mat('CrowClaw', '#12161f', rough=0.35) if species == 'crow' else skin_mat
+        # --- EXCLUSIVE FOREARM ACCESSORIES ---
+        if ident == 'bento' and j == 0:
+            # Classic gentleman's watch with ivory enamel dial and gold bezel
+            shape('WatchStrap', (0, -0.035, -0.26), (0.096, 0.100, 0.026), mat('WatchStrap', '#3a1c10', rough=0.38), forearm, 'cylinder')
+            shape('WatchBezel', (-0.088, -0.035, -0.26), (0.028, 0.028, 0.024), accent_mat, forearm, 'cylinder', rot=(0, math.pi / 2, 0), bevel=0.008)
+            shape('WatchDial', (-0.092, -0.035, -0.26), (0.022, 0.022, 0.004), mat('EnamelDial', '#faf8f2', rough=0.15), forearm, 'cylinder', rot=(0, math.pi / 2, 0))
+        elif ident == 'iara' and j == 1:
+            # Lotus gold bangle with pink blossom and pearl
+            shape('LotusBangle', (0, -0.035, -0.26), (0.095, 0.098, 0.022), accent_mat, forearm, 'torus', rot=(0.08, 0, 0))
+            shape('LotusBlossom', (0.085, -0.035, -0.26), (0.024, 0.024, 0.020), ruby_mat, forearm, 'ico', subsurf=1)
+            shape('PearlBead', (0.092, -0.035, -0.26), (0.010, 0.010, 0.010), pearl_mat, forearm, 'ico')
+        elif ident == 'dama' and j == 1:
+            # Coiled golden serpent bracelet with ruby eyes
+            shape('SerpentCoil1', (0, -0.035, -0.22), (0.098, 0.102, 0.022), accent_mat, forearm, 'torus', rot=(0.15, 0, 0))
+            shape('SerpentCoil2', (0, -0.035, -0.19), (0.096, 0.100, 0.020), accent_mat, forearm, 'torus', rot=(-0.10, 0, 0))
+            shape('SerpentHeadGold', (0.095, -0.035, -0.17), (0.025, 0.016, 0.018), accent_mat, forearm, 'ico', subsurf=1)
+            shape('SerpentRubyEye', (0.102, -0.045, -0.165), (0.006, 0.006, 0.006), ruby_mat, forearm, 'ico')
+        elif ident == 'corvo':
+            # Stylized raven feather coverts along the outer forearm
+            shape('WingCovert', (side_f * 0.075, 0.035, -0.14), (0.032, 0.060, 0.018), coat_mat, forearm, 'cone', rot=(-0.30, side_f * 0.25, 0))
+        elif ident == 'zeca':
+            # Pearl button on the croupier cuff
+            shape('GlovePearlButton', (side_f * 0.082, -0.035, -0.27), (0.013, 0.013, 0.010), pearl_mat, forearm, 'ico')
+
+        # 3. Modular Hands & 5 Articulated Digits (parent: hand, at (0, -0.035, -0.28) of forearm)
+        h_mat = mat('CrowClaw', '#12161f', rough=0.35) if species == 'crow' else \
+                mat('CroupierGlove', '#faf7f2', rough=0.42) if ident == 'zeca' else skin_mat
         shape('Palm', (0, -0.015, -0.06), (0.078, 0.088, 0.050), h_mat, hand, 'ico', subsurf=1)
 
-        if species == 'crow':
-            for claw_k in [-1, 0, 1]:
-                shape(f'Digit_{claw_k}', (claw_k * 0.034, -0.055, -0.07), (0.020, 0.040, 0.020), h_mat, hand, 'cylinder', rot=(0.4, 0, 0), subsurf=1)
-                shape(f'Claw_{claw_k}', (claw_k * 0.034, -0.105, -0.09), (0.014, 0.040, 0.016), mat('TalonHorn', '#080a0e', rough=0.15, spec=0.95), hand, 'cone', rot=(math.pi / 2 + 0.35, 0, 0))
-            # Aristocratic rear spur talon
-            shape('SpurDigit', (0, 0.035, -0.05), (0.018, 0.035, 0.018), h_mat, hand, 'cylinder', rot=(-0.35, 0, 0), subsurf=1)
-            shape('SpurClaw', (0, 0.065, -0.065), (0.013, 0.032, 0.014), mat('TalonHorn', '#080a0e', rough=0.15, spec=0.95), hand, 'cone', rot=(-math.pi / 2 - 0.25, 0, 0))
-        else:
-            shape('ThumbBase', (side_f * 0.06, -0.005, -0.04), (0.032, 0.035, 0.038), h_mat, hand, 'ico', rot=(0.25, side_f * 0.40, 0), subsurf=1)
-            shape('ThumbTip', (side_f * 0.08, -0.025, -0.07), (0.025, 0.028, 0.032), h_mat, hand, 'ico', rot=(0.35, side_f * 0.50, 0))
-            shape('FingerKnuckles', (0, -0.065, -0.08), (0.070, 0.050, 0.040), h_mat, hand, 'cylinder', rot=(math.pi / 2, 0, 0), bevel=0.015)
-            shape('FingerIndex', (-side_f * 0.03, -0.095, -0.085), (0.018, 0.035, 0.018), h_mat, hand, 'cylinder', rot=(0.30, -side_f * 0.10, 0), subsurf=1)
-            shape('FingerMiddle', (0, -0.105, -0.088), (0.019, 0.038, 0.019), h_mat, hand, 'cylinder', rot=(0.32, 0, 0), subsurf=1)
-            shape('FingerPinky', (side_f * 0.03, -0.090, -0.082), (0.016, 0.032, 0.016), h_mat, hand, 'cylinder', rot=(0.28, side_f * 0.10, 0), subsurf=1)
+        # Palm backing / wrist pad
+        shape('PalmHeel', (0, 0.010, -0.035), (0.065, 0.060, 0.032), h_mat, hand, 'ico')
 
-        if ident == 'bento' and j == 0:
-            shape('WatchStrap', (0, -0.035, -0.26), (0.098, 0.102, 0.030), mat('WatchStrap', '#3a1c10', rough=0.4), forearm, 'cylinder')
-            shape('WatchBezel', (-0.085, -0.035, -0.26), (0.028, 0.028, 0.025), accent_mat, forearm, 'cylinder', rot=(0, math.pi / 2, 0), bevel=0.01)
+        if species == 'crow':
+            # High-fidelity avian talons with proximal digit & curved keratin hook
+            for claw_k in [-1, 0, 1]:
+                shape(f'DigitBase_{claw_k}', (claw_k * 0.036, -0.055, -0.068), (0.018, 0.036, 0.018), h_mat, hand, 'cylinder', rot=(0.35, 0, 0), subsurf=1)
+                shape(f'DigitMid_{claw_k}', (claw_k * 0.036, -0.085, -0.082), (0.015, 0.028, 0.016), h_mat, hand, 'cylinder', rot=(0.50, 0, 0), subsurf=1)
+                shape(f'ClawTip_{claw_k}', (claw_k * 0.036, -0.115, -0.096), (0.013, 0.038, 0.015), mat('TalonHorn', '#080a0e', rough=0.15, spec=0.95), hand, 'cone', rot=(math.pi / 2 + 0.38, 0, 0))
+            # Aristocratic rear spur talon
+            shape('SpurBase', (0, 0.035, -0.048), (0.017, 0.032, 0.017), h_mat, hand, 'cylinder', rot=(-0.35, 0, 0), subsurf=1)
+            shape('SpurTip', (0, 0.065, -0.062), (0.012, 0.030, 0.013), mat('TalonHorn', '#080a0e', rough=0.15, spec=0.95), hand, 'cone', rot=(-math.pi / 2 - 0.25, 0, 0))
+            # Signet ring with ruby seal on index claw
+            shape('CorvoSignetRing', (-side_f * 0.036, -0.062, -0.070), (0.024, 0.024, 0.012), accent_mat, hand, 'torus', rot=(0.38, 0, 0))
+            shape('CorvoSignetSeal', (-side_f * 0.036, -0.075, -0.075), (0.011, 0.005, 0.011), ruby_mat, hand, 'cylinder', rot=(math.pi / 2, 0, 0))
+        else:
+            # 5 Anatomical Digits with Proximal & Distal Phalanges
+            # Thumb (oponível)
+            shape('ThumbProximal', (side_f * 0.058, -0.010, -0.038), (0.026, 0.030, 0.032), h_mat, hand, 'cylinder', rot=(0.28, side_f * 0.45, 0), subsurf=1)
+            shape('ThumbDistal', (side_f * 0.082, -0.030, -0.068), (0.022, 0.026, 0.026), h_mat, hand, 'ico', rot=(0.38, side_f * 0.52, 0), subsurf=1)
+
+            # Knuckle bridge across the palm
+            shape('FingerKnuckles', (0, -0.062, -0.078), (0.070, 0.045, 0.038), h_mat, hand, 'cylinder', rot=(math.pi / 2, 0, 0), bevel=0.015)
+
+            # Index finger (indicador)
+            shape('IndexProximal', (-side_f * 0.042, -0.076, -0.075), (0.016, 0.025, 0.016), h_mat, hand, 'cylinder', rot=(0.26, -side_f * 0.08, 0), subsurf=1)
+            shape('IndexDistal', (-side_f * 0.044, -0.116, -0.088), (0.014, 0.024, 0.014), h_mat, hand, 'cylinder', rot=(0.42, -side_f * 0.08, 0), subsurf=1)
+
+            # Middle finger (médio - apoio central)
+            shape('MiddleProximal', (-side_f * 0.014, -0.082, -0.078), (0.017, 0.028, 0.017), h_mat, hand, 'cylinder', rot=(0.28, 0, 0), subsurf=1)
+            shape('MiddleDistal', (-side_f * 0.014, -0.126, -0.092), (0.015, 0.025, 0.015), h_mat, hand, 'cylinder', rot=(0.45, 0, 0), subsurf=1)
+
+            # Ring finger (anelar)
+            shape('RingProximal', (side_f * 0.016, -0.078, -0.076), (0.016, 0.026, 0.016), h_mat, hand, 'cylinder', rot=(0.30, side_f * 0.06, 0), subsurf=1)
+            shape('RingDistal', (side_f * 0.018, -0.118, -0.088), (0.014, 0.023, 0.014), h_mat, hand, 'cylinder', rot=(0.48, side_f * 0.06, 0), subsurf=1)
+
+            # Pinky finger (mínimo)
+            shape('PinkyProximal', (side_f * 0.044, -0.068, -0.072), (0.015, 0.022, 0.015), h_mat, hand, 'cylinder', rot=(0.32, side_f * 0.12, 0), subsurf=1)
+            shape('PinkyDistal', (side_f * 0.048, -0.104, -0.082), (0.013, 0.020, 0.013), h_mat, hand, 'cylinder', rot=(0.52, side_f * 0.12, 0), subsurf=1)
+
+            # Exclusive hand rings & claws
+            if ident == 'bento' and j == 1:
+                # Gold thumb signet ring on right hand
+                shape('BentoThumbRing', (0.070, -0.012, -0.042), (0.028, 0.028, 0.014), accent_mat, hand, 'torus', rot=(0.3, 0.45, 0))
+            elif ident == 'barao' and j == 0:
+                # Imperial sapphire ring on left index finger
+                shape('BaraoRingBand', (-0.038, -0.065, -0.075), (0.022, 0.022, 0.012), accent_mat, hand, 'torus', rot=(0.35, 0, 0))
+                shape('BaraoSapphire', (-0.038, -0.080, -0.078), (0.013, 0.007, 0.013), sapphire_mat, hand, 'ico', subsurf=1)
+            elif ident == 'onca':
+                # Golden claws tipping each finger
+                for fk, fx in enumerate([-side_f * 0.044, -side_f * 0.014, side_f * 0.018, side_f * 0.048]):
+                    shape(f'OncaClaw_{fk}', (fx, -0.138, -0.098), (0.008, 0.016, 0.009), accent_mat, hand, 'cone', rot=(math.pi / 2 + 0.35, 0, 0))
+            elif ident == 'nina':
+                # Inventor's fingerless leather glove with brass rivets over knuckles
+                shape('FingerlessGlove', (0, -0.02, -0.045), (0.082, 0.090, 0.038), mat('NinaGloveLeather', '#261b14', rough=0.55), hand, 'cylinder', rot=(math.pi / 2, 0, 0), bevel=0.01)
+                for rk, rx in enumerate([-0.04, -0.015, 0.015, 0.04]):
+                    shape(f'GloveRivet_{rk}', (rx, -0.072, -0.066), (0.006, 0.006, 0.005), accent_mat, hand, 'ico')
+
+        # --- PHYSICAL 3D PLAYING CARD IN ACTIVE HAND ---
+        # A card nestled between the thumb and index finger, visible during play_card
+        if is_active:
+            shape('HeldCardBack', (side_f * 0.020, -0.108, -0.076), (0.046, 0.068, 0.002), card_back_mat, hand, 'cube', rot=(0.32, -side_f * 0.12, -side_f * 0.18))
+            shape('HeldCardFace', (side_f * 0.020, -0.108, -0.074), (0.044, 0.066, 0.001), card_face_mat, hand, 'cube', rot=(0.32, -side_f * 0.12, -side_f * 0.18))
+            shape('HeldCardTrim', (side_f * 0.020, -0.108, -0.075), (0.047, 0.069, 0.0015), accent_mat, hand, 'cube', rot=(0.32, -side_f * 0.12, -side_f * 0.18))
 
     # --- HEAD SCULPTURE & ARISTOCRATIC EXPRESSIONS ---
     for side in [-1, 1]:

@@ -31,7 +31,7 @@ def mat(name, hex_color, metal=0.0, rough=0.65, spec=0.5, emit_hex=None, emit_st
     c = tuple(int(hex_color[i:i+2], 16) / 255 for i in (1, 3, 5)) + (1,)
     m = bpy.data.materials.new(name)
     m.use_nodes = True
-    p = m.node_tree.nodes.get('Principled BSDF')
+    p = next((node for node in m.node_tree.nodes if node.type == 'BSDF_PRINCIPLED'), None)
     if p:
         linear_c = tuple((v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4) for v in c[:3]) + (1,)
         p.inputs['Base Color'].default_value = linear_c
@@ -56,6 +56,10 @@ def empty(name, pos=(0, 0, 0), parent=None):
     return o
 
 def shape(name, pos, scale, material, parent, kind='ico', rot=(0, 0, 0), smooth=True, subsurf=0, bevel=0.0):
+    if name in {'ShirtBib', 'ShirtCollarL', 'ShirtCollarR', 'VestLapel', 'GoldButton',
+                'BowtieL', 'BowtieR', 'BowtieKnot', 'CravatSilk', 'QueenBrooch',
+                'BroochFrame', 'LeatherSuspender', 'SuspenderBuckle', 'WatchChainLoop', 'EmeraldDrop'}:
+        pos = (pos[0], pos[1] - .10, pos[2])
     if kind == 'ico':
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=1)
     elif kind == 'cone':
@@ -83,12 +87,23 @@ def shape(name, pos, scale, material, parent, kind='ico', rot=(0, 0, 0), smooth=
         b.width = bevel
         b.segments = 2
 
-    if subsurf > 0:
+    if subsurf > 0 and kind == 'cylinder':
+        # Rounded caps without subdividing long sleeve faces into rippled surfaces.
+        b = o.modifiers.new(name="RoundedCaps", type='BEVEL')
+        b.width = .12
+        b.segments = 3
+        b.limit_method = 'ANGLE'
+        b.harden_normals = True
+    elif subsurf > 0:
         s = o.modifiers.new(name="Subsurf", type='SUBSURF')
         s.levels = subsurf
         s.render_levels = subsurf
 
     o.data.materials.append(material)
+    # Bake each shape before joining: otherwise only the active object's modifier
+    # survives the join and can distort every lapel, button and limb in that group.
+    for modifier in list(o.modifiers):
+        bpy.ops.object.modifier_apply(modifier=modifier.name)
     return o
 
 def animate(obj, clip, keys):
@@ -119,17 +134,13 @@ def build(index, ident, species, skinhex, coathex, accenthex, sechex):
     # Clean active Blender scene
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
-    for a in list(bpy.data.actions):
-        bpy.data.actions.remove(a)
-    for m in list(bpy.data.materials):
-        bpy.data.materials.remove(m)
 
     # Core High-Fidelity PBR Materials
     skin_mat = mat(f'{ident}_skin', skinhex, rough=0.60)
     coat_mat = mat(f'{ident}_coat', coathex, rough=0.82) # Velvet coat
     satin_mat = mat(f'{ident}_satin', coathex, rough=0.28) # Silk/satin lapels
     accent_mat = mat(f'{ident}_accent', accenthex, metal=0.90, rough=0.18, spec=1.0) # Gold / Brass
-    linen_mat = mat('LinenShirt', sechex, rough=0.65) # Shirt linen
+    linen_mat = mat('LinenShirt', '#f0ebd8' if species == 'crow' else sechex, rough=0.65)
     leather_mat = mat('PolishedLeather', '#141820', rough=0.25)
     amber_eyes = mat('AmberEye', '#f5b838', rough=0.08, spec=1.0, emit_hex='#f5b838', emit_strength=0.15)
     pupil_mat = mat('Pupil', '#05070a', rough=0.05, spec=1.0)
@@ -501,6 +512,8 @@ def build(index, ident, species, skinhex, coathex, accenthex, sechex):
         filepath=str(out_glb),
         export_format='GLB',
         use_selection=True,
+        use_active_scene=True,
+        export_current_frame=True,
         export_apply=True,
         export_animation_mode='NLA_TRACKS',
         export_force_sampling=True,
@@ -535,7 +548,7 @@ def build(index, ident, species, skinhex, coathex, accenthex, sechex):
 
     out_png_3d = OUT / f"{ident}_3d.png"
     scene.render.filepath = str(out_png_3d)
-    bpy.ops.wm.save_as_mainfile(filepath=str(SOURCE / f"{ident}.blend"))
+    bpy.data.libraries.write(str(SOURCE / f"{ident}.blend"), {scene}, fake_user=True)
     bpy.ops.render.render(write_still=True)
 
     print(f"[Blender] Stylized AAA model generated: {ident}.glb ({out_glb.stat().st_size} bytes)", flush=True)

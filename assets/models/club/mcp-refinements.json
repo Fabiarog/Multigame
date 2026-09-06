@@ -1,0 +1,97 @@
+[
+  {
+    "character": "corvo",
+    "clips": [
+      "entrance",
+      "truco",
+      "victory",
+      "boss_intro",
+      "flourish"
+    ],
+    "meshes": 4
+  },
+  {
+    "character": "onca",
+    "clips": [
+      "entrance",
+      "truco",
+      "victory",
+      "boss_intro",
+      "flourish"
+    ],
+    "meshes": 4
+  },
+  {
+    "character": "barao",
+    "clips": [
+      "entrance",
+      "truco",
+      "victory",
+      "boss_intro",
+      "flourish"
+    ],
+    "meshes": 4
+  },
+  {
+    "character": "dama",
+    "clips": [
+      "entrance",
+      "truco",
+      "victory",
+      "boss_intro",
+      "flourish"
+    ],
+    "meshes": 4
+  },
+  {
+    "character": "nina",
+    "rest_pose_fixed": true,
+    "clips": [
+      "entrance",
+      "truco",
+      "victory",
+      "boss_intro",
+      "flourish"
+    ]
+  },
+  {
+    "character": "bento",
+    "rest_pose_fixed": true,
+    "clips": [
+      "entrance",
+      "truco",
+      "victory",
+      "boss_intro",
+      "flourish"
+    ]
+  },
+  {
+    "character": "iara",
+    "rest_pose_fixed": true,
+    "clips": [
+      "entrance",
+      "truco",
+      "victory",
+      "boss_intro",
+      "flourish"
+    ]
+  },
+  {
+    "character": "zeca",
+    "rest_pose_fixed": true,
+    "clips": [
+      "entrance",
+      "truco",
+      "victory",
+      "boss_intro",
+      "flourish"
+    ]
+  },
+  {
+    "prop": "club_clock",
+    "clips": [
+      "idle"
+    ],
+    "meshes": 2
+  }
+]

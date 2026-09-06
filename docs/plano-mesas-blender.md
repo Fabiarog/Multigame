@@ -2,6 +2,8 @@
 
 Data: 5 de setembro de 2026. Continuação da [repaginada do clube](plano-repaginacao-clube.md), incorporando as alterações posteriores do usuário em vídeo, gráficos e infraestrutura de rede.
 
+Registro histórico desta etapa. A versão de 6 de setembro usa o elenco arredondado e os cenários atualizados pelo usuário, seguidos dos refinamentos via MCP descritos no **Patch 8** de [AI_DEV_PATCH_NOTES.md](../AI_DEV_PATCH_NOTES.md). Os números de desempenho abaixo pertencem à arte anterior; consulte o patch para a validação atual.
+
 ## Implementado
 
 ### Elenco e Blender

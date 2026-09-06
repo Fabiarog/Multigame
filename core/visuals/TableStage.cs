@@ -15,6 +15,10 @@ public partial class TableStage : SubViewportContainer
     private Camera3D _camera;
     private Godot.Environment _environment;
     private DirectionalLight3D _key;
+    private OmniLight3D _pendant;
+    private AnimationPlayer _clockAnimator;
+    private string _clockClip;
+    private bool _clockMoving;
     private readonly List<Node3D> _actors = new(), _hands = new(), _played = new(), _discards = new(), _collecting = new(), _chairs = new();
     private readonly List<Vector3> _positions = new();
     private readonly List<int> _cast = new();
@@ -43,11 +47,11 @@ public partial class TableStage : SubViewportContainer
         _viewport = new SubViewport { Name = "TableViewport", TransparentBg = false, OwnWorld3D = true,
             GuiDisableInput = true, HandleInputLocally = false, Size = new Vector2I(1280, 720) };
         _viewport.Msaa3D = Viewport.Msaa.Msaa4X;
-        _viewport.ScreenSpaceAA = Viewport.ScreenSpaceAAEnum.Fxaa;
+        _viewport.ScreenSpaceAA = Viewport.ScreenSpaceAAEnum.Disabled;
         AddChild(_viewport);
         _world = new Node3D(); _viewport.AddChild(_world);
 
-        // Near-Ray Tracing Environment (SSAO contact shadows, SSR floor reflections, ACES Tonemapping, Bloom)
+        // Raster lighting with optional screen-space effects; no hardware ray tracing.
         _environment = new Godot.Environment {
             BackgroundMode = Godot.Environment.BGMode.Color,
             BackgroundColor = new Color("#080c0a"),
@@ -59,20 +63,20 @@ public partial class TableStage : SubViewportContainer
             TonemapExposure = 1.10f,
 
             // SSAO (Screen-Space Ambient Occlusion) for deep contact shadows under furniture and characters
-            SsaoEnabled = true,
+            SsaoEnabled = false,
             SsaoRadius = 0.85f,
             SsaoIntensity = 1.4f,
             SsaoPower = 1.5f,
 
             // SSR (Screen-Space Reflections) reflecting table, lights and chairs onto polished floors
-            SsrEnabled = true,
+            SsrEnabled = false,
             SsrMaxSteps = 48,
             SsrFadeIn = 0.15f,
             SsrFadeOut = 1.5f,
             SsrDepthTolerance = 0.3f,
 
             // Atmospheric bloom for wall sconces and chandelier
-            GlowEnabled = true,
+            GlowEnabled = false,
             GlowIntensity = 0.38f,
             GlowBloom = 0.16f,
             GlowBlendMode = Godot.Environment.GlowBlendModeEnum.Softlight
@@ -81,6 +85,22 @@ public partial class TableStage : SubViewportContainer
 
         // Load default 3D room background
         SetRoomTheme(_currentRoomTheme);
+        var clockScene = GD.Load<PackedScene>("res://assets/models/club/club_clock.glb");
+        var clock = clockScene.Instantiate<Node3D>();
+        clock.Name = "ClubClock";
+        clock.Scale = Vector3.One * .78f;
+        clock.Position = new Vector3(-3.8f, .52f, -4.4f);
+        _world.AddChild(clock);
+        foreach (var node in clock.FindChildren("*", "AnimationPlayer", true, false))
+        {
+            _clockAnimator = (AnimationPlayer)node;
+            foreach (string clip in _clockAnimator.GetAnimationList())
+                if (clip == "idle" || clip.EndsWith("/idle"))
+                {
+                    _clockClip = clip;
+                    _clockAnimator.GetAnimation(clip).LoopMode = Animation.LoopModeEnum.Linear;
+                }
+        }
 
         Cylinder("WalnutRim", 4.7f, .26f, new Color("#2e1710"), new Vector3(0, -.15f, 0), .62f);
         Cylinder("BrassInlay", 4.57f, .05f, new Color("#dfaf42"), Vector3.Zero, .62f);
@@ -108,14 +128,15 @@ public partial class TableStage : SubViewportContainer
         _world.AddChild(_key);
 
         // Warm pendant chandelier directly above table center
-        _world.AddChild(new OmniLight3D {
+        _pendant = new OmniLight3D {
             Position = new Vector3(0, 3.2f, 0.1f),
             LightColor = new Color("#ffeed0"),
             LightEnergy = 1.6f,
             OmniRange = 9.0f,
             OmniAttenuation = 1.15f,
             ShadowEnabled = true
-        });
+        };
+        _world.AddChild(_pendant);
 
         // Ambient rim light for character silhouettes
         _world.AddChild(new OmniLight3D {
@@ -128,7 +149,7 @@ public partial class TableStage : SubViewportContainer
 
         _camera = new Camera3D { Position = new Vector3(0, 6.2f, 11), Projection = Camera3D.ProjectionType.Orthogonal,
             KeepAspect = Camera3D.KeepAspectEnum.Width, Size = 12, Current = true };
-        _world.AddChild(_camera); _camera.LookAt(new Vector3(0, .4f, 0), Vector3.Up);
+        _world.AddChild(_camera); _camera.LookAt(new Vector3(0, .7f, 0), Vector3.Up);
         SetCast(RivalIndex, SeatCount);
         for (int i = 0; i < 7; i++)
             _world.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(.58f, .018f, .82f) },
@@ -184,7 +205,7 @@ public partial class TableStage : SubViewportContainer
                 {
                     var light = new OmniLight3D
                     {
-                        Position = new Vector3(sx, 4.0f, -7.8f),
+                        Position = new Vector3(sx, 4.0f, -5.9f),
                         LightColor = sconceColor,
                         LightEnergy = sconceEnergy,
                         OmniRange = 6.5f,
@@ -208,19 +229,21 @@ public partial class TableStage : SubViewportContainer
         var settings = GraphicsQualityManager.Instance?.RtSettings;
         bool forward = RenderingServer.GetCurrentRenderingMethod() == "forward_plus";
         bool enhanced = forward && SettingsManager.Instance?.VfxEnabled != false;
+        bool detailed = enhanced && settings?.RayTracingEnabled == true;
         _viewport.Scaling3DScale = VideoSettingsManager.Instance?.RenderScale ?? 1;
-        _viewport.Msaa3D = Viewport.Msaa.Msaa4X;
-        _viewport.ScreenSpaceAA = Viewport.ScreenSpaceAAEnum.Fxaa;
-        _key.ShadowEnabled = true;
+        _viewport.Msaa3D = detailed ? Viewport.Msaa.Msaa4X : Viewport.Msaa.Msaa2X;
+        _viewport.ScreenSpaceAA = detailed ? Viewport.ScreenSpaceAAEnum.Fxaa : Viewport.ScreenSpaceAAEnum.Disabled;
+        _key.ShadowEnabled = detailed;
+        _pendant.ShadowEnabled = detailed && settings.RtaoQuality >= RayTracingSettings.RtQualityLevel.High;
         _key.DirectionalShadowMaxDistance = 24;
-        _environment.SsaoEnabled = true;
+        _environment.SsaoEnabled = detailed && settings.RtaoEnabled;
         _environment.SsaoRadius = .85f; _environment.SsaoIntensity = 1.4f;
-        _environment.SsrEnabled = true;
+        _environment.SsrEnabled = detailed && settings.RtReflectionsEnabled;
         _viewport.TransparentBg = false;
         _environment.SsrMaxSteps = settings?.RtReflectionsQuality == RayTracingSettings.RtQualityLevel.Ultra ? 56 : 36;
         _environment.SdfgiEnabled = false;
         _environment.AmbientLightEnergy = enhanced && settings?.RayTracingEnabled == true && settings.RtgiEnabled ? .55f : .42f;
-        _environment.GlowEnabled = true;
+        _environment.GlowEnabled = enhanced;
         _environment.GlowIntensity = .38f;
     }
 
@@ -324,7 +347,7 @@ public partial class TableStage : SubViewportContainer
             _actors.Add(actor); _animators.Add(animator); _positions.Add(positions[seat]); _cast.Add(character);
 
             // Hand fan held right at the table edge in front of the character, oriented coaxially with chair and character
-            var hand = new Node3D { Position = pos + toCenter * 0.42f + new Vector3(0, 0.90f, 0), Rotation = new Vector3(0, rotY, 0) };
+            var hand = new Node3D { Position = pos + toCenter * 0.72f + new Vector3(0, 0.95f, 0), Rotation = new Vector3(0, rotY, 0) };
             _world.AddChild(hand); _hands.Add(hand); SetCardCount(seat, 3);
         }
     }
@@ -383,13 +406,12 @@ public partial class TableStage : SubViewportContainer
         var face = new StandardMaterial3D
         {
             AlbedoTexture = GD.Load<Texture2D>($"res://assets/models/cards/{rank}-{suit}.png"),
-            Roughness = 0.45f,
+            Roughness = 0.85f,
             CullMode = BaseMaterial3D.CullModeEnum.Disabled,
             TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic,
             TextureRepeat = false,
             ShadingMode = BaseMaterial3D.ShadingModeEnum.PerPixel,
-            EmissionEnabled = true,
-            Emission = isSpecial ? new Color(0.32f, 0.26f, 0.08f) : new Color(0.18f, 0.18f, 0.18f)
+            EmissionEnabled = false
         };
         card.AddChild(new MeshInstance3D
         {
@@ -485,7 +507,7 @@ public partial class TableStage : SubViewportContainer
             {
                 var card = roundCards[i];
                 if (!IsInstanceValid(card)) continue;
-                card.Position = discardBase + new Vector3(0, (_discards.Count + i) * 0.014f, 0);
+                card.Position = discardBase + new Vector3(0, _discards.Count * 0.014f, 0);
                 card.Rotation = new Vector3(Mathf.Pi, (i % 3 - 1) * 0.08f, 0);
                 _discards.Add(card);
             }
@@ -635,11 +657,18 @@ public partial class TableStage : SubViewportContainer
     public override void _Process(double delta)
     {
         if(_camera==null)return;
-        _camera.Size=Mathf.Max(11.5f,Size.X/Mathf.Max(1,Size.Y)*5.2f);
+        bool motion = SettingsManager.Instance?.ReduceMotion != true;
+        if (_clockAnimator != null && _clockClip != null && motion != _clockMoving)
+        {
+            if (motion) _clockAnimator.Play(_clockClip);
+            else _clockAnimator.Pause();
+            _clockMoving = motion;
+        }
+        _camera.Size=Mathf.Max(11.5f,Size.X/Mathf.Max(1,Size.Y)*6.2f);
         if(SettingsManager.Instance?.ReduceMotion==true||_intro)return;
         _time+=(float)delta;
         _camera.Position=new Vector3(Mathf.Sin(_time*.17f)*.07f,6.2f,11);
-        _camera.LookAt(new Vector3(0,.4f,0),Vector3.Up);
+        _camera.LookAt(new Vector3(0,.7f,0),Vector3.Up);
     }
 
     public override void _ExitTree()

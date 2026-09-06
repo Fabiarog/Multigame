@@ -52,8 +52,7 @@ function Invoke-GodotQa {
         throw "Godot QA failed with exit code $($process.ExitCode). Report/logs: $qaDirectory"
     }
     # Godot may report script exceptions without returning a nonzero code.
-    $runtimeErrors = Select-String -LiteralPath $stdoutPath, $stderrPath -Pattern '(^|\s)(SCRIPT ERROR:|ERROR:|Unhandled exception)' |
-        Where-Object { $_.Line -notmatch 'resources still in use at exit' }
+    $runtimeErrors = Select-String -LiteralPath $stdoutPath, $stderrPath -Pattern '(^|\s)(SCRIPT ERROR:|ERROR:|Unhandled exception)'
     if ($runtimeErrors) {
         throw "Godot reported runtime errors. Logs: $qaDirectory"
     }
@@ -77,7 +76,7 @@ try {
         Write-Output "Benchmark report: $reportPath"
         return
     }
-    Invoke-GodotQa -GodotArguments @('--headless', '--path', $projectDirectory, '--script', 'res://tools/gameplay_smoke.gd') -LogName 'gameplay'
+    Invoke-GodotQa -GodotArguments @('--headless', '--audio-driver', 'Dummy', '--path', $projectDirectory, '--script', 'res://tools/gameplay_smoke.gd') -LogName 'gameplay'
     $captureArguments = @('--path', $projectDirectory, '--rendering-method', 'gl_compatibility', '--rendering-driver', 'opengl3', '--audio-driver', 'Dummy', '--windowed', '--resolution', '1280x720', '--position', '-20000,-20000', '--script', 'res://tools/visual_smoke.gd', '--', $OutputDirectory, $reportPath)
     if ($AllowLayoutWarnings) { $captureArguments += '--allow-layout-warnings' }
     Invoke-GodotQa -GodotArguments $captureArguments -LogName 'capture'

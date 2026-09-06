@@ -157,7 +157,8 @@ public partial class GraphicsQualityManager : Node
 
         if (env == null)
         {
-            GD.PrintErr("[Graphics] No Environment found on the current WorldEnvironment — skipping apply.");
+            // Tables own their SubViewport worlds and apply these settings themselves.
+            EmitSignal(SignalName.GraphicsSettingsApplied);
             return;
         }
 

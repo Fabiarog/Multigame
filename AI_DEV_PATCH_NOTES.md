@@ -127,6 +127,45 @@ MultiGame (conhecido internamente como `GameHub`) é um ecossistema de jogos de 
 
 ---
 
+### Patch 8: Refinamento pelo Blender MCP, Poses de Repouso e Iluminação da Mesa — 06/09/2026
+
+**Base preservada:** snapshot inicial `86ce062` e, depois, os fontes de construção mais recentes do usuário em `ec149ea`, enviados à branch **Backup** antes de seus respectivos refinamentos. Implementação na branch **review**, mantendo o acervo de personagens e as quatro salas recebidas.
+
+* **Blender conectado:** `tools/blender_bridge.py` conversa com o protocolo JSON do addon local na porta `9876`, usando `get_scene_info` e `execute_code`. `tools/refine_club_mcp.py` foi executado na instância aberta do Blender. As cenas originais não são apagadas; fontes refinadas são salvas separadamente.
+* **Direção de arte confirmada pelo usuário:** preservar essência, silhueta, roupas, cores e personalidade; elevar o acabamento da construção existente. `tools/polish_cast_mcp.py` aplica subdivisão seletiva da anatomia, chanfros nas bordas e ajuste de rugosidade de tecidos nos oito personagens. Mantém quatro grupos articulados por modelo, com mais geometria nas curvas. Os números antes/depois ficam em `assets/models/club/cast-polish.json`; os retratos de estúdio passam a 640×800. A referência AAA orienta o acabamento, sem transformar o elenco em outros personagens.
+* **Corvo e Onça:** punhos com penas e broche no Corvo, detalhes do focinho e lapela na Onça. Novos movimentos articulados: saudação contida e abertura das asas no Corvo; preparação do ombro, desafio com a pata e comemoração na Onça. O floreio cosmético já desbloqueado por vitórias usa os novos gestos.
+* **Bosses:** Barão abre as asas e faz uma reverência; Dama inclina o corpo e observa os dois lados antes do desafio. Continuam exclusivos de boss. Mantidos os cinco nomes de clipes exigidos em todos os oito GLBs.
+* **Correção importante nos oito modelos:** o exportador usava o frame 0, fora das faixas NLA, zerando a posição de cabeça/braços em repouso. Agora exporta a pose atual dentro da faixa. Personagens completos também com **Reduzir movimento** e antes da primeira animação. O gerador base recebeu a mesma correção.
+* **Materiais e construção no Blender:** busca do shader pelo tipo do nó, em vez de seu nome traduzido, corrigindo materiais brancos. Modificadores são aplicados em cada peça antes da união, evitando que o modificador de um objeto deforme todas as lapelas e botões. Camisa, colete e acessórios recebem separação em profundidade; mangas usam extremidades arredondadas. O Corvo conserva a camisa creme da identidade anterior. Fontes são salvos por cena, sem substituir a sessão aberta do Blender.
+* **Cenário:** relógio de salão original, com pedestal de madeira, mostrador creme, latão e pêndulo animado, integrado às mesas. Usa duas malhas e nenhuma luz adicional. O pêndulo pausa com redução de movimento. Luzes das arandelas reposicionadas para a frente da parede existente.
+* **Mesa e clareza:** estado da rodada movido para o placar lateral no Truco, liberando o rosto do participante ao fundo. Enquadramento ajustado para a coroa do boss na área panorâmica do pôquer. Leques avançados à frente da roupa para continuarem visíveis, mantendo o alinhamento de cada assento. Cartas físicas mantidas, com superfície fosca sem emissão branca; corrigido o espaçamento do descarte na redução de movimento. Removidos os dois contêineres antigos de cartas 2D que permaneciam órfãos na memória.
+* **Gráficos:** a mesa respeita a chave geral, os controles individuais de AO/reflexos, VFX e o renderer. Perfil básico usa MSAA 2× e iluminação sem sombras dinâmicas; modo detalhado usa MSAA 4× e sombras/opções extras. FXAA, SSAO e SSR não são ativados no Compatibility. O gerenciador agora avisa os mundos privados dos SubViewports mesmo sem WorldEnvironment na raiz. Continuam sendo efeitos de rasterização/espaço de tela, sem ray tracing por hardware; GI da mesa usa preenchimento ambiente, sem SDFGI.
+* **Áudio e manutenção:** players param e liberam streams ao sair. QA headless usa saída de áudio Dummy e não ignora erros de recursos ao encerrar.
+
+**Arquivos de arte:** oito fontes `art/blender/*_mcp.blend`, `art/blender/club_clock.blend`, oito GLBs de personagens atualizados, `club_clock.glb`, oito retratos de estúdio 640×800, `assets/models/club/mcp-refinements.json` e `cast-polish.json`. O atlas pixel art recebido permanece como retrato da interface.
+
+**Reproduzir sobre os fontes atuais**, com o servidor Blender ligado:
+
+```powershell
+python tools/blender_bridge.py get_scene_info
+python tools/blender_bridge.py execute_code --code-file tools/refine_club_mcp.py --timeout 120
+python tools/blender_bridge.py execute_code --code-file tools/polish_cast_mcp.py --timeout 180
+```
+
+Se regenerar primeiro os oito personagens com `build_blender_cast.py`, reaplique `refine_club_mcp.py` e depois `polish_cast_mcp.py`. Para arte manual, use os fontes `_mcp.blend`; o script de refinamento parte dos fontes base, não de edições manuais posteriores nesses arquivos. Ambos também funcionam no Blender em background.
+
+Para reconstruir também os fontes base pelo servidor, use `python tools/blender_bridge.py execute_code --code-file tools/rebuild_cast_mcp.py --timeout 180` antes dos dois passos acima. Esse comando recria os `.blend` base a partir do gerador e trabalha em cenas separadas. O polimento final levou o Corvo de **27.828 para 63.184 faces** e a Onça de **26.502 para 53.106 faces**; são faces Blender, não a contagem de triângulos após exportação/LOD.
+
+**Próximas entregas:** missões além das três vitórias, poderes mecânicos próprios dos bosses e sincronização de partida entre computadores. Esta rodada não adiciona rede de turnos nem o modo Fodinha. Decisões para a próxima etapa: habilidades de Barão/Dama e tipos de missão para desbloquear reações.
+
+**Validação final:** build C# sem erros/avisos; **71 asserções de integração aprovadas**, incluindo os cinco clipes, as quatro partes de cada personagem, cores dos materiais, repouso sem animação, partidas solo 2×2/3×3 e decisões de Pena. QA visual: **20 capturas, 18 ações, zero falhas e zero problemas de enquadramento de interface detectados**; [relatório](docs/qa-mcp.json). Há ainda avisos de ObjectDB ao encerrar o Godot (1–2 instâncias nos testes), sem erro de recurso na execução final. O encerramento do QA drena o mixer de áudio antes de liberar os players.
+
+**Executável:** `Game Hub.exe`/`Game Hub.pck` e runtime .NET local reexportados em **debug para revisão**. Os templates release instalados continuam incompletos. Para copiar a versão a outro PC, incluir também `data_GameHub_windows_x86_64` (gerado, fora do Git) ou exportar novamente a partir do projeto.
+
+**Desempenho medido com os modelos polidos:** teste sintético com seis personagens e 18 cartas, RTX 3050, Vulkan/Forward+, VSync desligado, 120 quadros por combinação após aquecimento. Mediana/P95 em 720p: Leve **1,318/1,652 ms**, Ultra **1,873/2,174 ms**. Saída 4K: Leve **3,947/4,332 ms**, Ultra **4,477/4,860 ms**. [Relatório bruto](docs/benchmark-mcp.json) e capturas em `docs/screenshots-mcp/`. A janela 4K inclui a interface e o SubViewport da mesa com sua escala atual; não é uma medição de ray tracing nativo nem garantia de FPS para outras máquinas ou partidas prolongadas. Não comparar diretamente com a medição anterior ao polimento: a resolução do desktop e a carga da máquina mudaram durante a sessão.
+
+---
+
 ## 3. Guia de Operações e Comandos Essenciais
 
 Para qualquer IA ou desenvolvedor executando tarefas neste projeto, utilize sempre os comandos abaixo:
@@ -164,7 +203,7 @@ $env:DOTNET_ROOT = "C:\Users\Lucas\AppData\Local\Temp\multigame-tools\dotnet"
 $env:GODOT_BIN = "C:\Users\Lucas\AppData\Local\Temp\multigame-tools\godot\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe"
 & powershell -ExecutionPolicy Bypass -File tools\visual_smoke.ps1 -AllowLayoutWarnings
 ```
-> **Nota de QA:** A suíte valida 42 asserções críticas em `tools/GameplayChecks.cs` (incluindo integridade de baralho, turnos de truco 1v1, 2v2 e 3v3, e garantia de que todos os modelos exportam os 5 clipes de animação) e captura 20 screenshots em `docs/screenshots/`.
+> **Nota de QA atualizada pelo Patch 8:** A suíte valida 71 asserções em `tools/GameplayChecks.cs`, incluindo materiais, poses, cinco clipes por modelo, integridade do baralho e turnos solo 2v2/3v3. A fumaça visual também exercita 1v1 e pôquer, com 20 capturas em `docs/screenshots/`.
 
 ---
 

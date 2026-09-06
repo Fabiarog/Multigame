@@ -30,7 +30,10 @@ public partial class GameplayChecks : Node
         GameHub.Core.Graphics.GraphicsQualityManager.Instance.ApplyNewSettings(quality);
         foreach(var table in GetTree().CurrentScene.FindChildren("*", "SubViewportContainer", true, false).OfType<TableStage>())
         {
-            table.ApplyLighting(); table.ClearPlayedCards();
+            var environment = table.FindChildren("TableLighting", "WorldEnvironment", true, false).OfType<WorldEnvironment>().Single().Environment;
+            if (environment.SsaoEnabled != ultra || environment.SsrEnabled != ultra)
+                throw new InvalidOperationException("Graphics changes must reach the table's private viewport through the settings signal.");
+            table.ClearPlayedCards();
             for(int i=0;i<18;i++) table.PlayCard(i%6,new[]{"A♠","K♥","Q♦","J♣","3♥","2♠"}[i%6]);
         }
     }
@@ -45,8 +48,20 @@ public partial class GameplayChecks : Node
                 var model = GD.Load<PackedScene>(CharacterCatalog.ModelPath(character)).Instantiate<Node3D>();
                 var animator = model.FindChildren("*", "AnimationPlayer", true, false).OfType<AnimationPlayer>().First();
                 Assert(new[] { "entrance", "truco", "victory", "boss_intro", "flourish" }.All(clip => animator.GetAnimationList().Any(name => name == clip || name.EndsWith("/" + clip))), "Each Blender model exports all five animated clips");
+                Assert(model.FindChildren("*", "MeshInstance3D", true, false).Count == 4, "Each GLB contains exactly one four-part character, without other open Blender scenes");
+                var head = model.FindChildren("Head*", "Node3D", true, false).OfType<Node3D>().First(node => node is not MeshInstance3D);
+                Assert(head.Position.Y > 1.3f, "Head retains its rest height without playing an animation");
+                var skin = model.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>()
+                    .SelectMany(mesh => Enumerable.Range(0, mesh.Mesh.GetSurfaceCount()).Select(surface => mesh.Mesh.SurfaceGetMaterial(surface)))
+                    .OfType<StandardMaterial3D>().First(material => material.ResourceName.StartsWith(CharacterCatalog.Ids[character] + "_skin", StringComparison.Ordinal));
+                var color = skin.AlbedoColor;
+                Assert(Mathf.Max(color.R, Mathf.Max(color.G, color.B)) - Mathf.Min(color.R, Mathf.Min(color.G, color.B)) > .005f,
+                    "Character skin retains its palette instead of Blender's default white material");
                 model.Free();
             }
+            var clock = GD.Load<PackedScene>("res://assets/models/club/club_clock.glb").Instantiate<Node3D>();
+            Assert(clock.FindChildren("*", "AnimationPlayer", true, false).OfType<AnimationPlayer>().Any(player => player.HasAnimation("idle")), "Clock exports its pendulum animation");
+            clock.Free();
             Assert(CharacterCatalog.PlayableCount == 6 && CharacterCatalog.IsBoss(6) && CharacterCatalog.IsBoss(7), "Bosses are separated from playable characters");
             SettingsManager.Instance.CharacterId = "corvo";
             for (int win = 0; win < 3; win++) CharacterProgress.RecordWin();
@@ -71,6 +86,10 @@ public partial class GameplayChecks : Node
                 var seats = new HashSet<int>();
                 var played = new HashSet<string>();
                 var table = GetTree().CurrentScene.FindChildren("*", "SubViewportContainer", true, false).OfType<TableStage>().First();
+                var environment = table.FindChildren("TableLighting", "WorldEnvironment", true, false).OfType<WorldEnvironment>().Single().Environment;
+                Assert(!environment.SsaoEnabled && !environment.SsrEnabled, "Default light settings disable costly screen-space effects");
+                var clockPlayer = table.FindChildren("ClubClock", "Node3D", true, false).First().FindChildren("*", "AnimationPlayer", true, false).OfType<AnimationPlayer>().Single();
+                Assert(!clockPlayer.IsPlaying(), "Reduced motion keeps the pendulum still");
                 Assert(Enumerable.Range(0,teamSize*2).All(seat=>table.VisibleHandCount(seat)==3), "Every seat displays its dealt three-card fan");
                 int pileCount = 0;
                 bool pileCorrect = true;

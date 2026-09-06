@@ -56,10 +56,24 @@ public partial class AudioManager : Node
 
     public override void _ExitTree()
     {
-        _fade?.Kill();
+        StopAll();
         _cache.Clear();
         _effects.Clear();
         if (Instance == this) Instance = null;
+    }
+    public void StopAll()
+    {
+        _fade?.Kill();
+        ReleasePlayer(_music);
+        ReleasePlayer(_outgoing);
+        foreach (var player in _effects) ReleasePlayer(player);
+        _playing = "";
+    }
+    private static void ReleasePlayer(AudioStreamPlayer player)
+    {
+        if (!IsInstanceValid(player)) return;
+        player.Stop();
+        player.Stream = null;
     }
     public void RefreshTrack() => PlayMusic(_context);
     private float MusicDb() => Db((SettingsManager.Instance?.MasterVolume ?? 1) * (SettingsManager.Instance?.MusicVolume ?? .8f) * .55f);

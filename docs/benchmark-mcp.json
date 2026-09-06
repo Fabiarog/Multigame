@@ -1,0 +1,39 @@
+{
+	"gpu": "NVIDIA GeForce RTX 3050",
+	"measurements": [
+		{
+			"draw_calls": 499.0,
+			"median_frame_ms": 1.318,
+			"p95_frame_ms": 1.652,
+			"primitives": 91070.0,
+			"quality": "leve",
+			"size": "(1280, 720)"
+		},
+		{
+			"draw_calls": 838.0,
+			"median_frame_ms": 1.873,
+			"p95_frame_ms": 2.174,
+			"primitives": 115820.0,
+			"quality": "ultra",
+			"size": "(1280, 720)"
+		},
+		{
+			"draw_calls": 499.0,
+			"median_frame_ms": 3.947,
+			"p95_frame_ms": 4.332,
+			"primitives": 91070.0,
+			"quality": "leve",
+			"size": "(3840, 2160)"
+		},
+		{
+			"draw_calls": 838.0,
+			"median_frame_ms": 4.477,
+			"p95_frame_ms": 4.86,
+			"primitives": 115820.0,
+			"quality": "ultra",
+			"size": "(3840, 2160)"
+		}
+	],
+	"renderer": "forward_plus",
+	"synthetic_scene": true
+}

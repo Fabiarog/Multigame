@@ -19,8 +19,6 @@ public partial class TrucoUI : Control
     private Label _stakesLabel;
     private Label _statusLabel;
     private HBoxContainer _playerHandContainer;
-    private HBoxContainer _tablePlayerRow;
-    private HBoxContainer _tableOpponentRow;
     private HBoxContainer _tombosContainer;
     private Button _trucoBtn;
     private Button _cutDeckBtn;
@@ -195,7 +193,11 @@ public partial class TrucoUI : Control
             _tombosContainer.AddChild(dot);
         }
         scoreBox.AddChild(_tombosContainer);
-        scoreBox.AddChild(ClubTheme.Label("Melhor de três tombos", 13, TextSecondary));
+        _roundLabel = ClubTheme.Label("TOMBO 01 / 03", 12, Gold);
+        scoreBox.AddChild(_roundLabel);
+        _statusLabel = ClubTheme.Label("Preparando o baralho...", 15, TextPrimary);
+        _statusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        scoreBox.AddChild(_statusLabel);
         scoreBox.AddChild(CreateExpandSpacer());
         _dealerLabel = ClubTheme.Label("DISTRIBUIDOR\nVocê", 14, TextSecondary);
         _dealerLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -206,30 +208,9 @@ public partial class TrucoUI : Control
         _stage = new TableStage { SeatCount = _game.TeamSize * 2, RivalIndex = 1 };
         tableSurface.AddChild(_stage);
 
-        // Elegant floating HUD badge for Round & Status without blocking the 3D table felt
-        var tableHud = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        tableHud.SetAnchorsAndOffsetsPreset(LayoutPreset.TopWide);
-        tableHud.OffsetTop = 14;
-        var hudBadge = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
-        hudBadge.AddThemeStyleboxOverride("panel", ClubTheme.Box(new Color(0.02f, 0.06f, 0.05f, 0.85f), ClubTheme.Border, 8));
-        var hudCol = Column(2);
-        hudBadge.AddChild(hudCol);
-        _roundLabel = ClubTheme.Label("TOMBO 01 / 03", 12, Gold);
-        _roundLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        hudCol.AddChild(_roundLabel);
-        _statusLabel = ClubTheme.Label("Preparando o baralho...", 16, TextPrimary);
-        _statusLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        _statusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _statusLabel.CustomMinimumSize = new Vector2(360, 24);
-        hudCol.AddChild(_statusLabel);
-        var hudCenter = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
-        hudCenter.AddChild(hudBadge);
-        tableHud.AddChild(hudCenter);
-        tableSurface.AddChild(tableHud);
+        // Status lives beside the table so the northern player's face stays visible.
         body.AddChild(tableSurface);
 
-        _tableOpponentRow = new HBoxContainer();
-        _tablePlayerRow = new HBoxContainer();
 
         var viraPanel = NewPanel(PanelBg, ClubTheme.Border, 18);
         viraPanel.CustomMinimumSize = new Vector2(210, 0);
@@ -713,17 +694,6 @@ public partial class TrucoUI : Control
             return;
         }
         Vector2 center = GetDeckScreenPosition();
-        foreach (var row in new[] { _tablePlayerRow, _tableOpponentRow })
-        {
-            foreach (var child in row.GetChildren())
-            {
-                if (child is not Control source) continue;
-                var ghost = CreateAnimatedCardBack();
-                ghost.Position = source.GetGlobalRect().GetCenter() - ghost.Size / 2f;
-                _dealAnimationLayer.AddChild(ghost);
-                CreateTween().TweenProperty(ghost, "position", center - ghost.Size / 2f, MotionDuration(0.32f)).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.In);
-            }
-        }
         var pass = CreateTween();
         pass.TweenInterval(MotionDuration(0.4f));
         if (_deckStackVisual == null || !IsInstanceValid(_deckStackVisual))

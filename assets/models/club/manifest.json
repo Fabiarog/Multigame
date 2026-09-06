@@ -1,5 +1,5 @@
 {
-  "generator": "Blender 5.2.1 High-Aesthetic Pipeline",
+  "generator": "Blender 5.2.1 Stylized AAA Pipeline",
   "characters": [
     "nina",
     "bento",
@@ -17,5 +17,5 @@
     "boss_intro",
     "flourish"
   ],
-  "style": "High-fidelity stylized 3D club cast, tailored clothing & PBR velvet/metals"
+  "style": "Stylized Triple-A high-fidelity character meshes, continuous organic anatomy, tailored clothing & PBR materials"
 }

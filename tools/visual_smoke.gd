@@ -57,14 +57,11 @@ func run_checks() -> void:
 		if scene_name == "truco":
 			if find_button("Pular entrada") != null:
 				press_button("Pular entrada")
-			await wait_for_button("Cortar o baralho", 10.0)
 			await capture("truco-corte")
-			if press_button("Cortar o baralho"):
-				await settle(1.75)
-				# Also works if a future default opens a team match.
-				if find_button("Sem pena") != null:
-					press_button("Sem pena")
-					await settle(1.75)
+			if find_button("Cortar o baralho") != null: fail("Local cut button is visible during the AI's cut")
+			await settle(3.2)
+			if current_scene.get_node("GameManager").GetSeatCardCount(0) != 3: fail("AI did not cut and deal automatically")
+			else: report.actions.append("AI cut and dealt in Truco 1v1")
 		if scene_name == "poker":
 			await capture("boss-entrada")
 			await settle(2.3)
@@ -77,7 +74,7 @@ func run_checks() -> void:
 			await check_truco_actions()
 		elif scene_name == "fodinha":
 			if find_button("Pular entrada") != null: press_button("Pular entrada")
-			await wait_for_button("Palpite: 0", 5.0)
+			await wait_for_button("Palpite: 0", 7.0)
 			press_button("Como jogar")
 			await capture("fodinha-regras")
 			for dialog in current_scene.find_children("*", "AcceptDialog", true, false): dialog.hide(); dialog.queue_free()
@@ -222,13 +219,14 @@ func check_team_tables() -> void:
 			await capture("truco-entrada")
 		if find_button("Pular entrada") != null:
 			press_button("Pular entrada")
-		await wait_for_button("Cortar o baralho", 10.0)
-		if press_button("Cortar o baralho"):
-			await settle(0.55)
-			await capture("truco-%sx%s-pena" % [team_size, team_size])
-			if press_button("Entregar a pena"):
-				await settle(2.6)
-				await capture("truco-%sx%s" % [team_size, team_size])
+		if find_button("Cortar o baralho") != null: fail("Team cut offered to the wrong seat")
+		await settle(1.6)
+		await capture("truco-%sx%s-pena" % [team_size, team_size])
+		if find_button("Entregar a pena") != null: fail("Bot Pena offer exposed as a local action")
+		await settle(3.0)
+		await capture("truco-%sx%s" % [team_size, team_size])
+		if current_scene.get_node("GameManager").GetSeatCardCount(0) != 3: fail("Team AI cut/pena/distribution failed")
+		else: report.actions.append("AI cut, resolved Pena and dealt in team Truco")
 	config.ConfigureTeams(1)
 	config.queue_free()
 
@@ -275,6 +273,10 @@ func check_poker_actions() -> void:
 
 
 func check_truco_actions() -> void:
+	var gm = current_scene.get_node("GameManager")
+	var deadline := Time.get_ticks_msec() + 8000
+	while gm.CurrentPhase != 3 and Time.get_ticks_msec() < deadline:
+		await settle(0.2)
 	var cards := playable_cards()
 	if cards.size() != 3:
 		fail("Truco dealt hand should expose 3 playable cards; found %s." % cards.size())

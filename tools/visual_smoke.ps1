@@ -2,6 +2,7 @@ param(
     [string]$OutputDirectory = '',
     [switch]$SkipBuild,
     [switch]$BenchmarkOnly,
+    [switch]$CameraOnly,
     [switch]$AllowLayoutWarnings
 )
 
@@ -71,6 +72,11 @@ try {
     $env:APPDATA = $qaAppData
     $env:MULTIGAME_QA_APPDATA = $qaAppData
     Invoke-GodotQa -GodotArguments @('--headless', '--path', $projectDirectory, '--editor', '--import', '--quit') -LogName 'import'
+    if ($CameraOnly) {
+        Invoke-GodotQa -GodotArguments @('--path', $projectDirectory, '--rendering-method', 'gl_compatibility', '--rendering-driver', 'opengl3', '--audio-driver', 'Dummy', '--windowed', '--resolution', '1280x720', '--position', '-20000,-20000', '--script', 'res://tools/camera_smoke.gd', '--', $OutputDirectory, $reportPath) -LogName 'camera'
+        Write-Output "Camera report: $reportPath"
+        return
+    }
     if ($BenchmarkOnly) {
         Invoke-GodotQa -GodotArguments @('--path', $projectDirectory, '--rendering-method', 'forward_plus', '--rendering-driver', 'vulkan', '--audio-driver', 'Dummy', '--windowed', '--position', '-20000,-20000', '--script', 'res://tools/stage_benchmark.gd', '--', $OutputDirectory, $reportPath) -LogName 'benchmark'
         Write-Output "Benchmark report: $reportPath"

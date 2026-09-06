@@ -83,6 +83,7 @@ public partial class PokerGameManager : Node
     private Core.Visuals.AvatarComposite _playerAvatar;
     private RelicManager _relics;
     private readonly List<Sprite3D> _additionalOpponentVisuals = new();
+    private static readonly Dictionary<string, Texture2D> _cachedMaps = new();
 
     public RelicManager Relics => _relics;
 
@@ -135,7 +136,12 @@ public partial class PokerGameManager : Node
                 "res://assets/sprites/backgrounds/retro_arcade.jpg"
             };
             string chosenMap = maps[_rng.RandiRange(0, maps.Length - 1)];
-            bgSprite.Texture = ResourceLoader.Load<Texture2D>(chosenMap);
+            if (!_cachedMaps.TryGetValue(chosenMap, out var tex) || !IsInstanceValid(tex))
+            {
+                tex = GD.Load<Texture2D>(chosenMap);
+                if (tex != null) _cachedMaps[chosenMap] = tex;
+            }
+            if (tex != null) bgSprite.Texture = tex;
             GD.Print($"[Poker] Chosen map: {chosenMap}");
         }
 

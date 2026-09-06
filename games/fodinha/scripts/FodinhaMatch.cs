@@ -8,12 +8,15 @@ namespace GameHub.Games.Fodinha;
 /// <summary>Four independent seats. No scene, timers or hidden-hand bot access.</summary>
 public sealed class FodinhaMatch
 {
-    public enum Phase { Bidding, Playing, TrickResult, RoundResult, Finished }
+    public enum Phase { Bidding, Playing, TrickResult, RoundResult, Finished, Cutting }
     public static readonly int[] RoundSizes = { 1, 2, 3, 4, 5, 4, 3, 2, 1 };
     private readonly Random _random;
     private readonly List<TrucoCardData>[] _hands = Enumerable.Range(0, 4).Select(_ => new List<TrucoCardData>()).ToArray();
     private readonly int[] _lives = { 5, 5, 5, 5 }, _bids = new int[4], _wins = new int[4], _losses = new int[4];
     private readonly List<(int Seat, TrucoCardData Card)> _trick = new();
+    private List<TrucoCardData> _deck;
+    public int DealerSeat { get; private set; }
+    public int CutterSeat { get; private set; }
     public Phase State { get; private set; }
     public int RoundIndex { get; private set; }
     public int CardsPerHand => RoundSizes[RoundIndex];
@@ -35,7 +38,7 @@ public sealed class FodinhaMatch
     public FodinhaMatch(int? seed = null)
     {
         _random = seed.HasValue ? new Random(seed.Value) : new Random();
-        Deal();
+        PrepareRound();
     }
 
     private int NextActive(int seat)
@@ -44,23 +47,41 @@ public sealed class FodinhaMatch
         return seat;
     }
 
-    private void Deal()
+    private void PrepareRound()
     {
-        var deck = TrucoCardData.CreateDeck();
-        for (int i = deck.Count - 1; i > 0; i--)
+        _deck = TrucoCardData.CreateDeck();
+        for (int i = _deck.Count - 1; i > 0; i--)
         {
             int j = _random.Next(i + 1);
-            (deck[i], deck[j]) = (deck[j], deck[i]);
+            (_deck[i], _deck[j]) = (_deck[j], _deck[i]);
         }
         foreach (var hand in _hands) hand.Clear();
         Array.Fill(_bids, -1); Array.Clear(_wins); Array.Clear(_losses);
         _trick.Clear(); TricksCompleted = 0; LastWinner = -1;
+        Vira = null;
+        CutterSeat = DealerSeat;
+        do { CutterSeat = (CutterSeat + 3) % 4; } while (_lives[CutterSeat] <= 0);
+        CurrentSeat = CutterSeat;
+        State = Phase.Cutting;
+    }
+
+    public bool Cut(int seat)
+    {
+        if (State != Phase.Cutting || seat != CutterSeat) return false;
+        int cut = _random.Next(4, _deck.Count - 4);
+        var top = _deck.GetRange(0, cut);
+        _deck.RemoveRange(0, cut); _deck.AddRange(top);
         int cursor = 0;
         for (int card = 0; card < CardsPerHand; card++)
-            foreach (int seat in ActiveSeats) _hands[seat].Add(deck[cursor++]);
-        Vira = deck[cursor];
-        CurrentSeat = NextActive((RoundIndex + 3) % 4);
+            for (int offset = 1; offset <= 4; offset++)
+            {
+                int recipient = (DealerSeat + offset) % 4;
+                if (_lives[recipient] > 0) _hands[recipient].Add(_deck[cursor++]);
+            }
+        Vira = _deck[cursor];
+        CurrentSeat = NextActive(DealerSeat);
         State = Phase.Bidding;
+        return true;
     }
 
     public bool Bid(int seat, int amount)
@@ -116,7 +137,7 @@ public sealed class FodinhaMatch
     public bool AdvanceRound()
     {
         if (State != Phase.RoundResult) return false;
-        RoundIndex++; Deal(); return true;
+        RoundIndex++; DealerSeat = NextActive(DealerSeat); PrepareRound(); return true;
     }
 }
 

@@ -25,7 +25,8 @@ public partial class TrucoGameManager : Node
         TrucoRequested,
         RoundEnd,
         HandEnd,
-        GameOver
+        GameOver,
+        Shuffling
     }
 
     // ===== SIGNALS =====
@@ -75,7 +76,6 @@ public partial class TrucoGameManager : Node
     public int[] RoundWinners { get; private set; } = new int[3]; // 0=player, 1=opponent, 2=tie, -1=not played
     public int CurrentRound { get; private set; } = 0;
 
-    private bool _playerStartsNext = true;
     private bool _waitingTrucoResponse = false;
     private bool _trucoPendingByPlayer = false;
     private TrucoPhase _phaseAfterTrucoResponse = TrucoPhase.PlayerTurn;
@@ -83,6 +83,7 @@ public partial class TrucoGameManager : Node
     private bool _penaDelivered;
     private bool _resolvingPena;
     private readonly Dictionary<int, TrucoCardData> _playedSeats = new();
+    private static readonly Dictionary<string, Texture2D> _cachedMaps = new();
     public int ActiveSeatIndex { get; private set; }
     public int LastPlayedSeatIndex { get; private set; }
     public bool PenaDecisionIsLocal => PenaRecipientSeatIndex == 0;
@@ -101,6 +102,9 @@ public partial class TrucoGameManager : Node
     private bool _aiCutting = false;
     private float _aiPenaTimer = 0f;
     private bool _aiPenaThinking = false;
+    private float _shuffleTimer;
+    public bool CanOfferPena => CurrentPhase == TrucoPhase.PenaDecision && CutterIsPlayer && !_penaDelivered && !_resolvingPena;
+    public bool CanResolvePena => CurrentPhase == TrucoPhase.PenaDecision && PenaDecisionIsLocal && _penaDelivered && !_resolvingPena;
 
     public const int WinScore = 12;
 
@@ -162,6 +166,18 @@ public partial class TrucoGameManager : Node
 
     public override void _Process(double delta)
     {
+        if (CurrentPhase == TrucoPhase.Shuffling)
+        {
+            _shuffleTimer -= (float)delta;
+            if (_shuffleTimer <= 0)
+            {
+                CurrentPhase = TrucoPhase.Cutting;
+                _aiCutting = !CutterIsPlayer;
+                _aiCutTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? .15f : .65f;
+                EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
+            }
+            return;
+        }
         if (_aiThinking)
         {
             _aiThinkTimer -= (float)delta;
@@ -178,7 +194,7 @@ public partial class TrucoGameManager : Node
             {
                 _aiCutting = false;
                 if (CurrentPhase == TrucoPhase.Cutting)
-                    CutDeck();
+                    CutDeckForSeat(CutterSeatIndex);
             }
         }
         if (_aiPenaThinking)
@@ -188,7 +204,7 @@ public partial class TrucoGameManager : Node
             {
                 _aiPenaThinking = false;
                 if (CurrentPhase == TrucoPhase.PenaDecision && !_penaDelivered)
-                    GivePena();
+                    DeliverPena();
             }
         }
     }
@@ -199,7 +215,6 @@ public partial class TrucoGameManager : Node
     {
         PlayerScore = 0;
         OpponentScore = 0;
-        _playerStartsNext = true;
         DealerSeatIndex = 0;
 
         var bgSprite = GetNodeOrNull<Sprite3D>("../Environment/Background");
@@ -211,7 +226,12 @@ public partial class TrucoGameManager : Node
                 "res://assets/sprites/backgrounds/retro_arcade.jpg"
             };
             string chosenMap = maps[_rng.RandiRange(0, maps.Length - 1)];
-            bgSprite.Texture = ResourceLoader.Load<Texture2D>(chosenMap);
+            if (!_cachedMaps.TryGetValue(chosenMap, out var tex) || !IsInstanceValid(tex))
+            {
+                tex = GD.Load<Texture2D>(chosenMap);
+                if (tex != null) _cachedMaps[chosenMap] = tex;
+            }
+            if (tex != null) bgSprite.Texture = tex;
             GD.Print($"[Truco] Chosen map: {chosenMap}");
         }
 
@@ -237,29 +257,30 @@ public partial class TrucoGameManager : Node
             RoundWinners[i] = -1;
         }
 
-        // The deck stays available until the player cuts it. This makes the
-        // shuffle/cut a real game action rather than a cosmetic message.
+        // Dealer and cutter rotate with the seat order. Only seat zero is local.
         _aiCutting = false;
         _aiPenaThinking = false;
         _deck = TrucoCardData.CreateDeck();
         _rng.ShuffleList(_deck);
-        CurrentPhase = TrucoPhase.Cutting;
+        CurrentPhase = TrucoPhase.Shuffling;
+        _shuffleTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? .05f : .85f;
         EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
         EmitSignal(SignalName.DeckShuffled);
 
-        if (!CutterIsPlayer)
-        {
-            _aiCutting = true;
-            _aiCutTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 1.5f : 10.0f;
-        }
     }
 
-    public async void CutDeck()
+    public void CutDeck()
     {
-        if (CurrentPhase != TrucoPhase.Cutting || _deck.Count == 0) return;
+        if (CutterIsPlayer) CutDeckForSeat(0);
+    }
+
+    private async void CutDeckForSeat(int seat)
+    {
+        if (seat != CutterSeatIndex || CurrentPhase != TrucoPhase.Cutting || _deck.Count == 0) return;
         _aiCutting = false;
 
         CurrentPhase = TrucoPhase.Dealing;
+        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
         int cutPosition = _rng.RandiRange(4, _deck.Count - 4);
         var top = _deck.GetRange(0, cutPosition);
         _deck.RemoveRange(0, cutPosition);
@@ -292,9 +313,14 @@ public partial class TrucoGameManager : Node
         DealAfterCut();
     }
 
-    public async void GivePena()
+    public void GivePena()
     {
-        if (CurrentPhase != TrucoPhase.PenaDecision || _penaDelivered || PenaCard == null) return;
+        if (CanOfferPena) DeliverPena();
+    }
+
+    private async void DeliverPena()
+    {
+        if (CurrentPhase != TrucoPhase.PenaDecision || _penaDelivered || _resolvingPena || PenaCard == null) return;
         _aiPenaThinking = false;
         _penaDelivered = true;
         EmitSignal(SignalName.PenaDelivered, PenaCard.ToString(), GetSeatName(PenaRecipientSeatIndex));
@@ -304,14 +330,20 @@ public partial class TrucoGameManager : Node
             if (!IsInsideTree() || CurrentPhase != TrucoPhase.PenaDecision) return;
             // The vira is not known yet: keep naturally strong cards, occasionally bluff.
             bool keep = (int)PenaCard.Rank >= (int)TrucoRank.Ace || _rng.RandiRange(0, 99) < 24;
-            ResolvePena(keep);
+            ResolvePenaInternal(keep);
         }
     }
 
-    public async void ResolvePena(bool keep)
+    public void ResolvePena(bool keep)
+    {
+        if (CanResolvePena || (!keep && CanOfferPena)) ResolvePenaInternal(keep);
+    }
+
+    private async void ResolvePenaInternal(bool keep)
     {
         if (CurrentPhase != TrucoPhase.PenaDecision || _resolvingPena) return;
         _resolvingPena = true;
+        _aiPenaThinking = false;
         if (!_penaDelivered)
         {
             keep = false;
@@ -331,6 +363,8 @@ public partial class TrucoGameManager : Node
 
     private async void DealAfterCut()
     {
+        CurrentPhase = TrucoPhase.Dealing;
+        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
         TeamOneHands.Clear();
         TeamTwoHands.Clear();
         for (int i = 0; i < TeamSize; i++)
@@ -371,9 +405,8 @@ public partial class TrucoGameManager : Node
         _playedSeats.Clear();
         EmitSignal(SignalName.HandDealt);
         EmitSignal(SignalName.ViraRevealed, ViraCard.ToString(), $"Manilha: {ManilhaRank}");
-        _roundLeaderSeat = TeamSize == 1 ? (_playerStartsNext ? 0 : 1) : (DealerSeatIndex + 1) % (TeamSize * 2);
+        _roundLeaderSeat = (DealerSeatIndex + 1) % (TeamSize * 2);
         BeginSeatTurn(_roundLeaderSeat);
-        _playerStartsNext = !_playerStartsNext;
     }
 
     private void BeginSeatTurn(int seat)
@@ -529,7 +562,7 @@ public partial class TrucoGameManager : Node
         GD.Print($"[Truco] Round {CurrentRound + 1}: {pCard} vs {oCard} → {(winner == 0 ? "Player" : winner == 1 ? "Opponent" : "Tie")}");
         EmitSignal(SignalName.RoundResolved, CurrentRound, winner);
 
-        // Check if hand is decided (best of 3)
+        // Check if hand is decided (best of 3 according to Brazilian Truco rules)
         int playerWins = RoundWinners.Count(w => w == 0);
         int opponentWins = RoundWinners.Count(w => w == 1);
         int ties = RoundWinners.Count(w => w == 2);
@@ -537,8 +570,38 @@ public partial class TrucoGameManager : Node
         bool handDecided = false;
         bool playerWonHand = false;
 
-        if (playerWins >= 2) { handDecided = true; playerWonHand = true; }
-        else if (opponentWins >= 2) { handDecided = true; playerWonHand = false; }
+        int totalSeats = TeamSize * 2;
+        int handInitialLeader = (DealerSeatIndex + 1) % totalSeats;
+        bool initialLeaderIsPlayerTeam = (handInitialLeader % 2 == 0);
+
+        if (CurrentRound == 1)
+        {
+            // After round 2:
+            int r0 = RoundWinners[0];
+            int r1 = RoundWinners[1];
+
+            if (r0 == 2)
+            {
+                // Primeira empatou: quem fizer a segunda ganha a mão imediatamente!
+                if (r1 == 0) { handDecided = true; playerWonHand = true; }
+                else if (r1 == 1) { handDecided = true; playerWonHand = false; }
+                // Se r1 também empatou, vai para a terceira rodada.
+            }
+            else if (r0 == 0)
+            {
+                // Jogador venceu a primeira
+                if (r1 == 0) { handDecided = true; playerWonHand = true; } // 2 a 0
+                else if (r1 == 2) { handDecided = true; playerWonHand = true; } // Primeira do jogador, segunda empatada -> jogador leva imediatamente!
+                // Se r1 == 1, 1 a 1 -> vai para a terceira rodada.
+            }
+            else if (r0 == 1)
+            {
+                // Oponente venceu a primeira
+                if (r1 == 1) { handDecided = true; playerWonHand = false; } // 0 a 2
+                else if (r1 == 2) { handDecided = true; playerWonHand = false; } // Primeira do oponente, segunda empatada -> oponente leva imediatamente!
+                // Se r1 == 0, 1 a 1 -> vai para a terceira rodada.
+            }
+        }
         else if (CurrentRound >= 2)
         {
             // All 3 rounds played
@@ -547,10 +610,31 @@ public partial class TrucoGameManager : Node
             else if (opponentWins > playerWins) playerWonHand = false;
             else
             {
-                // All ties or equal wins — first round winner takes it, or player who went first
-                if (RoundWinners[0] == 0) playerWonHand = true;
-                else if (RoundWinners[0] == 1) playerWonHand = false;
-                else playerWonHand = _roundLeaderSeat % 2 == 0; // team that led the tied tombo
+                // Ties in 3rd round or all rounds:
+                int r0 = RoundWinners[0];
+                int r1 = RoundWinners[1];
+                int r2 = RoundWinners[2];
+
+                if (r0 != 2)
+                {
+                    // 1 a 1 e a terceira empatou: quem ganhou a primeira leva!
+                    playerWonHand = (r0 == 0);
+                }
+                else if (r1 != 2)
+                {
+                    // Primeira empatou, 1 a 1 na segunda e terceira: quem ganhou a segunda leva!
+                    playerWonHand = (r1 == 0);
+                }
+                else if (r2 != 2)
+                {
+                    // Primeira e segunda empataram: quem ganhou a terceira leva!
+                    playerWonHand = (r2 == 0);
+                }
+                else
+                {
+                    // Todas as três rodadas empataram: a "mão" (quem começou a primeira vaza) leva!
+                    playerWonHand = initialLeaderIsPlayerTeam;
+                }
             }
         }
 

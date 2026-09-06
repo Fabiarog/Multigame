@@ -13,9 +13,18 @@ public partial class TableStage : Control
     private SubViewport _viewport;
     private Node3D _world;
     private Camera3D _camera;
+    private Node3D _deckPile;
+    private Node3D _penaVisual;
+    private Tween _penaMotion;
     private Godot.Environment _environment;
     private DirectionalLight3D _key;
     private OmniLight3D _pendant;
+    private OmniLight3D _fillLight;
+    private OmniLight3D _rimLight;
+    private CpuParticles3D _dustParticles;
+    private CpuParticles3D _bokehParticles;
+    private ShaderMaterial _vignetteMaterial;
+    private float _basePendantEnergy = 1.6f;
     private AnimationPlayer _clockAnimator;
     private string _clockClip;
     private bool _clockMoving;
@@ -34,6 +43,16 @@ public partial class TableStage : Control
     public bool IsPresenting => _intro;
     public Vector2I RenderTargetSize => _viewport?.Size ?? Vector2I.Zero;
     public int PlayedCardCount => _played.Count + _discards.Count + _collecting.Count;
+    public enum CameraPerspectiveMode { FirstPersonPov, OverheadCinematic }
+    public CameraPerspectiveMode CurrentCameraMode { get; set; } = CameraPerspectiveMode.FirstPersonPov;
+    public int LocalSeatIndex { get; set; } = 0;
+    private float _cameraBreathTime = 0f;
+    private Vector2 _lookTarget, _lookAngles, _lastLookPointer;
+    private bool _dragLook, _motionWasEnabled;
+    private Button _cameraModeButton;
+    private readonly Dictionary<int, Tween> _tableActions = new();
+    public Vector2 LookAngles => _lookAngles;
+    public const float NeckYawLimit = 48f, NeckPitchLimit = 12f;
     public int SeatCount { get; set; } = 2;
     public int RivalIndex { get; set; } = 2;
     public TableStage()
@@ -60,6 +79,39 @@ public partial class TableStage : Control
         };
         AddChild(picture);
         picture.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        var cameraTools = new HBoxContainer { Name = "CameraControls" };
+        AddChild(cameraTools);
+        cameraTools.SetAnchorsAndOffsetsPreset(LayoutPreset.TopRight);
+        cameraTools.OffsetLeft = -270; cameraTools.OffsetRight = -8; cameraTools.OffsetTop = 8;
+        _cameraModeButton = ClubTheme.Button("Visão: POV [C]");
+        _cameraModeButton.CustomMinimumSize = new Vector2(0, 30);
+        _cameraModeButton.TooltipText = "C alterna a visão. No POV, segure o botão direito sobre a mesa e arraste para olhar.";
+        _cameraModeButton.Pressed += ToggleCameraMode; cameraTools.AddChild(_cameraModeButton);
+        var centerView = ClubTheme.Button("Centralizar");
+        centerView.CustomMinimumSize = new Vector2(0, 30);
+        centerView.Pressed += () => SetLookAngles(0, 0); cameraTools.AddChild(centerView);
+
+        // Cinematic post-processing: vignette, film grain, and warm color grading
+        try
+        {
+            var vigShader = GD.Load<Shader>("res://assets/shaders/TableVignette.gdshader");
+            if (vigShader != null)
+            {
+                _vignetteMaterial = new ShaderMaterial { Shader = vigShader };
+                _vignetteMaterial.SetShaderParameter("vignette_radius", 0.72f);
+                _vignetteMaterial.SetShaderParameter("vignette_softness", 0.42f);
+                _vignetteMaterial.SetShaderParameter("vignette_intensity", 0.35f);
+                _vignetteMaterial.SetShaderParameter("grain_intensity", 0.015f);
+                _vignetteMaterial.SetShaderParameter("warmth", 0.035f);
+                _vignetteMaterial.SetShaderParameter("contrast_boost", 1.04f);
+                picture.Material = _vignetteMaterial;
+            }
+        }
+        catch (Exception ex)
+        {
+            GD.PushWarning($"[TableStage] Failed to initialize vignette shader: {ex.Message}");
+        }
+
         _world = new Node3D(); _viewport.AddChild(_world);
 
         // Raster lighting with optional screen-space effects; no hardware ray tracing.
@@ -113,9 +165,34 @@ public partial class TableStage : Control
                 }
         }
 
-        Cylinder("WalnutRim", 4.7f, .26f, new Color("#2e1710"), new Vector3(0, -.15f, 0), .62f);
-        Cylinder("BrassInlay", 4.57f, .05f, new Color("#dfaf42"), Vector3.Zero, .62f);
-        Cylinder("GreenFelt", 4.45f, .065f, new Color("#16543d"), new Vector3(0, .04f, 0), .62f);
+        // Multi-layered table geometry:
+        // 1. Walnut outer rim with beveled upper lip
+        Cylinder("WalnutRim", 4.75f, .28f, new Color("#2a150e"), new Vector3(0, -.16f, 0), .62f);
+        Cylinder("WalnutBevel", 4.76f, .06f, new Color("#1f0f0a"), new Vector3(0, -.03f, 0), .62f);
+        // 2. Chesterfield-style padded leather armrest ring
+        Cylinder("LeatherInlay", 4.62f, .06f, new Color("#1c120c"), new Vector3(0, -.01f, 0), .62f);
+        // 3. Polished brass inlay accent
+        Cylinder("BrassInlay", 4.49f, .052f, new Color("#dfaf42"), new Vector3(0, .005f, 0), .62f);
+        // 4. Procedural woven felt surface with normal map
+        Cylinder("GreenFelt", 4.43f, .065f, new Color("#16543d"), new Vector3(0, .04f, 0), .62f);
+
+        // 5. Ornamental brass studs (24 rivets along the outer rim perimeter)
+        var studMat = new StandardMaterial3D { AlbedoColor = new Color("#f2cb62"), Metallic = 0.88f, Roughness = 0.22f };
+        var studMesh = new SphereMesh { Radius = 0.026f, Height = 0.048f, RadialSegments = 12, Rings = 6 };
+        for (int s = 0; s < 24; s++)
+        {
+            float angle = s * Mathf.Tau / 24f;
+            float sx = Mathf.Cos(angle) * 4.69f;
+            float sz = Mathf.Sin(angle) * (4.69f * 0.62f);
+            var stud = new MeshInstance3D
+            {
+                Name = $"Stud_{s}",
+                Mesh = studMesh,
+                Position = new Vector3(sx, -0.015f, sz),
+                MaterialOverride = studMat
+            };
+            _world.AddChild(stud);
+        }
 
         // Discard felt tray beside the deck
         _world.AddChild(new MeshInstance3D {
@@ -124,10 +201,32 @@ public partial class TableStage : Control
             MaterialOverride = StageMaterial(new Color("#123828"))
         });
 
-        // Felt rail and chips supply depth even with shadows and post processing off.
-        Color[] chipColors = { new Color("#c62828"), new Color("#d4af37"), new Color("#1565c0"), new Color("#2e7d32"), new Color("#d4af37") };
+        // Upgraded casino chips with dual stacks and white accent edge rings
+        Color[] chipColors1 = { new Color("#c62828"), new Color("#d4af37"), new Color("#1565c0"), new Color("#2e7d32"), new Color("#d4af37") };
         for (int i = 0; i < 5; i++)
-            Cylinder("Chip", .16f, .038f, chipColors[i], new Vector3(2.25f, .11f + i * .04f, .8f), 1);
+        {
+            Vector3 chipPos = new Vector3(2.25f, .10f + i * .036f, .8f);
+            Cylinder($"Chip_{i}", .16f, .034f, chipColors1[i], chipPos, 1);
+            _world.AddChild(new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 0.125f, BottomRadius = 0.125f, Height = 0.035f, RadialSegments = 32 },
+                Position = chipPos,
+                MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color("#f0ede6"), Roughness = 0.4f, Metallic = 0.05f }
+            });
+        }
+
+        Color[] chipColors2 = { new Color("#1b1b1b"), new Color("#1565c0"), new Color("#c62828") };
+        for (int i = 0; i < 3; i++)
+        {
+            Vector3 chipPos = new Vector3(2.52f, .10f + i * .036f, .68f);
+            Cylinder($"ChipB_{i}", .16f, .034f, chipColors2[i], chipPos, 1);
+            _world.AddChild(new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 0.125f, BottomRadius = 0.125f, Height = 0.035f, RadialSegments = 32 },
+                Position = chipPos,
+                MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color("#f0ede6"), Roughness = 0.4f, Metallic = 0.05f }
+            });
+        }
 
         _key = new DirectionalLight3D {
             RotationDegrees = new Vector3(-50, -30, 0),
@@ -139,32 +238,144 @@ public partial class TableStage : Control
         _world.AddChild(_key);
 
         // Warm pendant chandelier directly above table center
+        _basePendantEnergy = 1.6f;
         _pendant = new OmniLight3D {
             Position = new Vector3(0, 3.2f, 0.1f),
             LightColor = new Color("#ffeed0"),
-            LightEnergy = 1.6f,
+            LightEnergy = _basePendantEnergy,
             OmniRange = 9.0f,
             OmniAttenuation = 1.15f,
             ShadowEnabled = true
         };
         _world.AddChild(_pendant);
 
+        // Bounce fill light below the table to soften undercarriage shadows
+        _fillLight = new OmniLight3D
+        {
+            Name = "BounceFillLight",
+            Position = new Vector3(0, -1.8f, 0.2f),
+            LightColor = new Color("#4a3525"),
+            LightEnergy = 0.28f,
+            OmniRange = 6.0f,
+            OmniAttenuation = 1.4f,
+            ShadowEnabled = false
+        };
+        _world.AddChild(_fillLight);
+
         // Ambient rim light for character silhouettes
-        _world.AddChild(new OmniLight3D {
+        _rimLight = new OmniLight3D {
             Position = new Vector3(0, 2.6f, -3.5f),
             LightColor = new Color("#6ea8a4"),
             LightEnergy = 0.75f,
             OmniRange = 10,
             ShadowEnabled = false
-        });
+        };
+        _world.AddChild(_rimLight);
 
-        _camera = new Camera3D { Position = new Vector3(0, 6.2f, 11), Projection = Camera3D.ProjectionType.Orthogonal,
-            KeepAspect = Camera3D.KeepAspectEnum.Width, Size = 12, Current = true };
-        _world.AddChild(_camera); _camera.LookAt(new Vector3(0, .7f, 0), Vector3.Up);
+        // Ambient atmospheric particles: floating dust motes
+        _dustParticles = new CpuParticles3D
+        {
+            Name = "DustParticles",
+            Amount = 45,
+            Lifetime = 8.0,
+            Preprocess = 4.0,
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
+            EmissionBoxExtents = new Vector3(3.5f, 1.5f, 2.5f),
+            Position = new Vector3(0, 1.8f, 0),
+            Gravity = new Vector3(0, -0.015f, 0),
+            InitialVelocityMin = 0.02f,
+            InitialVelocityMax = 0.05f,
+            Mesh = new SphereMesh { Radius = 0.012f, Height = 0.024f, RadialSegments = 8, Rings = 4 },
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(1f, 0.95f, 0.8f, 0.35f),
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                BlendMode = BaseMaterial3D.BlendModeEnum.Add,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded
+            }
+        };
+        _world.AddChild(_dustParticles);
+
+        // Ambient bokeh lights hovering gently near the warm pendant
+        _bokehParticles = new CpuParticles3D
+        {
+            Name = "PendantBokeh",
+            Amount = 10,
+            Lifetime = 6.0,
+            Preprocess = 3.0,
+            EmissionShape = CpuParticles3D.EmissionShapeEnum.Sphere,
+            EmissionSphereRadius = 1.1f,
+            Position = new Vector3(0, 3.1f, 0.1f),
+            Gravity = new Vector3(0, 0.008f, 0),
+            InitialVelocityMin = 0.01f,
+            InitialVelocityMax = 0.035f,
+            Mesh = new SphereMesh { Radius = 0.025f, Height = 0.05f, RadialSegments = 8, Rings = 4 },
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(1f, 0.88f, 0.6f, 0.45f),
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                BlendMode = BaseMaterial3D.BlendModeEnum.Add,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded
+            }
+        };
+        _world.AddChild(_bokehParticles);
+
+        _camera = new Camera3D { Name = "MainCamera", KeepAspect = Camera3D.KeepAspectEnum.Width, Current = true };
+        _world.AddChild(_camera);
         SetCast(RivalIndex, SeatCount);
-        for (int i = 0; i < 7; i++)
-            _world.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(.58f, .018f, .82f) },
-                Position = new Vector3(-1.85f + i * .005f, .1f + i * .025f, .2f), MaterialOverride = StageMaterial(i == 6 ? ClubTheme.Panel : ClubTheme.Paper) });
+        _motionWasEnabled = SettingsManager.Instance?.ReduceMotion != true;
+
+        // Enhanced 12-card deck pile with natural stack jitter, contact shadow, and back detailing
+        _deckPile = new Node3D { Name = "DeckPile" }; _world.AddChild(_deckPile);
+        var deckShadow = new MeshInstance3D
+        {
+            Name = "DeckShadow",
+            Mesh = new QuadMesh { Size = new Vector2(0.68f, 0.92f) },
+            RotationDegrees = new Vector3(-90, 0, 0),
+            Position = new Vector3(-1.85f, 0.076f, 0.2f),
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0, 0, 0, 0.45f),
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded
+            }
+        };
+        _deckPile.AddChild(deckShadow);
+
+        for (int i = 0; i < 12; i++)
+        {
+            float jitterX = (i % 3 - 1) * 0.0035f;
+            float jitterZ = (i % 4 - 1.5f) * 0.004f;
+            float jitterRot = (i % 5 - 2) * 0.012f;
+            var deckCard = new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(.58f, .018f, .82f) },
+                Position = new Vector3(-1.85f + jitterX, .082f + i * .018f, .2f + jitterZ),
+                Rotation = new Vector3(0, jitterRot, 0),
+                MaterialOverride = StageMaterial(i == 11 ? ClubTheme.Panel : ClubTheme.Paper)
+            };
+            if (i == 11)
+            {
+                var trim = new MeshInstance3D
+                {
+                    Mesh = new QuadMesh { Size = new Vector2(0.50f, 0.72f) },
+                    RotationDegrees = new Vector3(-90, 0, 0),
+                    Position = new Vector3(0, 0.010f, 0),
+                    MaterialOverride = new StandardMaterial3D { AlbedoColor = ClubTheme.Gold, Roughness = 0.35f, Metallic = 0.6f }
+                };
+                deckCard.AddChild(trim);
+                var innerPanel = new MeshInstance3D
+                {
+                    Mesh = new QuadMesh { Size = new Vector2(0.46f, 0.68f) },
+                    RotationDegrees = new Vector3(-90, 0, 0),
+                    Position = new Vector3(0, 0.011f, 0),
+                    MaterialOverride = StageMaterial(ClubTheme.Ink)
+                };
+                deckCard.AddChild(innerPanel);
+            }
+            _deckPile.AddChild(deckCard);
+        }
+
         ApplyLighting();
         if (GraphicsQualityManager.Instance != null) GraphicsQualityManager.Instance.GraphicsSettingsApplied += ApplyLighting;
         if (VideoSettingsManager.Instance != null) VideoSettingsManager.Instance.VideoSettingsApplied += ApplyLighting;
@@ -232,6 +443,19 @@ public partial class TableStage : Control
         {
             GD.PushWarning($"[TableStage] Error loading room {themeId}: {ex.Message}");
         }
+
+        // Theme-responsive rim lighting
+        if (_rimLight != null && IsInstanceValid(_rimLight))
+        {
+            _rimLight.LightColor = themeId switch
+            {
+                "cyber_casino" => new Color("#00d4ff"),
+                "barao_lounge" => new Color("#f0b830"),
+                "dama_salon"   => new Color("#ff6688"),
+                _              => new Color("#6ea8a4")
+            };
+            _rimLight.LightEnergy = themeId == "cyber_casino" ? 0.95f : 0.75f;
+        }
     }
 
     public void ApplyLighting()
@@ -266,6 +490,139 @@ public partial class TableStage : Control
         _environment.AmbientLightEnergy = enhanced && settings?.RayTracingEnabled == true && settings.RtgiEnabled ? .55f : .42f;
         _environment.GlowEnabled = enhanced;
         _environment.GlowIntensity = .38f;
+
+        bool motion = SettingsManager.Instance?.ReduceMotion != true;
+        if (_dustParticles != null && IsInstanceValid(_dustParticles))
+            _dustParticles.Emitting = enhanced && motion;
+        if (_bokehParticles != null && IsInstanceValid(_bokehParticles))
+            _bokehParticles.Emitting = enhanced && motion;
+        if (_fillLight != null && IsInstanceValid(_fillLight))
+            _fillLight.Visible = enhanced;
+        var pic = GetNodeOrNull<TextureRect>("TablePicture");
+        if (pic != null && _vignetteMaterial != null)
+            pic.Material = enhanced ? _vignetteMaterial : null;
+    }
+
+    public void AnimateDeck(bool cutting)
+    {
+        if (_deckPile == null || SettingsManager.Instance?.ReduceMotion == true) return;
+        int i = 0;
+        foreach (Node3D card in _deckPile.GetChildren())
+        {
+            if (card is not MeshInstance3D mi || mi.Mesh is not BoxMesh) continue;
+            int index = i++;
+            var origin = card.Position;
+            var motion = CreateTween();
+            _motions.Add(motion);
+            if (cutting)
+            {
+                bool isTop = index >= 6;
+                Vector3 cutOffset = isTop
+                    ? new Vector3(0.55f, 0.12f, -0.08f)
+                    : new Vector3(-0.35f, 0.05f, 0.04f);
+                motion.TweenProperty(card, "position", origin + cutOffset, 0.20f)
+                    .SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+                motion.TweenProperty(card, "position", origin, 0.24f)
+                    .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            }
+            else
+            {
+                var offset = new Vector3(index % 2 == 0 ? -0.32f : 0.32f, 0.10f, 0);
+                motion.TweenProperty(card, "position", origin + offset, 0.18f)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+                motion.TweenProperty(card, "position", origin, 0.32f)
+                    .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
+            }
+        }
+    }
+
+    public void AnimateDeal(int dealer, int[] counts, int penaSeat = -1, bool penaKept = false)
+    {
+        for (int seat = 0; seat < counts.Length; seat++) SetCardCount(seat, penaKept && seat == penaSeat ? 1 : 0);
+        if (SettingsManager.Instance?.ReduceMotion == true)
+        {
+            for (int seat = 0; seat < counts.Length; seat++) SetCardCount(seat, counts[seat]);
+            return;
+        }
+        int emitted = 0;
+        for (int pass = 0; pass < 5; pass++)
+            for (int offset = 1; offset <= counts.Length; offset++)
+            {
+                int seat = (dealer + offset) % counts.Length;
+                int held = penaKept && seat == penaSeat ? 1 : 0;
+                if (pass + held >= counts[seat]) continue;
+                var card = new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(.30f, .02f, .42f) },
+                    Position = new Vector3(-1.85f, .32f, .2f), MaterialOverride = StageMaterial(ClubTheme.Paper) };
+                card.AddChild(new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(.27f, .39f) },
+                    Position = new Vector3(0, .011f, 0), MaterialOverride = StageMaterial(ClubTheme.Panel) });
+                _world.AddChild(card);
+                var start = card.Position; var target = _hands[seat].Position;
+                var flight = CreateTween(); _motions.Add(flight);
+                flight.TweenInterval(emitted++ * .045f);
+                flight.TweenMethod(Callable.From<float>(t => {
+                    if (IsInstanceValid(card)) card.Position = start.Lerp(target, t) + Vector3.Up * Mathf.Sin(t * Mathf.Pi) * .3f;
+                }), 0f, 1f, .3f);
+                int handCount = pass + held + 1;
+                flight.TweenCallback(Callable.From(() => { SetCardCount(seat, handCount); if (IsInstanceValid(card)) card.QueueFree(); }));
+            }
+    }
+
+    public void AnimateDeckPass(int dealer)
+    {
+        if (_deckPile == null || SettingsManager.Instance?.ReduceMotion == true) return;
+        var target = _hands[Mathf.PosMod(dealer, _hands.Count)].Position - new Vector3(-1.85f, .25f, .2f);
+        var pass = CreateTween(); _motions.Add(pass);
+        pass.TweenProperty(_deckPile, "position", target, .3f).SetTrans(Tween.TransitionType.Cubic);
+        pass.TweenInterval(.2f);
+        pass.TweenProperty(_deckPile, "position", Vector3.Zero, .3f).SetTrans(Tween.TransitionType.Cubic);
+    }
+
+    public void AnimatePenaDelivery(int seat)
+    {
+        ClearPenaVisual();
+        if (seat < 0 || seat >= _hands.Count) return;
+        _penaVisual = new MeshInstance3D {
+            Name = "PenaInFlight", Position = new Vector3(-1.85f, .32f, .2f),
+            Mesh = new BoxMesh { Size = new Vector3(.30f, .02f, .42f) }, MaterialOverride = StageMaterial(ClubTheme.Paper)
+        };
+        _penaVisual.AddChild(new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(.27f, .39f) },
+            Position = new Vector3(0, .011f, 0), MaterialOverride = StageMaterial(ClubTheme.Panel) });
+        _world.AddChild(_penaVisual);
+        var target = _hands[seat].Position + Vector3.Up * .08f;
+        if (SettingsManager.Instance?.ReduceMotion == true) { _penaVisual.Position = target; return; }
+        var start = _penaVisual.Position;
+        _penaMotion = CreateTween(); _motions.Add(_penaMotion);
+        _penaMotion.TweenMethod(Callable.From<float>(t => {
+            if (IsInstanceValid(_penaVisual)) _penaVisual.Position = start.Lerp(target, t) + Vector3.Up * Mathf.Sin(t * Mathf.Pi) * .3f;
+        }), 0f, 1f, .38f);
+    }
+
+    public void AnimatePenaResolution(int seat, bool kept)
+    {
+        _penaMotion?.Kill();
+        if (kept) { ClearPenaVisual(); SetCardCount(seat, 1); return; }
+        if (!IsInstanceValid(_penaVisual)) return;
+        if (SettingsManager.Instance?.ReduceMotion == true) { ClearPenaVisual(); return; }
+        _penaMotion = CreateTween(); _motions.Add(_penaMotion);
+        _penaMotion.TweenProperty(_penaVisual, "position", new Vector3(-1.2f, .1f, .2f), .4f).SetTrans(Tween.TransitionType.Cubic);
+        _penaMotion.TweenCallback(Callable.From(ClearPenaVisual));
+    }
+
+    private void ClearPenaVisual()
+    {
+        _penaMotion?.Kill(); _penaMotion = null;
+        if (IsInstanceValid(_penaVisual)) _penaVisual.QueueFree();
+        _penaVisual = null;
+    }
+
+    public void PlayTableAction(int seat)
+    {
+        if (seat < 0 || seat >= _actors.Count || SettingsManager.Instance?.ReduceMotion == true) return;
+        if (_tableActions.TryGetValue(seat, out var previous)) previous.Kill();
+        var actor = _actors[seat]; var rest = new Vector3(0, actor.Rotation.Y, 0);
+        var action = CreateTween(); _motions.Add(action); _tableActions[seat] = action;
+        action.TweenProperty(actor, "rotation", rest + new Vector3(.07f, 0, 0), .16f);
+        action.TweenProperty(actor, "rotation", rest, .25f);
     }
 
     private static StandardMaterial3D StageMaterial(Color color) => new() { AlbedoColor = color, Roughness = .75f };
@@ -274,32 +631,69 @@ public partial class TableStage : Control
         var material = StageMaterial(color);
         if (name == "GreenFelt")
         {
+            try
+            {
+                var feltShader = GD.Load<Shader>("res://assets/shaders/FeltNormal.gdshader");
+                if (feltShader != null)
+                {
+                    var feltMat = new ShaderMaterial { Shader = feltShader };
+                    feltMat.SetShaderParameter("felt_color", new Color("#16543d"));
+                    feltMat.SetShaderParameter("roughness_base", 0.82f);
+                    feltMat.SetShaderParameter("roughness_wear", 0.08f);
+                    feltMat.SetShaderParameter("normal_strength", 0.45f);
+                    feltMat.SetShaderParameter("fiber_scale", 42.0f);
+                    feltMat.SetShaderParameter("wear_scale", 6.0f);
+                    _world.AddChild(new MeshInstance3D {
+                        Name = name, Position = position, Scale = new Vector3(1, 1, depth),
+                        Mesh = new CylinderMesh { TopRadius = radius, BottomRadius = radius, Height = height, RadialSegments = 240 },
+                        MaterialOverride = feltMat
+                    });
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                GD.PushWarning($"[TableStage] Felt shader fallback: {ex.Message}");
+            }
             material.AlbedoColor = Colors.White;
             material.AlbedoTexture = GD.Load<Texture2D>("res://assets/models/cards/felt.svg");
             material.Roughness = 0.85f;
         }
         if (name == "BrassInlay")
         {
-            material.Metallic = .75f;
-            material.Roughness = .25f;
+            material.Metallic = .85f;
+            material.Roughness = .22f;
         }
         if (name == "WalnutRim")
         {
             material.Roughness = .45f;
         }
-        if (name == "Chip")
+        if (name == "WalnutBevel")
         {
-            material.Roughness = .35f;
-            material.Metallic = .15f;
+            material.Roughness = .38f;
         }
+        if (name == "LeatherInlay")
+        {
+            material.Roughness = .65f;
+            material.Metallic = .05f;
+        }
+        if (name.StartsWith("Chip"))
+        {
+            material.Roughness = .32f;
+            material.Metallic = .12f;
+        }
+        int segments = name.StartsWith("Chip") ? 64 : 192;
         _world.AddChild(new MeshInstance3D { Name = name, Position = position, Scale = new Vector3(1, 1, depth),
-            Mesh = new CylinderMesh { TopRadius = radius, BottomRadius = radius, Height = height, RadialSegments = name == "Chip" ? 48 : 192 }, MaterialOverride = material });
+            Mesh = new CylinderMesh { TopRadius = radius, BottomRadius = radius, Height = height, RadialSegments = segments }, MaterialOverride = material });
     }
 
     public void SetCast(int rival, int seats)
     {
         RivalIndex = rival; SeatCount = Mathf.Clamp(seats, 2, 6);
         if (_world == null) return;
+        ClearPenaVisual();
+        foreach (var action in _tableActions.Values) action.Kill();
+        _tableActions.Clear();
         foreach (var actor in _actors) actor.QueueFree();
         foreach (var chair in _chairs) chair.QueueFree();
         foreach (var hand in _hands) hand.QueueFree();
@@ -367,9 +761,166 @@ public partial class TableStage : Control
             foreach (var node in model.FindChildren("*", "AnimationPlayer", true, false)) { animator = (AnimationPlayer)node; break; }
             _actors.Add(actor); _animators.Add(animator); _positions.Add(positions[seat]); _cast.Add(character);
 
+            if (animator != null)
+            {
+                // Configure smooth cross-fading between all animation clips (idle, entrance, truco, victory, etc.)
+                foreach (string animA in animator.GetAnimationList())
+                {
+                    foreach (string animB in animator.GetAnimationList())
+                    {
+                        if (animA != animB)
+                            animator.SetBlendTime(animA, animB, 0.25f);
+                    }
+                }
+                PlayIdle(seat);
+            }
+
             // Hand fan held right at the table edge in front of the character, oriented coaxially with chair and character
             var hand = new Node3D { Position = pos + toCenter * 0.72f + new Vector3(0, 0.95f, 0), Rotation = new Vector3(0, rotY, 0) };
             _world.AddChild(hand); _hands.Add(hand); SetCardCount(seat, 3);
+        }
+        UpdateCameraPosition();
+    }
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.Echo)
+        {
+            if (keyEvent.Keycode == Key.C)
+            {
+                ToggleCameraMode();
+                GetViewport().SetInputAsHandled();
+            }
+        }
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton button && button.ButtonIndex == MouseButton.Right)
+        {
+            Vector2 globalPos = button.GlobalPosition != Vector2.Zero ? button.GlobalPosition : GetGlobalMousePosition();
+            Vector2 localPos = button.Position != Vector2.Zero ? button.Position : GetLocalMousePosition();
+            Vector2 scale = Vector2.One;
+            if (GetTree()?.Root != null && GetTree().Root.ContentScaleSize.X > 0 && GetTree().Root.ContentScaleSize.Y > 0)
+            {
+                scale = (Vector2)GetTree().Root.Size / (Vector2)GetTree().Root.ContentScaleSize;
+            }
+            bool inside = GetGlobalRect().Size.X <= 0 || GetGlobalRect().Size.Y <= 0
+                || GetGlobalRect().HasPoint(globalPos)
+                || (scale.X > 0 && scale.Y > 0 && GetGlobalRect().HasPoint(globalPos * scale))
+                || GetGlobalRect().HasPoint(GetGlobalMousePosition());
+            _dragLook = button.Pressed && CurrentCameraMode == CameraPerspectiveMode.FirstPersonPov && inside;
+            _lastLookPointer = localPos;
+            if (_dragLook) GetViewport().SetInputAsHandled();
+        }
+        if (@event is InputEventMouseMotion motion && _dragLook)
+        {
+            Vector2 movement = motion.Relative != Vector2.Zero ? motion.Relative : (motion.Position - _lastLookPointer);
+            _lastLookPointer = motion.Position != Vector2.Zero ? motion.Position : GetLocalMousePosition();
+            SetLookAngles(_lookTarget.X - movement.X * .18f, _lookTarget.Y - movement.Y * .12f);
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    public void SetLookAngles(float yaw, float pitch)
+    {
+        _lookTarget = new Vector2(Mathf.Clamp(yaw, -NeckYawLimit, NeckYawLimit), Mathf.Clamp(pitch, -NeckPitchLimit, NeckPitchLimit));
+    }
+
+    public void ToggleCameraMode()
+    {
+        _dragLook = false;
+        CurrentCameraMode = CurrentCameraMode == CameraPerspectiveMode.FirstPersonPov
+            ? CameraPerspectiveMode.OverheadCinematic
+            : CameraPerspectiveMode.FirstPersonPov;
+        UpdateCameraPosition();
+    }
+
+    public void SetLocalSeat(int seatIndex)
+    {
+        LocalSeatIndex = seatIndex;
+        UpdateCameraPosition();
+    }
+
+    public void UpdateCameraPosition(float bobY = 0f)
+    {
+        if (_camera == null || !IsInstanceValid(_camera)) return;
+
+        if (CurrentCameraMode == CameraPerspectiveMode.FirstPersonPov && _positions.Count > 0)
+        {
+            int seat = Mathf.Clamp(LocalSeatIndex, 0, _positions.Count - 1);
+            Vector3 seatPos = _positions[seat];
+            Vector3 toCenter = -new Vector3(seatPos.X, 0, seatPos.Z).Normalized();
+
+            // Seat origins are below the felt (-0.72). Keep eyes well above it,
+            // with a small neck arc that follows the deliberate look movement.
+            var right = toCenter.Cross(Vector3.Up).Normalized();
+            float yaw = Mathf.DegToRad(_lookAngles.X);
+            float lean = SettingsManager.Instance?.ReduceMotion == true ? 0 : Mathf.Sin(yaw) * .055f;
+            Vector3 eyePos = seatPos + Vector3.Up * (2.35f + bobY) + toCenter * .18f + right * lean;
+            _camera.Projection = Camera3D.ProjectionType.Perspective;
+            _camera.KeepAspect = Camera3D.KeepAspectEnum.Height;
+            _camera.Fov = 50.0f;
+            _camera.Near = .05f;
+            _camera.Position = eyePos;
+            _camera.LookAt(new Vector3(0, .65f, 0), Vector3.Up);
+            _camera.RotateObjectLocal(Vector3.Up, yaw);
+            _camera.RotateObjectLocal(Vector3.Right, Mathf.DegToRad(_lookAngles.Y));
+            if (SettingsManager.Instance?.ReduceMotion != true) _camera.RotateObjectLocal(Vector3.Back, -lean * .08f);
+            if (_cameraModeButton != null) _cameraModeButton.Text = "Visão: POV [C]";
+
+            // In First-Person POV, keep local player's body and arms visible for tactile immersion,
+            // hiding only the head to prevent near-plane camera clipping.
+            for (int i = 0; i < _actors.Count; i++)
+            {
+                if (!IsInstanceValid(_actors[i])) continue;
+                _actors[i].Visible = true;
+                bool isLocal = (i == seat);
+                foreach (Node node in _actors[i].FindChildren("Head*", "Node3D", true, false))
+                {
+                    if (node is Node3D node3D) node3D.Visible = !isLocal;
+                }
+            }
+            for (int i = 0; i < _chairs.Count; i++)
+            {
+                if (IsInstanceValid(_chairs[i]))
+                    _chairs[i].Visible = true;
+            }
+            for (int i = 0; i < _hands.Count; i++)
+            {
+                if (IsInstanceValid(_hands[i]))
+                    _hands[i].Visible = (i != seat);
+            }
+        }
+        else
+        {
+            // Overhead Cinematic View
+            _camera.Projection = Camera3D.ProjectionType.Orthogonal;
+            _camera.KeepAspect = Camera3D.KeepAspectEnum.Width;
+            if (_cameraModeButton != null) _cameraModeButton.Text = "Visão: Mesa [C]";
+            _camera.Size = 12.0f;
+            _camera.Position = new Vector3(0, 6.2f, 11);
+            _camera.LookAt(new Vector3(0, 0.7f, 0), Vector3.Up);
+
+            for (int i = 0; i < _actors.Count; i++)
+            {
+                if (!IsInstanceValid(_actors[i])) continue;
+                _actors[i].Visible = true;
+                foreach (Node node in _actors[i].FindChildren("Head*", "Node3D", true, false))
+                {
+                    if (node is Node3D node3D) node3D.Visible = true;
+                }
+            }
+            for (int i = 0; i < _chairs.Count; i++)
+            {
+                if (IsInstanceValid(_chairs[i]))
+                    _chairs[i].Visible = true;
+            }
+            for (int i = 0; i < _hands.Count; i++)
+            {
+                if (IsInstanceValid(_hands[i]))
+                    _hands[i].Visible = true;
+            }
         }
     }
 
@@ -403,10 +954,33 @@ public partial class TableStage : Control
         string rank = display[..^1];
         var card = new Node3D { Name = $"Played{_played.Count}_{rank}" };
 
-        // Outer card body with crisp border definition
+        // Soft contact shadow blob under the played card
+        var shadow = new MeshInstance3D
+        {
+            Name = "CardShadow",
+            Mesh = new QuadMesh { Size = new Vector2(1.30f, 1.82f) },
+            RotationDegrees = new Vector3(-90, 0, 0),
+            Position = new Vector3(0, -0.016f, 0),
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0, 0, 0, 0.40f),
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                CullMode = BaseMaterial3D.CullModeEnum.Disabled
+            }
+        };
+        card.AddChild(shadow);
+
+        // Outer card body with realistic thickness and geometric subdivisions
+        var bodyMesh = new BoxMesh
+        {
+            Size = new Vector3(1.25f, .032f, 1.76f),
+            SubdivideWidth = 2,
+            SubdivideDepth = 2
+        };
         var body = new MeshInstance3D
         {
-            Mesh = new BoxMesh { Size = new Vector3(1.25f, .024f, 1.76f) },
+            Mesh = bodyMesh,
             MaterialOverride = StageMaterial(ClubTheme.Paper)
         };
         card.AddChild(body);
@@ -416,18 +990,21 @@ public partial class TableStage : Control
         {
             var goldRim = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(1.32f, .018f, 1.83f) },
+                Mesh = new BoxMesh { Size = new Vector3(1.32f, .024f, 1.83f) },
                 Position = new Vector3(0, -.004f, 0),
                 MaterialOverride = StageMaterial(ClubTheme.Gold)
             };
             card.AddChild(goldRim);
         }
 
-        // Card face with high-definition anisotropic texture filtering and calibrated brightness
+        // Card face with high-definition anisotropic texture filtering and glossy finish on manilhas
         var face = new StandardMaterial3D
         {
             AlbedoTexture = GD.Load<Texture2D>($"res://assets/models/cards/{rank}-{suit}.png"),
-            Roughness = 0.85f,
+            Roughness = isSpecial ? 0.30f : 0.82f,
+            Metallic = isSpecial ? 0.18f : 0.0f,
+            Clearcoat = isSpecial ? 0.65f : 0.0f,
+            ClearcoatRoughness = isSpecial ? 0.20f : 0.5f,
             CullMode = BaseMaterial3D.CullModeEnum.Disabled,
             TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic,
             TextureRepeat = false,
@@ -437,7 +1014,7 @@ public partial class TableStage : Control
         card.AddChild(new MeshInstance3D
         {
             Mesh = new PlaneMesh { Size = new Vector2(1.22f, 1.73f) },
-            Position = new Vector3(0, .013f, 0),
+            Position = new Vector3(0, .017f, 0),
             MaterialOverride = face
         });
 
@@ -485,7 +1062,7 @@ public partial class TableStage : Control
             target = new Vector3(rowX, .095f + n * .015f, rowZ);
         }
 
-        Vector3 start = _positions[Mathf.PosMod(seat, _positions.Count)] + new Vector3(0, 1.2f, .45f);
+        Vector3 start = _hands[Mathf.PosMod(seat, _hands.Count)].Position + Vector3.Up * .08f;
         card.Position = start;
         card.Rotation = new Vector3(0, seat * .35f, 0);
 
@@ -499,15 +1076,23 @@ public partial class TableStage : Control
             return;
         }
 
+        // Trigger character play_card gesture (or flourish if special manilha)
+        PlayGesture(seat, isSpecial ? "flourish" : "play_card");
+
         var tween = CreateTween();
         _motions.Add(tween);
         tween.TweenInterval(delay);
         tween.TweenMethod(Callable.From<float>(t =>
         {
             if (IsInstanceValid(card))
-                card.Position = start.Lerp(target, t) + Vector3.Up * Mathf.Sin(t * Mathf.Pi) * .8f;
-        }), 0f, 1f, .45f);
-        tween.Parallel().TweenProperty(card, "rotation", targetRotation, .45f);
+            {
+                float arc = Mathf.Sin(t * Mathf.Pi) * 0.72f;
+                card.Position = start.Lerp(target, t) + Vector3.Up * arc;
+            }
+        }), 0f, 1f, .42f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        tween.Parallel().TweenProperty(card, "rotation", targetRotation, .42f)
+            .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+        tween.Chain().TweenCallback(Callable.From(() => AudioManager.Instance?.PlaySound("play")));
     }
 
     /// <summary>
@@ -523,13 +1108,18 @@ public partial class TableStage : Control
 
         if (SettingsManager.Instance?.ReduceMotion == true)
         {
-            Vector3 discardBase = new Vector3(-1.85f, 0.11f, -0.65f);
+            Vector3 discardBase = new Vector3(-1.85f, 0.082f, -0.65f);
             for (int i = 0; i < roundCards.Count; i++)
             {
                 var card = roundCards[i];
                 if (!IsInstanceValid(card)) continue;
-                card.Position = discardBase + new Vector3(0, _discards.Count * 0.014f, 0);
-                card.Rotation = new Vector3(Mathf.Pi, (i % 3 - 1) * 0.08f, 0);
+                card.Scale = new Vector3(0.464f, 0.464f, 0.464f);
+                card.Position = discardBase + new Vector3(0, _discards.Count * 0.018f, 0);
+                card.Rotation = new Vector3(Mathf.Pi, (i % 3 - 1) * 0.06f, 0);
+                foreach (var child in card.GetChildren())
+                {
+                    if (child is Label3D lbl) lbl.Visible = false;
+                }
                 _discards.Add(card);
             }
             _collecting.Clear();
@@ -549,16 +1139,25 @@ public partial class TableStage : Control
             Vector3 centerOffset = tableCenter + new Vector3((i - (roundCards.Count - 1) / 2f) * 0.16f, i * 0.015f, 0);
             gatherTween.TweenProperty(card, "position", centerOffset, 0.26f)
                 .SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+
+            // Esmaecer suavemente os rótulos de nome e indicação de MANILHA
+            foreach (var child in card.GetChildren())
+            {
+                if (child is Label3D lbl)
+                {
+                    gatherTween.TweenProperty(lbl, "modulate:a", 0.0f, 0.20f);
+                }
+            }
         }
 
         await ToSignal(gatherTween, Tween.SignalName.Finished);
         if (!IsInsideTree()) return;
 
-        // 2. Tombar ao contrário e deslizar para o montinho de descarte
+        // 2. Tombar ao contrário, reduzir para a escala exata do baralho (0.464) e deslizar para a bandeja de descarte
         var discardTween = CreateTween();
         _motions.Add(discardTween);
         discardTween.SetParallel(true);
-        Vector3 discardPos = new Vector3(-1.85f, 0.10f, -0.65f);
+        Vector3 discardPos = new Vector3(-1.85f, 0.082f, -0.65f);
 
         for (int i = 0; i < roundCards.Count; i++)
         {
@@ -566,19 +1165,22 @@ public partial class TableStage : Control
             if (!IsInstanceValid(card)) continue;
             int pileIdx = _discards.Count + i;
             Vector3 target = discardPos + new Vector3(
-                (pileIdx % 3 - 1.0f) * 0.025f,
-                pileIdx * 0.014f,
-                (pileIdx % 4 - 1.5f) * 0.02f
+                (pileIdx % 3 - 1.0f) * 0.015f,
+                pileIdx * 0.018f,
+                (pileIdx % 4 - 1.5f) * 0.015f
             );
-            Vector3 targetRot = new Vector3(Mathf.Pi, (pileIdx % 5 - 2) * 0.07f, 0);
+            Vector3 targetRot = new Vector3(Mathf.Pi, (pileIdx % 5 - 2) * 0.06f, 0);
 
             float delay = i * 0.025f;
-            discardTween.TweenProperty(card, "position", target, 0.32f)
+            discardTween.TweenProperty(card, "position", target, 0.35f)
                 .SetDelay(delay)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.InOut);
-            discardTween.TweenProperty(card, "rotation", targetRot, 0.32f)
+            discardTween.TweenProperty(card, "rotation", targetRot, 0.35f)
                 .SetDelay(delay)
                 .SetTrans(Tween.TransitionType.Quad);
+            discardTween.TweenProperty(card, "scale", new Vector3(0.464f, 0.464f, 0.464f), 0.35f)
+                .SetDelay(delay)
+                .SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.InOut);
         }
 
         await ToSignal(discardTween, Tween.SignalName.Finished);
@@ -632,12 +1234,39 @@ public partial class TableStage : Control
     }
 
     public void React(int seat)=>PlayGesture(seat,"victory");
-    public void PlayGesture(int seat,string clip)
+
+    public void PlayIdle(int seat)
     {
-        if(seat<0||seat>=_animators.Count||SettingsManager.Instance?.ReduceMotion==true)return;
-        var player=_animators[seat];if(player==null)return;
-        foreach(string animation in player.GetAnimationList())
-            if(animation.Equals(clip,StringComparison.OrdinalIgnoreCase)||animation.EndsWith("/"+clip,StringComparison.OrdinalIgnoreCase)){player.Play(animation,.12);return;}
+        if (seat < 0 || seat >= _animators.Count || SettingsManager.Instance?.ReduceMotion == true) return;
+        var player = _animators[seat];
+        if (player == null) return;
+        foreach (string animation in player.GetAnimationList())
+        {
+            if (animation.Equals("idle", StringComparison.OrdinalIgnoreCase) || animation.EndsWith("/idle", StringComparison.OrdinalIgnoreCase))
+            {
+                var anim = player.GetAnimation(animation);
+                if (anim != null) anim.LoopMode = Animation.LoopModeEnum.Linear;
+                player.Play(animation, 0.25);
+                float phase = (seat * 0.65f) % Mathf.Max(0.1f, (float)(anim?.Length ?? 2.6f));
+                player.Seek(phase, true);
+                return;
+            }
+        }
+    }
+
+    public void PlayGesture(int seat, string clip)
+    {
+        if (seat < 0 || seat >= _animators.Count || SettingsManager.Instance?.ReduceMotion == true) return;
+        var player = _animators[seat];
+        if (player == null) return;
+        foreach (string animation in player.GetAnimationList())
+            if (animation.Equals(clip, StringComparison.OrdinalIgnoreCase) || animation.EndsWith("/" + clip, StringComparison.OrdinalIgnoreCase))
+            {
+                player.Play(animation, 0.22);
+                foreach (string idle in player.GetAnimationList())
+                    if (idle.Equals("idle", StringComparison.OrdinalIgnoreCase) || idle.EndsWith("/idle", StringComparison.OrdinalIgnoreCase)) { player.Queue(idle); break; }
+                return;
+            }
     }
 
     /// <summary>Entrants move to their places before rules start. Skip and reduced motion do not advance any gameplay turn.</summary>
@@ -664,7 +1293,12 @@ public partial class TableStage : Control
         }
         if(!_skip && !await WaitPresentation(boss ? .65 : .25))return;
         foreach(var tween in _motions)tween?.Kill();_motions.Clear();
-        for(int i=0;i<_actors.Count;i++){_actors[i].Position=_positions[i];_hands[i].Visible=true;}
+        for(int i=0;i<_actors.Count;i++)
+        {
+            _actors[i].Position=_positions[i];
+            _hands[i].Visible=true;
+            PlayIdle(i);
+        }
         _cinema.QueueFree();_cinema=null;_intro=false;
     }
 
@@ -687,19 +1321,55 @@ public partial class TableStage : Control
                 Mathf.Clamp(Mathf.RoundToInt(Size.Y * screen.Y.Length()), 2, 4320));
             if (_viewport.Size != pixels) _viewport.Size = pixels;
         }
-        if(_camera==null)return;
+        if (_camera == null) return;
         bool motion = SettingsManager.Instance?.ReduceMotion != true;
+        if (motion != _motionWasEnabled)
+        {
+            for (int seat = 0; seat < _animators.Count; seat++)
+            {
+                if (motion) PlayIdle(seat);
+                else _animators[seat]?.Pause();
+            }
+            _motionWasEnabled = motion;
+        }
         if (_clockAnimator != null && _clockClip != null && motion != _clockMoving)
         {
             if (motion) _clockAnimator.Play(_clockClip);
             else _clockAnimator.Pause();
             _clockMoving = motion;
         }
-        _camera.Size=Mathf.Max(11.5f,Size.X/Mathf.Max(1,Size.Y)*6.2f);
-        if(SettingsManager.Instance?.ReduceMotion==true||_intro)return;
-        _time+=(float)delta;
-        _camera.Position=new Vector3(Mathf.Sin(_time*.17f)*.07f,6.2f,11);
-        _camera.LookAt(new Vector3(0,.7f,0),Vector3.Up);
+        if (motion)
+        {
+            _time += (float)delta;
+            if (_pendant != null)
+            {
+                float flicker = Mathf.Sin(_time * 2.3f) * 0.035f + Mathf.Sin(_time * 7.1f) * 0.015f;
+                _pendant.LightEnergy = _basePendantEnergy + flicker;
+            }
+        }
+        if (CurrentCameraMode == CameraPerspectiveMode.FirstPersonPov)
+        {
+            _lookAngles = _lookAngles.Lerp(_lookTarget, motion ? 1f - Mathf.Exp(-10f * (float)delta) : 1f);
+            if (motion)
+            {
+                _cameraBreathTime += (float)delta * 1.6f;
+            }
+            UpdateCameraPosition(motion ? Mathf.Sin(_cameraBreathTime) * .004f : 0f);
+        }
+        else
+        {
+            _camera.Size = Mathf.Max(11.5f, Size.X / Mathf.Max(1, Size.Y) * 6.2f);
+            if (motion)
+            {
+                _camera.Position = new Vector3(Mathf.Sin(_time * .17f) * .07f, 6.2f, 11);
+                _camera.LookAt(new Vector3(0, .7f, 0), Vector3.Up);
+            }
+            else
+            {
+                _camera.Position = new Vector3(0, 6.2f, 11);
+                _camera.LookAt(new Vector3(0, .7f, 0), Vector3.Up);
+            }
+        }
     }
 
     public override void _ExitTree()
@@ -709,8 +1379,13 @@ public partial class TableStage : Control
         if(GraphicsQualityManager.Instance!=null)GraphicsQualityManager.Instance.GraphicsSettingsApplied-=ApplyLighting;
         if(VideoSettingsManager.Instance!=null)VideoSettingsManager.Instance.VideoSettingsApplied-=ApplyLighting;
         _motions.Clear(); _actors.Clear(); _chairs.Clear(); _animators.Clear(); _hands.Clear(); _played.Clear(); _discards.Clear(); _collecting.Clear();
+        _tableActions.Clear();
         foreach (var light in _sconceLights) if (IsInstanceValid(light)) light.QueueFree();
         _sconceLights.Clear();
+        if (_dustParticles != null && IsInstanceValid(_dustParticles)) _dustParticles.QueueFree();
+        if (_bokehParticles != null && IsInstanceValid(_bokehParticles)) _bokehParticles.QueueFree();
+        if (_fillLight != null && IsInstanceValid(_fillLight)) _fillLight.QueueFree();
+        if (_rimLight != null && IsInstanceValid(_rimLight)) _rimLight.QueueFree();
         if (_roomInstance != null && IsInstanceValid(_roomInstance)) _roomInstance.QueueFree();
     }
 }

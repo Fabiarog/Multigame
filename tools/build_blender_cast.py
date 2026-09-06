@@ -56,18 +56,14 @@ def empty(name, pos=(0, 0, 0), parent=None):
     return o
 
 def shape(name, pos, scale, material, parent, kind='ico', rot=(0, 0, 0), smooth=True, subsurf=0, bevel=0.0):
-    if name in {'ShirtBib', 'ShirtCollarL', 'ShirtCollarR', 'VestLapel', 'GoldButton',
-                'BowtieL', 'BowtieR', 'BowtieKnot', 'CravatSilk', 'QueenBrooch',
-                'BroochFrame', 'LeatherSuspender', 'SuspenderBuckle', 'WatchChainLoop', 'EmeraldDrop'}:
-        pos = (pos[0], pos[1] - .10, pos[2])
     if kind == 'ico':
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=1)
     elif kind == 'cone':
-        bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=1, radius2=0, depth=2)
+        bpy.ops.mesh.primitive_cone_add(vertices=32, radius1=1, radius2=0, depth=2)
     elif kind == 'cylinder':
-        bpy.ops.mesh.primitive_cylinder_add(vertices=28, radius=1, depth=2)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=1, depth=2)
     elif kind == 'torus':
-        bpy.ops.mesh.primitive_torus_add(major_segments=28, minor_segments=10, major_radius=1, minor_radius=0.25)
+        bpy.ops.mesh.primitive_torus_add(major_segments=32, minor_segments=12, major_radius=1, minor_radius=0.25)
     else:
         bpy.ops.mesh.primitive_cube_add(size=2)
 
@@ -88,9 +84,8 @@ def shape(name, pos, scale, material, parent, kind='ico', rot=(0, 0, 0), smooth=
         b.segments = 2
 
     if subsurf > 0 and kind == 'cylinder':
-        # Rounded caps without subdividing long sleeve faces into rippled surfaces.
         b = o.modifiers.new(name="RoundedCaps", type='BEVEL')
-        b.width = .12
+        b.width = .10
         b.segments = 3
         b.limit_method = 'ANGLE'
         b.harden_normals = True
@@ -100,8 +95,6 @@ def shape(name, pos, scale, material, parent, kind='ico', rot=(0, 0, 0), smooth=
         s.render_levels = subsurf
 
     o.data.materials.append(material)
-    # Bake each shape before joining: otherwise only the active object's modifier
-    # survives the join and can distort every lapel, button and limb in that group.
     for modifier in list(o.modifiers):
         bpy.ops.object.modifier_apply(modifier=modifier.name)
     return o
@@ -121,240 +114,258 @@ def animate(obj, clip, keys):
     action = obj.animation_data.action
     action.name = f"{obj.name}_{clip}"
 
+    if action:
+        fc_list = []
+        if hasattr(action, 'fcurves'):
+            fc_list.extend(action.fcurves)
+        if hasattr(action, 'layers'):
+            for layer in action.layers:
+                for strip in getattr(layer, 'strips', []):
+                    for cb in getattr(strip, 'channelbags', []):
+                        fc_list.extend(getattr(cb, 'fcurves', []))
+        for fcurve in fc_list:
+            for kp in fcurve.keyframe_points:
+                kp.interpolation = 'BEZIER'
+                kp.handle_left_type = 'AUTO_CLAMPED'
+                kp.handle_right_type = 'AUTO_CLAMPED'
+
     track = obj.animation_data.nla_tracks.new()
     track.name = clip
     strip = track.strips.new(clip, 1, action)
-    strip.extrapolation = 'NOTHING'
+    strip.extrapolation = 'HOLD' if clip == 'idle' else 'NOTHING'
 
     obj.animation_data.action = None
     obj.location = base_pos
     obj.rotation_euler = base_rot
 
 def build(index, ident, species, skinhex, coathex, accenthex, sechex):
-    # Clean active Blender scene
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
 
     # Core High-Fidelity PBR Materials
-    skin_mat = mat(f'{ident}_skin', skinhex, rough=0.60)
-    coat_mat = mat(f'{ident}_coat', coathex, rough=0.82) # Velvet coat
-    satin_mat = mat(f'{ident}_satin', coathex, rough=0.28) # Silk/satin lapels
-    accent_mat = mat(f'{ident}_accent', accenthex, metal=0.90, rough=0.18, spec=1.0) # Gold / Brass
-    linen_mat = mat('LinenShirt', '#f0ebd8' if species == 'crow' else sechex, rough=0.65)
-    leather_mat = mat('PolishedLeather', '#141820', rough=0.25)
-    amber_eyes = mat('AmberEye', '#f5b838', rough=0.08, spec=1.0, emit_hex='#f5b838', emit_strength=0.15)
-    pupil_mat = mat('Pupil', '#05070a', rough=0.05, spec=1.0)
+    skin_mat = mat(f'{ident}_skin', skinhex, rough=0.55)
+    coat_mat = mat(f'{ident}_coat', coathex, rough=0.78) # Rich tailored velvet
+    satin_mat = mat(f'{ident}_satin', coathex, rough=0.25) # Silk/satin lapels
+    accent_mat = mat(f'{ident}_accent', accenthex, metal=0.92, rough=0.16, spec=1.0) # Polished Gold / Brass
+    linen_mat = mat('LinenShirt', '#f2ede0' if species == 'crow' else sechex, rough=0.60)
+    leather_mat = mat('PolishedLeather', '#11141a', rough=0.22)
+    beak_mat = mat('Beak', '#0e1218', rough=0.20, spec=0.92)
+    monocle_glass = mat('Glass', '#ffffff', rough=0.02, spec=1.0)
+    amber_eyes = mat('AmberEye', '#f5b838', rough=0.06, spec=1.0, emit_hex='#f5b838', emit_strength=0.18)
+    pupil_mat = mat('Pupil', '#05070a', rough=0.04, spec=1.0)
     glint_mat = mat('Glint', '#ffffff', rough=0.02, spec=1.0)
     ruby_mat = mat('RubyGem', '#c81428', metal=0.35, rough=0.08, spec=1.0, emit_hex='#a00818', emit_strength=0.25)
     emerald_mat = mat('EmeraldGem', '#167a48', metal=0.35, rough=0.08, spec=1.0, emit_hex='#0d5830', emit_strength=0.25)
     white_fur = mat('WhiteFur', '#f5f0e8', rough=0.85)
 
-    # Actor Hierarchy
+    # Actor Hierarchy: Root -> Pelvis -> Body -> Head, ArmL, ArmR -> ForearmL, ForearmR -> HandL, HandR
     rig = empty('Actor')
-    body = empty('Body', (0, 0, 0), rig)
-    head = empty('Head', (0, 0, 1.45), body)
-    arm_l = empty('ArmL', (-0.46, 0.02, 1.12), body)
-    arm_r = empty('ArmR', (0.46, 0.02, 1.12), body)
+    pelvis = empty('Pelvis', (0, 0, 0), rig)
+    body = empty('Body', (0, 0, 0), pelvis)
+    head = empty('Head', (0, 0, 1.44), body)
+
+    # Shoulder joints (children of Body)
+    arm_l = empty('ArmL', (-0.42, 0.02, 1.12), body)
+    arm_r = empty('ArmR', (0.42, 0.02, 1.12), body)
+
+    # Elbow joints (children of upper arm)
+    forearm_l = empty('ForearmL', (0, -0.02, -0.32), arm_l)
+    forearm_r = empty('ForearmR', (0, -0.02, -0.32), arm_r)
+
+    # Wrist & Hand joints (children of forearm)
+    hand_l = empty('HandL', (0, -0.035, -0.28), forearm_l)
+    hand_r = empty('HandR', (0, -0.035, -0.28), forearm_r)
+
     arms = [arm_l, arm_r]
+    forearms = [forearm_l, forearm_r]
+    hands = [hand_l, hand_r]
 
-    # --- ANATOMICAL TORSO & TAILORED VEST ---
-    # Contoured Torso
-    shape('TorsoCore', (0, -0.02, 0.82), (0.48, 0.28, 0.58), coat_mat, body, 'ico', subsurf=1)
-    shape('ChestContour', (0, -0.14, 0.96), (0.42, 0.22, 0.38), coat_mat, body, 'ico', subsurf=1)
-    # Shirt front bib
-    shape('ShirtBib', (0, -0.26, 0.96), (0.21, 0.04, 0.42), linen_mat, body, 'cube', bevel=0.02)
-    # Wingtip / Standup shirt collars
-    shape('ShirtCollarL', (-0.12, -0.28, 1.30), (0.07, 0.03, 0.09), linen_mat, body, 'cube', rot=(0.15, 0.25, -0.15), bevel=0.01)
-    shape('ShirtCollarR', (0.12, -0.28, 1.30), (0.07, 0.03, 0.09), linen_mat, body, 'cube', rot=(0.15, -0.25, 0.15), bevel=0.01)
+    # --- TAILORED SUIT TORSO WITH CURVED BESPOKE WAISTCOAT LAPELS ---
+    # Torso: smooth fitted body with masculine/aristocratic V-taper
+    shape('TorsoFitted', (0, 0.0, 0.82), (0.40, 0.24, 0.32), coat_mat, body, 'cylinder', subsurf=1)
+    # Natural neck bridging torso to head
+    shape('Neck', (0, -0.01, 1.28), (0.13, 0.13, 0.14), skin_mat, body, 'cylinder', subsurf=1)
 
-    # Peaked Waistcoat Lapels
+    # Tailored Trousers and Polished Leather Shoes (Pelvis / Lower Body seated in chair)
     for side in [-1, 1]:
-        shape('VestLapel', (side * 0.23, -0.29, 1.04), (0.12, 0.04, 0.34), satin_mat, body, 'cube', rot=(0.08, side * 0.32, -side * 0.08), bevel=0.02)
-        shape('Trouser', (side * 0.23, 0.02, 0.32), (0.19, 0.20, 0.32), coat_mat, body, 'cylinder', subsurf=1)
-        shape('Shoe', (side * 0.23, -0.07, 0.09), (0.19, 0.30, 0.10), leather_mat, body, 'ico', subsurf=1)
+        shape('Trouser', (side * 0.19, 0.02, 0.26), (0.15, 0.16, 0.24), coat_mat, pelvis, 'cylinder', subsurf=1)
+        shape('Shoe', (side * 0.19, -0.05, 0.07), (0.14, 0.22, 0.07), leather_mat, pelvis, 'ico', subsurf=1)
 
-    # Golden Filigree Buttons
-    for z in [0.64, 0.84, 1.04]:
-        shape('GoldButton', (0.03, -0.31, z), (0.032, 0.018, 0.032), accent_mat, body, 'cylinder', rot=(math.pi / 2, 0, 0), bevel=0.01)
+    # Crisp Linen Shirt Bib recessed into the V-opening (NOT a box)
+    shape('ShirtBib', (0, -0.20, 1.04), (0.13, 0.035, 0.24), linen_mat, body, 'cylinder', rot=(0.06, 0, 0), subsurf=1)
 
-    # Neckwear
+    # Shirt Collar tips
+    shape('ShirtCollarL', (-0.07, -0.20, 1.26), (0.045, 0.025, 0.05), linen_mat, body, 'cone', rot=(0.4, 0.3, -0.2), subsurf=1)
+    shape('ShirtCollarR', (0.07, -0.20, 1.26), (0.045, 0.025, 0.05), linen_mat, body, 'cone', rot=(0.4, -0.3, 0.2), subsurf=1)
+
+    # BESPOKE CURVED LAPEL ROLLS: Upper gorge, mid peak, and lower waist taper
+    for side in [-1, 1]:
+        # Upper collar gorge curving outward
+        shape('LapelGorge', (side * 0.11, -0.22, 1.18), (0.040, 0.028, 0.09), satin_mat, body, 'cylinder', rot=(0.10, side * 0.14, -side * 0.12), subsurf=1)
+        # Mid lapel roll forming the chest peak
+        shape('LapelRoll', (side * 0.15, -0.23, 1.04), (0.048, 0.030, 0.12), satin_mat, body, 'cylinder', rot=(0.06, side * 0.16, -side * 0.06), subsurf=1)
+        # Lower lapel tapering inward towards the buttons
+        shape('LapelLower', (side * 0.10, -0.24, 0.88), (0.038, 0.026, 0.10), satin_mat, body, 'cylinder', rot=(0.04, -side * 0.12, side * 0.08), subsurf=1)
+
+    # Golden Filigree Buttons along the vest midline
+    for z in [0.72, 0.84, 0.96]:
+        shape('GoldButton', (0.0, -0.25, z), (0.022, 0.012, 0.022), accent_mat, body, 'cylinder', rot=(math.pi / 2, 0, 0), bevel=0.01)
+
+    # Tailored Neckwear nestled in the collar notch
     if species in ('owl', 'crow'):
-        shape('BowtieL', (-0.08, -0.31, 1.25), (0.08, 0.035, 0.06), satin_mat, body, 'ico')
-        shape('BowtieR', (0.08, -0.31, 1.25), (0.08, 0.035, 0.06), satin_mat, body, 'ico')
-        shape('BowtieKnot', (0, -0.32, 1.25), (0.035, 0.03, 0.035), accent_mat, body, 'ico')
+        shape('BowtieKnot', (0, -0.24, 1.24), (0.028, 0.022, 0.028), accent_mat, body, 'ico')
+        shape('BowtieL', (-0.07, -0.23, 1.24), (0.065, 0.022, 0.040), satin_mat, body, 'ico')
+        shape('BowtieR', (0.07, -0.23, 1.24), (0.065, 0.022, 0.040), satin_mat, body, 'ico')
     elif species == 'serpent':
-        shape('QueenBrooch', (0, -0.29, 1.18), (0.08, 0.025, 0.08), ruby_mat, body, 'ico', subsurf=1)
-        shape('BroochFrame', (0, -0.28, 1.18), (0.10, 0.02, 0.10), accent_mat, body, 'torus', rot=(math.pi / 2, 0, 0))
+        shape('QueenBrooch', (0, -0.23, 1.20), (0.060, 0.018, 0.060), ruby_mat, body, 'ico', subsurf=1)
+        shape('BroochFrame', (0, -0.22, 1.20), (0.075, 0.015, 0.075), accent_mat, body, 'torus', rot=(math.pi / 2, 0, 0))
     else:
-        shape('CravatSilk', (0, -0.29, 1.16), (0.065, 0.025, 0.16), satin_mat, body, 'cube', bevel=0.01)
+        shape('CravatSilk', (0, -0.23, 1.18), (0.045, 0.020, 0.11), satin_mat, body, 'cylinder', rot=(0.06, 0, 0), subsurf=1)
 
-    # Suspenders & Signet details for Bento
     if ident == 'bento':
         for side in [-1, 1]:
-            shape('LeatherSuspender', (side * 0.17, -0.27, 0.95), (0.038, 0.02, 0.42), mat('SuspenderLeather', '#562818', rough=0.45), body, 'cube', bevel=0.01)
-            shape('SuspenderBuckle', (side * 0.17, -0.28, 0.62), (0.042, 0.025, 0.04), accent_mat, body, 'cube', bevel=0.01)
+            shape('LeatherSuspender', (side * 0.14, -0.23, 0.85), (0.026, 0.015, 0.28), mat('SuspenderLeather', '#562818', rough=0.45), body, 'cylinder', rot=(0.04, side * 0.08, 0), subsurf=1)
+            shape('SuspenderBuckle', (side * 0.14, -0.24, 0.64), (0.030, 0.015, 0.030), accent_mat, body, 'cube', bevel=0.01)
 
-    # Pocket Watch Chain for Zeca & Corvo
     if ident in ('zeca', 'corvo'):
-        shape('WatchChainLoop', (0.15, -0.29, 0.74), (0.11, 0.02, 0.07), accent_mat, body, 'torus', rot=(0.35, 0.2, 0.3))
+        shape('WatchChainLoop', (0.12, -0.24, 0.72), (0.075, 0.016, 0.045), accent_mat, body, 'torus', rot=(0.28, 0.15, 0.20))
 
-    # Royal Cape for Barão and Dama
     if index >= 6:
-        shape('RoyalCape', (0, 0.22, 0.88), (0.66, 0.14, 0.74), mat('CapeVelvet', '#261220' if index == 7 else '#1c1426', rough=0.88), body, 'cube', bevel=0.03)
-        shape('CapeBraid', (0, 0.12, 1.34), (0.56, 0.12, 0.14), accent_mat, body, 'torus')
+        shape('RoyalCape', (0, 0.16, 0.78), (0.54, 0.10, 0.60), mat('CapeVelvet', '#261220' if index == 7 else '#1c1426', rough=0.88), body, 'cylinder', rot=(-0.05, 0, 0), subsurf=1)
+        shape('CapeBraid', (0, 0.10, 1.26), (0.44, 0.09, 0.10), accent_mat, body, 'torus')
 
-    # --- ARTICULATED ARMS, FOREARMS, CUFFS & HANDS ---
+    # --- ARTICULATED ARMS, FOREARMS, AND MODULAR HANDS ---
     for j, arm in enumerate(arms):
+        forearm = forearms[j]
+        hand = hands[j]
         side_f = -1 if j == 0 else 1
-        # Structured Shoulder
-        shape('ShoulderJoint', (0, 0, 0), (0.18, 0.20, 0.20), coat_mat, arm, 'ico', subsurf=1)
-        # Upper Arm
-        shape('UpperArm', (0, 0, -0.24), (0.16, 0.18, 0.26), coat_mat, arm, 'cylinder', subsurf=1)
-        # Forearm with elbow articulation
-        shape('Forearm', (0, -0.06, -0.48), (0.15, 0.16, 0.24), coat_mat, arm, 'cylinder', rot=(0.24, 0, 0), subsurf=1)
-        # Shirt Cuff
-        shape('ShirtCuff', (0, -0.10, -0.66), (0.16, 0.15, 0.08), linen_mat, arm, 'cylinder', rot=(0.24, 0, 0), bevel=0.01)
-        shape('Cufflink', (side_f * 0.11, -0.10, -0.66), (0.024, 0.024, 0.024), accent_mat, arm, 'ico')
-        # Hand / Paw
+
+        # 1. Upper Arm / Shoulder (parent: arm)
+        shape('ShoulderJoint', (0, 0, 0), (0.14, 0.15, 0.14), coat_mat, arm, 'ico', subsurf=1)
+        shape('UpperSleeve', (0, -0.01, -0.15), (0.12, 0.13, 0.14), coat_mat, arm, 'cylinder', subsurf=1)
+
+        # 2. Forearm / Elbow (parent: forearm)
+        shape('ElbowHinge', (0, 0, 0), (0.105, 0.11, 0.105), coat_mat, forearm, 'ico', subsurf=1)
+        shape('ForearmSleeve', (0, -0.015, -0.13), (0.10, 0.105, 0.13), coat_mat, forearm, 'cylinder', rot=(0.08, 0, 0), subsurf=1)
+
+        # Tailored jacket cuff hem
+        shape('JacketCuffHem', (0, -0.03, -0.25), (0.105, 0.11, 0.022), coat_mat, forearm, 'cylinder', rot=(0.08, 0, 0), bevel=0.015)
+
+        # White linen shirt cuff extending neatly from inside the jacket sleeve
+        shape('ShirtCuff', (0, -0.035, -0.28), (0.088, 0.092, 0.030), linen_mat, forearm, 'cylinder', rot=(0.08, 0, 0), bevel=0.01)
+        shape('Cufflink', (side_f * 0.08, -0.035, -0.28), (0.016, 0.016, 0.016), accent_mat, forearm, 'ico')
+
+        # 3. Modular Hands & Fingers (parent: hand, located at (0, -0.035, -0.28) of forearm)
         h_mat = mat('CrowClaw', '#12161f', rough=0.35) if species == 'crow' else skin_mat
-        shape('Palm', (0, -0.16, -0.76), (0.15, 0.16, 0.14), h_mat, arm, 'ico', subsurf=1)
+        shape('Palm', (0, -0.015, -0.06), (0.078, 0.088, 0.050), h_mat, hand, 'ico', subsurf=1)
 
-        # Bento's Gold Watch
+        if species == 'crow':
+            for claw_k in [-1, 0, 1]:
+                shape(f'Digit_{claw_k}', (claw_k * 0.034, -0.055, -0.07), (0.020, 0.040, 0.020), h_mat, hand, 'cylinder', rot=(0.4, 0, 0), subsurf=1)
+                shape(f'Claw_{claw_k}', (claw_k * 0.034, -0.105, -0.09), (0.014, 0.040, 0.016), mat('TalonHorn', '#080a0e', rough=0.15, spec=0.95), hand, 'cone', rot=(math.pi / 2 + 0.35, 0, 0))
+            # Aristocratic rear spur talon
+            shape('SpurDigit', (0, 0.035, -0.05), (0.018, 0.035, 0.018), h_mat, hand, 'cylinder', rot=(-0.35, 0, 0), subsurf=1)
+            shape('SpurClaw', (0, 0.065, -0.065), (0.013, 0.032, 0.014), mat('TalonHorn', '#080a0e', rough=0.15, spec=0.95), hand, 'cone', rot=(-math.pi / 2 - 0.25, 0, 0))
+        else:
+            shape('ThumbBase', (side_f * 0.06, -0.005, -0.04), (0.032, 0.035, 0.038), h_mat, hand, 'ico', rot=(0.25, side_f * 0.40, 0), subsurf=1)
+            shape('ThumbTip', (side_f * 0.08, -0.025, -0.07), (0.025, 0.028, 0.032), h_mat, hand, 'ico', rot=(0.35, side_f * 0.50, 0))
+            shape('FingerKnuckles', (0, -0.065, -0.08), (0.070, 0.050, 0.040), h_mat, hand, 'cylinder', rot=(math.pi / 2, 0, 0), bevel=0.015)
+            shape('FingerIndex', (-side_f * 0.03, -0.095, -0.085), (0.018, 0.035, 0.018), h_mat, hand, 'cylinder', rot=(0.30, -side_f * 0.10, 0), subsurf=1)
+            shape('FingerMiddle', (0, -0.105, -0.088), (0.019, 0.038, 0.019), h_mat, hand, 'cylinder', rot=(0.32, 0, 0), subsurf=1)
+            shape('FingerPinky', (side_f * 0.03, -0.090, -0.082), (0.016, 0.032, 0.016), h_mat, hand, 'cylinder', rot=(0.28, side_f * 0.10, 0), subsurf=1)
+
         if ident == 'bento' and j == 0:
-            shape('WatchStrap', (0, -0.10, -0.66), (0.17, 0.16, 0.055), mat('WatchStrap', '#3a1c10', rough=0.4), arm, 'cylinder')
-            shape('WatchBezel', (-0.13, -0.10, -0.66), (0.042, 0.042, 0.038), accent_mat, arm, 'cylinder', rot=(0, math.pi / 2, 0), bevel=0.01)
+            shape('WatchStrap', (0, -0.035, -0.26), (0.098, 0.102, 0.030), mat('WatchStrap', '#3a1c10', rough=0.4), forearm, 'cylinder')
+            shape('WatchBezel', (-0.085, -0.035, -0.26), (0.028, 0.028, 0.025), accent_mat, forearm, 'cylinder', rot=(0, math.pi / 2, 0), bevel=0.01)
 
-    # --- SCULPTED HEAD, EXPRESSION & ACCESSORIES ---
-    shape('HeadCranium', (0, 0, 0.24), (0.36, 0.32, 0.44), skin_mat, head, 'ico', subsurf=1)
-
-    # Realistic Eyes: Socket, Iris, Pupil, Dual Glints
+    # --- HEAD SCULPTURE & ARISTOCRATIC EXPRESSIONS ---
     for side in [-1, 1]:
-        shape('EyeSocket', (side * 0.16, -0.28, 0.25), (0.11, 0.04, 0.11), mat('EyeLid', '#12161c', rough=0.5), head, 'ico', subsurf=1)
-        shape('EyeIris', (side * 0.16, -0.32, 0.25), (0.065, 0.025, 0.07), amber_eyes, head, 'ico')
-        shape('EyePupil', (side * 0.16, -0.34, 0.25), (0.032, 0.015, 0.042), pupil_mat, head, 'ico')
-        shape('EyeGlint1', (side * 0.175, -0.35, 0.275), (0.018, 0.012, 0.018), glint_mat, head, 'ico')
-        shape('EyeGlint2', (side * 0.15, -0.345, 0.235), (0.010, 0.008, 0.010), glint_mat, head, 'ico')
+        shape('EyeSocket', (side * 0.13, -0.20, 0.20), (0.085, 0.04, 0.085), mat('EyeLid', '#12161c', rough=0.5), head, 'ico', subsurf=1)
+        shape('EyeIris', (side * 0.13, -0.23, 0.20), (0.052, 0.020, 0.055), amber_eyes, head, 'ico')
+        shape('EyePupil', (side * 0.13, -0.245, 0.20), (0.024, 0.012, 0.030), pupil_mat, head, 'ico')
+        shape('EyeGlint', (side * 0.115, -0.252, 0.215), (0.009, 0.006, 0.009), glint_mat, head, 'ico')
+        shape('EyeGlintSec', (side * 0.145, -0.248, 0.185), (0.005, 0.004, 0.005), glint_mat, head, 'ico')
+        shape('EyeBrowArch', (side * 0.14, -0.22, 0.27), (0.075, 0.022, 0.028), mat('Brow', '#1a1816', rough=0.6), head, 'cylinder', rot=(0.10, side * 0.25, -side * 0.15), subsurf=1)
 
-    # Species-Specific Anatomical Sculpting
     if species == 'crow':
-        # Curved Raven Beak with nostrils
-        shape('RavenBeak', (0, -0.48, 0.16), (0.12, 0.38, 0.14), mat('RavenBeak', '#0c1016', rough=0.20, spec=0.9), head, 'cone', rot=(math.pi / 2, 0, 0), subsurf=1)
-        # Gold Pince-Nez Spectacles
+        shape('CrowSkull', (0, 0.02, 0.18), (0.24, 0.22, 0.22), skin_mat, head, 'ico', subsurf=2)
+        shape('BeakCulmen', (0, -0.26, 0.16), (0.075, 0.22, 0.095), beak_mat, head, 'cone', rot=(math.pi / 2 + 0.18, 0, 0), subsurf=1)
+        shape('BeakHookTip', (0, -0.46, 0.09), (0.042, 0.07, 0.075), beak_mat, head, 'cone', rot=(math.pi / 2 + 0.45, 0, 0), subsurf=1)
+        shape('BeakMandible', (0, -0.24, 0.09), (0.065, 0.18, 0.055), beak_mat, head, 'cylinder', rot=(math.pi / 2 + 0.12, 0, 0), subsurf=1)
+        shape('NarialBristle', (0, -0.16, 0.23), (0.085, 0.08, 0.060), skin_mat, head, 'ico', subsurf=1)
+        shape('HeadCrestPeak', (0, 0.18, 0.32), (0.08, 0.12, 0.16), skin_mat, head, 'cone', rot=(-0.55, 0, 0), subsurf=1)
+        shape('PinceNezBridge', (0, -0.24, 0.21), (0.035, 0.008, 0.008), accent_mat, head, 'torus', rot=(math.pi / 2, 0, 0))
         for side in [-1, 1]:
-            shape('SpecRim', (side * 0.16, -0.34, 0.26), (0.11, 0.11, 0.035), accent_mat, head, 'torus', rot=(math.pi / 2, 0, 0))
-        shape('SpecBridge', (0, -0.36, 0.27), (0.05, 0.02, 0.015), accent_mat, head, 'cube', bevel=0.01)
-        shape('SpecChain', (0.18, -0.33, 0.13), (0.01, 0.01, 0.16), accent_mat, head, 'cylinder')
-        # Layered Feather Tufts
-        for side in [-1, 1]:
-            for k in range(4):
-                shape('FeatherCrest', (side * (0.28 + k * 0.02), 0.06, 0.30 - k * 0.12), (0.11, 0.20, 0.18), skin_mat, head, 'ico', subsurf=1)
+            shape('PinceNezFrame', (side * 0.12, -0.24, 0.20), (0.065, 0.007, 0.065), accent_mat, head, 'torus', rot=(math.pi / 2, 0, 0))
+            shape('PinceNezGlass', (side * 0.12, -0.24, 0.20), (0.060, 0.003, 0.060), monocle_glass, head, 'cylinder', rot=(math.pi / 2, 0, 0))
+        shape('PinceNezChain', (0.18, -0.20, 0.14), (0.010, 0.010, 0.10), accent_mat, head, 'cylinder', rot=(0.2, 0, 0.1))
 
     elif species == 'owl':
-        # Horned Owl Tufts & Facial Discs
+        shape('OwlFacialDisc', (0, -0.06, 0.20), (0.32, 0.14, 0.28), skin_mat, head, 'ico', subsurf=2)
+        shape('OwlBeak', (0, -0.22, 0.11), (0.055, 0.08, 0.10), beak_mat, head, 'cone', rot=(math.pi / 2 + 0.40, 0, 0), subsurf=1)
         for side in [-1, 1]:
-            shape('OwlHorn', (side * 0.32, 0.02, 0.62), (0.11, 0.13, 0.28), skin_mat, head, 'cone', rot=(-0.2, side * 0.28, 0), subsurf=1)
-            shape('OwlHornTip', (side * 0.32, -0.04, 0.64), (0.07, 0.07, 0.20), leather_mat, head, 'cone', rot=(-0.2, side * 0.28, 0))
-            shape('FacialDisc', (side * 0.18, -0.22, 0.25), (0.22, 0.08, 0.24), mat('FacialFeather', '#5c486a', rough=0.8), head, 'ico', subsurf=1)
-        shape('OwlHookBeak', (0, -0.44, 0.15), (0.10, 0.22, 0.16), accent_mat, head, 'cone', rot=(math.pi / 2 + 0.22, 0, 0), subsurf=1)
-        # Gold Monocle on right eye
-        shape('MonocleRim', (0.16, -0.34, 0.25), (0.12, 0.12, 0.03), accent_mat, head, 'torus', rot=(math.pi / 2, 0, 0))
-        shape('MonocleChain', (0.18, -0.32, 0.08), (0.01, 0.01, 0.22), accent_mat, head, 'cylinder')
-        # Aristocratic Crown
-        for k in range(5):
-            a = (k - 2) * 0.38
-            shape('CrownSpike', (0.26 * math.sin(a), -0.14, 0.68 + 0.10 * (k % 2)), (0.055, 0.055, 0.18), accent_mat, head, 'cone')
-        shape('CrownCirclet', (0, 0, 0.60), (0.33, 0.29, 0.07), accent_mat, head, 'cylinder', bevel=0.01)
+            shape('OwlEarTuft', (side * 0.22, 0.06, 0.42), (0.055, 0.07, 0.18), skin_mat, head, 'cone', rot=(-0.25, side * 0.40, 0), subsurf=1)
+        shape('OwlMonocleRim', (0.13, -0.24, 0.20), (0.072, 0.008, 0.072), accent_mat, head, 'torus', rot=(math.pi / 2, 0, 0))
+        shape('OwlMonocleLens', (0.13, -0.24, 0.20), (0.065, 0.003, 0.065), monocle_glass, head, 'cylinder', rot=(math.pi / 2, 0, 0))
+        shape('OwlMonocleChain', (0.19, -0.19, 0.08), (0.008, 0.008, 0.14), accent_mat, head, 'cylinder', rot=(0.25, 0, 0.1))
+        shape('BaronCrown', (0, 0.02, 0.45), (0.20, 0.18, 0.08), accent_mat, head, 'cylinder', bevel=0.01)
+        for pk in [-0.14, 0.0, 0.14]:
+            shape('CrownSpike', (pk, -0.05, 0.52), (0.028, 0.028, 0.07), accent_mat, head, 'cone', rot=(0.1, 0, 0))
 
     elif species == 'jaguar':
-        # Jaguar Muzzle & Nose
-        shape('JaguarMuzzle', (0, -0.33, 0.09), (0.25, 0.21, 0.17), white_fur, head, 'ico', subsurf=1)
-        shape('JaguarNose', (0, -0.52, 0.13), (0.09, 0.06, 0.07), mat('CatNose', '#4c1e28', rough=0.35), head, 'ico')
-        # Ears with Pink Interior
+        shape('JaguarCranium', (0, 0.02, 0.19), (0.28, 0.24, 0.24), skin_mat, head, 'ico', subsurf=2)
+        shape('JaguarMuzzle', (0, -0.21, 0.11), (0.16, 0.14, 0.11), skin_mat, head, 'ico', subsurf=1)
+        shape('JaguarNose', (0, -0.32, 0.14), (0.060, 0.035, 0.038), mat('JaguarNose', '#181214', rough=0.35), head, 'ico')
+        shape('JaguarJawTuft', (0, -0.22, 0.02), (0.13, 0.11, 0.06), white_fur, head, 'ico', subsurf=1)
         for side in [-1, 1]:
-            shape('JaguarEar', (side * 0.32, 0.03, 0.54), (0.13, 0.11, 0.14), skin_mat, head, 'ico', subsurf=1)
-            shape('JaguarEarInner', (side * 0.32, -0.05, 0.54), (0.07, 0.05, 0.09), mat('EarPeach', '#cb6e7e', rough=0.5), head, 'ico')
-            # Rosette spots
-            for k in range(5):
-                shape('RosetteSpot', (side * (0.24 + 0.02 * (k % 2)), -0.21, 0.42 - k * 0.11), (0.045, 0.022, 0.038), leather_mat, head, 'ico')
-        # Gold Earring & Ruby Pendant
-        shape('JaguarEarring', (0.42, -0.01, 0.14), (0.06, 0.06, 0.06), accent_mat, head, 'torus', rot=(math.pi / 2, 0, 0))
-        shape('RubyDrop', (0, -0.28, 0.98), (0.06, 0.03, 0.07), ruby_mat, body, 'ico', subsurf=1)
+            shape('JaguarEar', (side * 0.22, 0.08, 0.38), (0.07, 0.045, 0.09), skin_mat, head, 'ico', rot=(-0.2, side * 0.3, 0), subsurf=1)
+            shape('JaguarEarInner', (side * 0.22, 0.05, 0.38), (0.045, 0.025, 0.065), white_fur, head, 'ico', rot=(-0.2, side * 0.3, 0))
 
     elif species == 'capybara':
-        # Broad Noble Capybara Snout
-        shape('CapySnout', (0, -0.36, 0.08), (0.32, 0.28, 0.23), skin_mat, head, 'ico', subsurf=1)
-        shape('CapyLeatherNose', (0, -0.58, 0.14), (0.12, 0.07, 0.08), leather_mat, head, 'ico')
-        # Rounded Ears
+        shape('CapyCranium', (0, 0.02, 0.19), (0.28, 0.26, 0.24), skin_mat, head, 'ico', subsurf=2)
+        shape('CapySnoutBox', (0, -0.22, 0.13), (0.18, 0.18, 0.14), skin_mat, head, 'ico', subsurf=1)
+        shape('CapyNosePad', (0, -0.36, 0.13), (0.090, 0.035, 0.055), mat('CapyNose', '#261b18', rough=0.5), head, 'ico')
         for side in [-1, 1]:
-            shape('CapyEar', (side * 0.33, 0.08, 0.46), (0.10, 0.09, 0.11), skin_mat, head, 'ico', subsurf=1)
-        # Vitória-Régia Water Lily Flower
-        shape('LilyCore', (0.35, -0.04, 0.52), (0.15, 0.11, 0.15), mat('LilyPink', '#f0809b', rough=0.35), head, 'ico', subsurf=1)
-        shape('LilyStamen', (0.35, -0.12, 0.52), (0.065, 0.04, 0.065), accent_mat, head, 'ico')
-        for petal_i in range(6):
-            pa = petal_i * math.tau / 6
-            shape('LilyPetal', (0.35 + 0.11 * math.cos(pa), -0.06, 0.52 + 0.11 * math.sin(pa)), (0.065, 0.045, 0.065), mat('LilyWhite', '#fcf2f4', rough=0.3), head, 'ico')
+            shape('CapyEar', (side * 0.24, 0.06, 0.29), (0.055, 0.035, 0.055), skin_mat, head, 'ico', rot=(0, side * 0.4, 0))
+        shape('WaterLilyFlower', (0.18, -0.04, 0.38), (0.085, 0.085, 0.045), ruby_mat, head, 'ico', subsurf=1)
+        shape('WaterLilyCore', (0.18, -0.04, 0.41), (0.035, 0.035, 0.025), accent_mat, head, 'ico')
 
     elif species == 'fox':
-        # Fox Muzzle & Cheeks
-        shape('FoxMuzzle', (0, -0.36, 0.07), (0.21, 0.25, 0.15), skin_mat, head, 'cone', rot=(math.pi / 2, 0, 0), subsurf=1)
-        shape('FoxNose', (0, -0.58, 0.10), (0.075, 0.055, 0.055), leather_mat, head, 'ico')
-        shape('WhiteCheekL', (-0.18, -0.22, 0.08), (0.15, 0.13, 0.15), white_fur, head, 'ico', subsurf=1)
-        shape('WhiteCheekR', (0.18, -0.22, 0.08), (0.15, 0.13, 0.15), white_fur, head, 'ico', subsurf=1)
-        # Pointed Ears with Black Tips
+        shape('FoxCranium', (0, 0.02, 0.19), (0.24, 0.22, 0.22), skin_mat, head, 'ico', subsurf=2)
+        shape('FoxMuzzleCone', (0, -0.22, 0.11), (0.095, 0.18, 0.085), skin_mat, head, 'cone', rot=(math.pi / 2 + 0.15, 0, 0), subsurf=1)
+        shape('FoxNoseBlack', (0, -0.38, 0.085), (0.032, 0.028, 0.030), mat('FoxNose', '#121214', rough=0.3), head, 'ico')
+        shape('FoxChestRuff', (0, -0.16, 0.02), (0.15, 0.09, 0.10), white_fur, head, 'ico', subsurf=1)
         for side in [-1, 1]:
-            shape('FoxEar', (side * 0.30, 0.02, 0.56), (0.12, 0.12, 0.23), skin_mat, head, 'cone', rot=(-0.2, side * 0.24, 0), subsurf=1)
-            shape('FoxEarTip', (side * 0.32, 0.02, 0.72), (0.075, 0.075, 0.13), leather_mat, head, 'cone', rot=(-0.2, side * 0.24, 0))
-            shape('FoxEarInner', (side * 0.28, -0.05, 0.54), (0.065, 0.045, 0.13), white_fur, head, 'cone', rot=(-0.2, side * 0.24, 0))
-        # Fedora Hat
-        shape('FedoraBrim', (0, -0.04, 0.58), (0.48, 0.42, 0.038), mat('FedoraFelt', '#454038', rough=0.72), head, 'cylinder', rot=(0.12, -0.15, 0), bevel=0.01)
-        shape('FedoraCrown', (0, -0.04, 0.70), (0.28, 0.26, 0.18), mat('FedoraFelt', '#454038', rough=0.72), head, 'cylinder', rot=(0.12, -0.15, 0), subsurf=1)
-        shape('FedoraRibbon', (0, -0.04, 0.62), (0.30, 0.27, 0.045), coat_mat, head, 'cylinder', rot=(0.12, -0.15, 0))
+            shape('FoxEarTall', (side * 0.18, 0.06, 0.43), (0.065, 0.04, 0.16), skin_mat, head, 'cone', rot=(-0.15, side * 0.35, 0), subsurf=1)
+            shape('FoxEarTuft', (side * 0.18, 0.04, 0.42), (0.035, 0.02, 0.11), white_fur, head, 'cone', rot=(-0.15, side * 0.35, 0))
 
     elif species == 'serpent':
-        # Royal Cobra Hood with Scaled Patterns
-        for side in [-1, 1]:
-            shape('CobraHood', (side * 0.34, 0.10, 0.16), (0.25, 0.13, 0.46), coat_mat, head, 'ico', subsurf=1)
-            shape('HoodTrim', (side * 0.38, 0.10, 0.16), (0.075, 0.075, 0.42), accent_mat, head, 'cylinder')
-        # Scaled Muzzle and Throat
-        shape('CobraMuzzle', (0, -0.34, 0.12), (0.28, 0.21, 0.14), skin_mat, head, 'ico', subsurf=1)
-        shape('CobraThroat', (0, -0.24, -0.12), (0.22, 0.17, 0.30), skin_mat, head, 'cylinder', subsurf=1)
-        # Fangs
-        for side in [-1, 1]:
-            shape('CobraFang', (side * 0.15, -0.45, 0.03), (0.028, 0.028, 0.075), linen_mat, head, 'cone', rot=(math.pi, 0, 0))
-        # Ruby Tiara
-        shape('TiaraBase', (0, -0.06, 0.50), (0.28, 0.24, 0.055), accent_mat, head, 'cylinder', rot=(0.2, 0, 0), bevel=0.01)
-        for k in range(5):
-            a = (k - 2) * 0.40
-            shape('TiaraSpike', (0.24 * math.sin(a), -0.22, 0.58 + 0.08 * (k % 2)), (0.045, 0.045, 0.13), accent_mat, head, 'cone')
-            shape('TiaraRuby', (0.24 * math.sin(a), -0.23, 0.56 + 0.08 * (k % 2)), (0.038, 0.038, 0.038), ruby_mat, head, 'ico')
+        shape('CobraHoodBase', (0, 0.04, 0.20), (0.34, 0.12, 0.28), skin_mat, head, 'cylinder', rot=(0.08, 0, 0), subsurf=2)
+        shape('CobraHeadViper', (0, -0.16, 0.20), (0.19, 0.19, 0.12), skin_mat, head, 'ico', subsurf=2)
+        shape('CobraSnoutTaper', (0, -0.32, 0.18), (0.11, 0.12, 0.07), skin_mat, head, 'cone', rot=(math.pi / 2, 0, 0), subsurf=1)
+        shape('QueenTiaraBase', (0, -0.04, 0.36), (0.16, 0.14, 0.05), accent_mat, head, 'cylinder', bevel=0.01)
+        for pk in [-0.10, -0.04, 0.04, 0.10]:
+            shape('TiaraSpike', (pk, -0.12, 0.41), (0.022, 0.018, 0.06), accent_mat, head, 'cone', rot=(0.15, 0, 0))
+        shape('TiaraGem', (0, -0.14, 0.39), (0.035, 0.020, 0.035), ruby_mat, head, 'ico', subsurf=1)
 
     else:
-        # Humans: Nina & Bento
-        shape('HumanNose', (0, -0.36, 0.14), (0.07, 0.085, 0.10), skin_mat, head, 'ico', subsurf=1)
+        shape('HumanHead', (0, 0.0, 0.18), (0.24, 0.22, 0.24), skin_mat, head, 'ico', subsurf=2)
+        shape('HumanNose', (0, -0.23, 0.17), (0.035, 0.045, 0.055), skin_mat, head, 'cone', rot=(math.pi / 2 + 0.1, 0, 0), subsurf=1)
+        shape('HumanJaw', (0, -0.10, 0.04), (0.16, 0.14, 0.09), skin_mat, head, 'ico', subsurf=1)
         if ident == 'nina':
-            # Volumetric curly dark locks
-            shape('HairCrown', (0, 0.06, 0.40), (0.40, 0.34, 0.32), leather_mat, head, 'ico', subsurf=1)
-            for k in range(16):
-                a = k * math.tau / 16
-                shape('CurlLock', (0.33 * math.cos(a), 0.08 + 0.22 * math.sin(a), 0.38 + 0.06 * (k % 3)), (0.13, 0.12, 0.13), leather_mat, head, 'ico', subsurf=1)
-            # Gold Round Spectacles
-            for side in [-1, 1]:
-                shape('SpecRim', (side * 0.16, -0.33, 0.25), (0.105, 0.105, 0.028), accent_mat, head, 'torus', rot=(math.pi / 2, 0, 0))
-            shape('SpecBridge', (0, -0.35, 0.26), (0.048, 0.018, 0.014), accent_mat, head, 'cube', bevel=0.01)
-            # Gold Hoop Earrings & Emerald Pendant
-            for side in [-1, 1]:
-                shape('HoopEarring', (side * 0.38, 0.02, 0.18), (0.06, 0.06, 0.06), accent_mat, head, 'torus', rot=(0, math.pi / 2, 0))
-            shape('EmeraldDrop', (0, -0.28, 1.02), (0.05, 0.025, 0.06), emerald_mat, body, 'ico', subsurf=1)
-
+            shape('HairVoluminous', (0, 0.06, 0.30), (0.30, 0.28, 0.24), mat('NinaHair', '#2c1e14', rough=0.6), head, 'ico', subsurf=2)
+            shape('HairSideL', (-0.24, -0.02, 0.18), (0.08, 0.12, 0.20), mat('NinaHair', '#2c1e14', rough=0.6), head, 'ico', subsurf=1)
+            shape('HairSideR', (0.24, -0.02, 0.18), (0.08, 0.12, 0.20), mat('NinaHair', '#2c1e14', rough=0.6), head, 'ico', subsurf=1)
+            shape('HairBunBack', (0, 0.26, 0.32), (0.16, 0.14, 0.16), mat('NinaHair', '#2c1e14', rough=0.6), head, 'ico', subsurf=1)
+            shape('HairRibbon', (0, 0.20, 0.39), (0.08, 0.04, 0.04), emerald_mat, head, 'ico')
         else:
-            # Bento: Combed hair and 3D handlebar moustache
-            shape('HairBase', (0, 0.06, 0.44), (0.38, 0.31, 0.24), mat('BentoHair', '#2a1a12', rough=0.55), head, 'ico', subsurf=1)
+            shape('HairBase', (0, 0.04, 0.36), (0.32, 0.26, 0.18), mat('BentoHair', '#2a1a12', rough=0.55), head, 'ico', subsurf=1)
             for side in [-1, 1]:
-                shape('HairSideLock', (side * 0.22, 0.02, 0.50), (0.17, 0.13, 0.11), mat('BentoHair', '#2a1a12', rough=0.55), head, 'ico', subsurf=1)
-                shape('HandlebarMoustache', (side * 0.11, -0.39, 0.02), (0.13, 0.038, 0.055), mat('BentoHair', '#2a1a12', rough=0.45), head, 'ico', rot=(0, side * 0.35, side * 0.22), subsurf=1)
+                shape('HairSideLock', (side * 0.19, 0.02, 0.40), (0.14, 0.11, 0.09), mat('BentoHair', '#2a1a12', rough=0.55), head, 'ico', subsurf=1)
+                shape('HandlebarMoustache', (side * 0.08, -0.27, 0.05), (0.095, 0.030, 0.040), mat('BentoHair', '#2a1a12', rough=0.55), head, 'ico', rot=(0, side * 0.35, side * 0.22), subsurf=1)
 
-    # --- JOIN MESHES PER ARTICULATED GROUP ---
-    for group in [body, head] + arms:
+    # --- JOIN MESHES PER ARTICULATED GROUP (9 Modular Groups) ---
+    for group in [pelvis, body, head] + arms + forearms + hands:
         meshes = [o for o in group.children if o.type == 'MESH']
         if meshes:
             bpy.ops.object.select_all(action='DESELECT')
@@ -363,145 +374,371 @@ def build(index, ident, species, skinhex, coathex, accenthex, sechex):
             bpy.context.view_layer.objects.active = meshes[0]
             bpy.ops.object.join()
             bpy.context.object.name = f"{group.name}Mesh"
+            for poly in bpy.context.object.data.polygons:
+                poly.use_smooth = True
 
-    # --- BEZIER PHYSICS-LIKE ANIMATIONS (5 Required Clips) ---
+    # --- BEZIER PHYSICS ANIMATIONS (7 Articulated Clips) ---
     sign = -1 if index % 2 else 1
 
-    for clip in ['entrance', 'truco', 'victory', 'boss_intro', 'flourish']:
-        if clip == 'entrance':
-            # Natural rhythmic entry and settle
+    for clip in ['idle', 'entrance', 'truco', 'victory', 'boss_intro', 'flourish', 'play_card']:
+        # Pelvis grounded seated animation (subtle chair weight shift)
+        animate(pelvis, clip, [
+            (1,  (0, 0, 0), (0, 0, 0)),
+            (24, (0, -0.003, 0), (0.005, 0, 0)),
+            (48, (0, 0, 0), (0, 0, 0))
+        ])
+
+        if clip == 'idle':
             animate(body, clip, [
-                (1,  (0, 0, 0.12), (0, sign * 0.08, 0)),
-                (14, (0, 0, -0.04), (0.04, -sign * 0.04, 0)),
-                (28, (0, 0, 0.03), (-0.02, sign * 0.02, 0)),
-                (40, (0, 0, 0), (0, 0, 0)),
+                (1,  (0, 0, 0), (0, 0, 0)),
+                (18, (0, -0.008, 0.016), (0.014, 0, 0)),
+                (34, (0, -0.014, 0.022), (0.020, sign * 0.010, 0)),
+                (50, (0, -0.006, 0.010), (0.008, sign * 0.005, 0)),
+                (64, (0, 0, 0), (0, 0, 0))
+            ])
+            animate(head, clip, [
+                (1,  (0, 0, 0), (0, 0, 0)),
+                (20, (0, 0, 0.008), (-0.015, sign * 0.020, sign * 0.010)),
+                (36, (0, 0, 0.012), (-0.020, -sign * 0.015, 0)),
+                (52, (0, 0, 0.005), (-0.006, 0, 0)),
+                (64, (0, 0, 0), (0, 0, 0))
+            ])
+            for j, arm in enumerate(arms):
+                side_f = -1 if j == 0 else 1
+                animate(arm, clip, [
+                    (1,  (0, 0, 0), (0.10, side_f * 0.04, 0)),
+                    (34, (0, 0, 0.006), (0.08, side_f * 0.04, 0)),
+                    (64, (0, 0, 0), (0.10, side_f * 0.04, 0))
+                ])
+            for j, forearm in enumerate(forearms):
+                animate(forearm, clip, [
+                    (1,  (0, 0, 0), (0.45, 0, 0)),
+                    (34, (0, -0.003, 0.004), (0.42, 0, 0)),
+                    (64, (0, 0, 0), (0.45, 0, 0))
+                ])
+            for j, hand in enumerate(hands):
+                animate(hand, clip, [
+                    (1,  (0, 0, 0), (0, 0, 0)),
+                    (34, (0, 0, 0.002), (0.03, 0, 0)),
+                    (64, (0, 0, 0), (0, 0, 0))
+                ])
+
+        elif clip == 'entrance':
+            animate(body, clip, [
+                (1,  (0, 0, 0.10), (0, sign * 0.06, 0)),
+                (14, (0, 0, -0.03), (0.03, -sign * 0.03, 0)),
+                (28, (0, 0, 0.02), (-0.01, sign * 0.01, 0)),
                 (48, (0, 0, 0), (0, 0, 0))
             ])
             animate(head, clip, [
-                (1,  (0, 0, 0.02), (0.08, -sign * 0.12, -sign * 0.08)),
-                (16, (0, 0, 0.04), (-0.06, sign * 0.15, sign * 0.06)),
-                (30, (0, 0, 0.01), (0.04, -sign * 0.05, 0)),
-                (42, (0, 0, 0), (0, 0, 0)),
+                (1,  (0, 0, 0.02), (0.06, -sign * 0.10, -sign * 0.06)),
+                (16, (0, 0, 0.03), (-0.05, sign * 0.12, sign * 0.05)),
+                (30, (0, 0, 0.01), (0.03, -sign * 0.04, 0)),
                 (48, (0, 0, 0), (0, 0, 0))
             ])
             for j, arm in enumerate(arms):
                 side_f = -1 if j == 0 else 1
                 animate(arm, clip, [
-                    (1,  (0, 0, 0), (0.35 * side_f, 0, 0)),
-                    (16, (0, -0.08, 0.06), (-0.45 * side_f, sign * 0.15, 0.12 * side_f)),
-                    (32, (0, -0.04, 0), (0.15 * side_f, 0, 0)),
+                    (1,  (0, 0, 0), (-0.15, side_f * 0.05, 0)),
+                    (16, (0, -0.05, 0.04), (0.20, sign * 0.10, 0.08 * side_f)),
+                    (32, (0, -0.02, 0), (0.14, 0, 0)),
+                    (48, (0, 0, 0), (0.10, side_f * 0.04, 0))
+                ])
+            for j, forearm in enumerate(forearms):
+                animate(forearm, clip, [
+                    (1,  (0, 0, 0), (0.20, 0, 0)),
+                    (16, (0, 0, 0.02), (0.68, 0, 0)),
+                    (32, (0, 0, 0.01), (0.52, 0, 0)),
+                    (48, (0, 0, 0), (0.45, 0, 0))
+                ])
+            for j, hand in enumerate(hands):
+                side_f = -1 if j == 0 else 1
+                animate(hand, clip, [
+                    (1,  (0, 0, 0), (-0.10, 0, 0)),
+                    (16, (0, 0, 0.01), (0.22, side_f * 0.08, 0)),
+                    (32, (0, 0, 0), (0.08, 0, 0)),
                     (48, (0, 0, 0), (0, 0, 0))
                 ])
 
         elif clip == 'truco':
-            # Dramatic challenge! Body surges forward, arm challenges the table
             animate(body, clip, [
                 (1,  (0, 0, 0), (0, 0, 0)),
-                (10, (0, 0.06, -0.03), (-0.08, 0, 0)),
-                (20, (0, -0.16, 0.08), (0.24, sign * 0.06, 0)),
-                (32, (0, -0.10, 0.04), (0.15, 0, 0)),
+                (10, (0, 0.04, -0.02), (-0.06, 0, 0)),
+                (20, (0, -0.14, 0.06), (0.20, sign * 0.05, 0)),
+                (32, (0, -0.08, 0.03), (0.12, 0, 0)),
                 (48, (0, 0, 0), (0, 0, 0))
             ])
             animate(head, clip, [
                 (1,  (0, 0, 0), (0, 0, 0)),
-                (10, (0, 0, 0.03), (-0.12, 0, 0)),
-                (20, (0, -0.08, 0.05), (0.28, sign * 0.08, 0)),
-                (34, (0, -0.04, 0.02), (0.12, 0, 0)),
+                (10, (0, 0, 0.02), (-0.10, 0, 0)),
+                (20, (0, -0.06, 0.04), (0.24, sign * 0.06, 0)),
+                (34, (0, -0.03, 0.02), (0.10, 0, 0)),
                 (48, (0, 0, 0), (0, 0, 0))
             ])
             for j, arm in enumerate(arms):
-                if j == (0 if index % 2 == 0 else 1):
+                side_f = -1 if j == 0 else 1
+                is_active = (j == (0 if index % 2 == 0 else 1))
+                if is_active:
                     animate(arm, clip, [
-                        (1,  (0, 0, 0), (0, 0, 0)),
-                        (10, (0, 0.06, 0.12), (-0.65, sign * 0.20, 0.25)),
-                        (20, (0, -0.18, 0.08), (0.85, sign * 0.30, -0.35)),
-                        (34, (0, -0.12, 0.04), (0.55, sign * 0.15, -0.20)),
-                        (48, (0, 0, 0), (0, 0, 0))
+                        (1,  (0, 0, 0), (0.10, side_f * 0.04, 0)),
+                        (10, (0, 0.04, 0.06), (-0.35, side_f * 0.10, 0)),
+                        (20, (0, -0.12, 0.04), (0.35, side_f * 0.15, -side_f * 0.08)),
+                        (34, (0, -0.08, 0.02), (0.25, side_f * 0.08, -side_f * 0.04)),
+                        (48, (0, 0, 0), (0.10, side_f * 0.04, 0))
                     ])
                 else:
                     animate(arm, clip, [
+                        (1,  (0, 0, 0), (0.10, side_f * 0.04, 0)),
+                        (14, (0, 0.02, 0), (-0.05, 0, 0)),
+                        (24, (0, -0.06, -0.02), (0.16, -side_f * 0.05, 0)),
+                        (48, (0, 0, 0), (0.10, side_f * 0.04, 0))
+                    ])
+            for j, forearm in enumerate(forearms):
+                side_f = -1 if j == 0 else 1
+                is_active = (j == (0 if index % 2 == 0 else 1))
+                if is_active:
+                    animate(forearm, clip, [
+                        (1,  (0, 0, 0), (0.45, 0, 0)),
+                        (10, (0, 0, 0.02), (1.05, 0, 0)),
+                        (20, (0, -0.04, 0.01), (0.14, 0, -side_f * 0.12)),
+                        (34, (0, -0.02, 0.01), (0.28, 0, -side_f * 0.06)),
+                        (48, (0, 0, 0), (0.45, 0, 0))
+                    ])
+                else:
+                    animate(forearm, clip, [
+                        (1,  (0, 0, 0), (0.45, 0, 0)),
+                        (24, (0, 0, 0), (0.58, 0, 0)),
+                        (48, (0, 0, 0), (0.45, 0, 0))
+                    ])
+            for j, hand in enumerate(hands):
+                side_f = -1 if j == 0 else 1
+                is_active = (j == (0 if index % 2 == 0 else 1))
+                if is_active:
+                    animate(hand, clip, [
                         (1,  (0, 0, 0), (0, 0, 0)),
-                        (10, (0, 0.04, 0), (-0.20, 0, 0)),
-                        (20, (0, -0.12, -0.04), (0.35, -sign * 0.10, 0)),
+                        (10, (0, 0, 0.01), (-0.30, side_f * 0.10, 0)),
+                        (20, (0, 0, 0), (0.45, 0, -side_f * 0.15)),
+                        (34, (0, 0, 0), (0.20, 0, 0)),
+                        (48, (0, 0, 0), (0, 0, 0))
+                    ])
+                else:
+                    animate(hand, clip, [
+                        (1,  (0, 0, 0), (0, 0, 0)),
+                        (24, (0, 0, 0), (0.12, 0, 0)),
                         (48, (0, 0, 0), (0, 0, 0))
                     ])
 
         elif clip == 'victory':
-            # Triumphant celebration! Fist pump and proud stance
             animate(body, clip, [
                 (1,  (0, 0, 0), (0, 0, 0)),
-                (12, (0, 0, 0.10), (-0.08, sign * 0.06, 0)),
-                (24, (0, 0, 0.14), (-0.12, -sign * 0.04, 0)),
-                (36, (0, 0, 0.06), (-0.04, sign * 0.02, 0)),
+                (14, (0, 0, 0.09), (-0.07, sign * 0.05, 0)),
+                (26, (0, 0, 0.12), (-0.10, -sign * 0.03, 0)),
+                (38, (0, 0, 0.05), (-0.03, sign * 0.02, 0)),
                 (48, (0, 0, 0), (0, 0, 0))
             ])
             animate(head, clip, [
                 (1,  (0, 0, 0), (0, 0, 0)),
-                (14, (0, 0, 0.06), (-0.18, sign * 0.12, sign * 0.08)),
-                (26, (0, 0, 0.08), (-0.22, -sign * 0.08, -sign * 0.05)),
+                (14, (0, 0, 0.05), (-0.15, sign * 0.10, sign * 0.06)),
+                (26, (0, 0, 0.07), (-0.18, -sign * 0.06, -sign * 0.04)),
                 (48, (0, 0, 0), (0, 0, 0))
             ])
             for j, arm in enumerate(arms):
                 side_f = -1 if j == 0 else 1
                 animate(arm, clip, [
+                    (1,  (0, 0, 0), (0.10, side_f * 0.04, 0)),
+                    (14, (0, -0.04, 0.16), (-0.80, side_f * 0.25, side_f * 0.20)),
+                    (26, (0, -0.06, 0.20), (-0.90, side_f * 0.28, side_f * 0.22)),
+                    (38, (0, -0.03, 0.10), (-0.42, side_f * 0.15, side_f * 0.10)),
+                    (48, (0, 0, 0), (0.10, side_f * 0.04, 0))
+                ])
+            for j, forearm in enumerate(forearms):
+                side_f = -1 if j == 0 else 1
+                animate(forearm, clip, [
+                    (1,  (0, 0, 0), (0.45, 0, 0)),
+                    (14, (0, 0, 0.02), (1.25, 0, side_f * 0.25)),
+                    (26, (0, 0, 0.03), (1.38, 0, side_f * 0.30)),
+                    (38, (0, 0, 0.01), (0.85, 0, side_f * 0.12)),
+                    (48, (0, 0, 0), (0.45, 0, 0))
+                ])
+            for j, hand in enumerate(hands):
+                side_f = -1 if j == 0 else 1
+                animate(hand, clip, [
                     (1,  (0, 0, 0), (0, 0, 0)),
-                    (14, (0, -0.06, 0.22), (-1.20, side_f * 0.35, side_f * 0.40)),
-                    (26, (0, -0.08, 0.26), (-1.35, side_f * 0.40, side_f * 0.45)),
-                    (38, (0, -0.04, 0.12), (-0.60, side_f * 0.20, side_f * 0.20)),
+                    (14, (0, 0, 0.01), (-0.30, side_f * 0.15, side_f * 0.20)),
+                    (26, (0, 0, 0.02), (-0.40, side_f * 0.20, side_f * 0.25)),
+                    (38, (0, 0, 0.01), (-0.20, side_f * 0.10, side_f * 0.10)),
                     (48, (0, 0, 0), (0, 0, 0))
                 ])
 
         elif clip == 'boss_intro':
-            # Theatrical boss intimidation! Wide wing/cape flare and piercing bow
             animate(body, clip, [
-                (1,  (0, 0, 0.08), (0, 0, 0)),
-                (16, (0, -0.06, 0.16), (0.08, 0, 0)),
-                (28, (0, -0.10, 0.12), (0.14, sign * 0.05, 0)),
-                (42, (0, 0, 0.04), (0.04, 0, 0)),
+                (1,  (0, 0, 0.06), (0, 0, 0)),
+                (16, (0, -0.05, 0.14), (0.07, 0, 0)),
+                (28, (0, -0.08, 0.10), (0.12, sign * 0.04, 0)),
                 (48, (0, 0, 0), (0, 0, 0))
             ])
             animate(head, clip, [
-                (1,  (0, 0, 0.02), (-0.15, 0, 0)),
-                (16, (0, 0, 0.08), (-0.22, sign * 0.08, 0)),
-                (28, (0, -0.04, 0.06), (0.16, 0, 0)),
+                (1,  (0, 0, 0.02), (-0.12, 0, 0)),
+                (16, (0, 0, 0.06), (-0.18, sign * 0.06, 0)),
+                (28, (0, -0.03, 0.05), (0.14, 0, 0)),
                 (48, (0, 0, 0), (0, 0, 0))
             ])
             for j, arm in enumerate(arms):
                 side_f = -1 if j == 0 else 1
                 animate(arm, clip, [
+                    (1,  (0, 0, 0), (0.10, side_f * 0.04, 0)),
+                    (18, (side_f * 0.12, 0, 0.14), (0.15, side_f * 0.65, -side_f * 0.35)),
+                    (32, (side_f * 0.06, -0.04, 0.06), (0.32, side_f * 0.35, -side_f * 0.18)),
+                    (48, (0, 0, 0), (0.10, side_f * 0.04, 0))
+                ])
+            for j, forearm in enumerate(forearms):
+                side_f = -1 if j == 0 else 1
+                animate(forearm, clip, [
+                    (1,  (0, 0, 0), (0.45, 0, 0)),
+                    (18, (0, 0, 0.02), (0.22, side_f * 0.15, 0)),
+                    (32, (0, 0, 0.01), (0.38, side_f * 0.08, 0)),
+                    (48, (0, 0, 0), (0.45, 0, 0))
+                ])
+            for j, hand in enumerate(hands):
+                side_f = -1 if j == 0 else 1
+                animate(hand, clip, [
                     (1,  (0, 0, 0), (0, 0, 0)),
-                    (18, (side_f * 0.15, 0, 0.18), (0.30, side_f * 0.85, -side_f * 0.50)),
-                    (32, (side_f * 0.08, -0.06, 0.08), (0.50, side_f * 0.45, -side_f * 0.25)),
+                    (18, (0, 0, 0.01), (0.25, side_f * 0.30, -side_f * 0.15)),
+                    (32, (0, 0, 0.01), (0.15, side_f * 0.15, -side_f * 0.08)),
                     (48, (0, 0, 0), (0, 0, 0))
                 ])
 
         elif clip == 'flourish':
-            # Card master flourish! Elegant arc and confident nod
             animate(body, clip, [
                 (1,  (0, 0, 0), (0, 0, 0)),
-                (14, (0, -0.04, 0.04), (0.05, sign * 0.06, 0)),
-                (28, (0, 0.02, 0.02), (-0.04, -sign * 0.03, 0)),
+                (14, (0, -0.03, 0.03), (0.04, sign * 0.05, 0)),
+                (28, (0, 0.01, 0.01), (-0.03, -sign * 0.02, 0)),
                 (48, (0, 0, 0), (0, 0, 0))
             ])
             animate(head, clip, [
                 (1,  (0, 0, 0), (0, 0, 0)),
-                (14, (0, 0, 0.03), (0.08, sign * 0.14, sign * 0.06)),
-                (28, (0, 0, 0.01), (-0.06, -sign * 0.08, 0)),
+                (14, (0, 0, 0.02), (0.06, sign * 0.10, sign * 0.04)),
+                (28, (0, 0, 0.01), (-0.04, -sign * 0.06, 0)),
                 (48, (0, 0, 0), (0, 0, 0))
             ])
             for j, arm in enumerate(arms):
                 side_f = -1 if j == 0 else 1
-                animate(arm, clip, [
-                    (1,  (0, 0, 0), (0, 0, 0)),
-                    (14, (0, -0.12, 0.10), (-0.55, side_f * 0.35, -side_f * 0.40)),
-                    (28, (0, -0.08, 0.05), (-0.25, side_f * 0.15, -side_f * 0.15)),
-                    (48, (0, 0, 0), (0, 0, 0))
-                ])
+                is_active = (j == (0 if index % 2 == 0 else 1))
+                if is_active:
+                    animate(arm, clip, [
+                        (1,  (0, 0, 0), (0.10, side_f * 0.04, 0)),
+                        (14, (0, -0.08, 0.06), (-0.22, side_f * 0.35, -side_f * 0.20)),
+                        (28, (0, -0.05, 0.03), (-0.08, side_f * 0.15, -side_f * 0.08)),
+                        (48, (0, 0, 0), (0.10, side_f * 0.04, 0))
+                    ])
+                else:
+                    animate(arm, clip, [
+                        (1,  (0, 0, 0), (0.10, side_f * 0.04, 0)),
+                        (20, (0, 0, 0.01), (0.07, 0, 0)),
+                        (48, (0, 0, 0), (0.10, side_f * 0.04, 0))
+                    ])
+            for j, forearm in enumerate(forearms):
+                side_f = -1 if j == 0 else 1
+                is_active = (j == (0 if index % 2 == 0 else 1))
+                if is_active:
+                    animate(forearm, clip, [
+                        (1,  (0, 0, 0), (0.45, 0, 0)),
+                        (14, (0, 0, 0.02), (0.80, -side_f * 0.30, side_f * 0.20)),
+                        (28, (0, 0, 0.01), (0.60, -side_f * 0.15, side_f * 0.10)),
+                        (48, (0, 0, 0), (0.45, 0, 0))
+                    ])
+                else:
+                    animate(forearm, clip, [
+                        (1,  (0, 0, 0), (0.45, 0, 0)),
+                        (48, (0, 0, 0), (0.45, 0, 0))
+                    ])
+            for j, hand in enumerate(hands):
+                side_f = -1 if j == 0 else 1
+                is_active = (j == (0 if index % 2 == 0 else 1))
+                if is_active:
+                    animate(hand, clip, [
+                        (1,  (0, 0, 0), (0, 0, 0)),
+                        (14, (0, 0, 0.01), (-0.40, side_f * 0.40, -side_f * 0.25)),
+                        (28, (0, 0, 0), (0.25, -side_f * 0.20, side_f * 0.15)),
+                        (48, (0, 0, 0), (0, 0, 0))
+                    ])
+                else:
+                    animate(hand, clip, [
+                        (1,  (0, 0, 0), (0, 0, 0)),
+                        (48, (0, 0, 0), (0, 0, 0))
+                    ])
+
+        elif clip == 'play_card':
+            # Smooth forward reach placing card on felt, tactile wrist snap, and return
+            animate(body, clip, [
+                (1,  (0, 0, 0), (0, 0, 0)),
+                (14, (0, -0.05, 0.025), (0.09, sign * 0.02, 0)),
+                (26, (0, -0.09, 0.045), (0.15, sign * 0.04, -sign * 0.02)),
+                (36, (0, -0.04, 0.02), (0.06, sign * 0.01, 0)),
+                (48, (0, 0, 0), (0, 0, 0))
+            ])
+            animate(head, clip, [
+                (1,  (0, 0, 0), (0, 0, 0)),
+                (14, (0, 0, 0.01), (0.10, sign * 0.03, 0)),
+                (26, (0, 0, 0.02), (0.16, sign * 0.04, 0)),
+                (36, (0, 0, 0.01), (-0.03, 0, 0)),
+                (48, (0, 0, 0), (0, 0, 0))
+            ])
+            for j, arm in enumerate(arms):
+                side_f = -1 if j == 0 else 1
+                is_active = (j == (0 if index % 2 == 0 else 1))
+                if is_active:
+                    animate(arm, clip, [
+                        (1,  (0, 0, 0), (0.10, side_f * 0.04, 0)),
+                        (14, (0, -0.04, 0.06), (-0.28, side_f * 0.12, -side_f * 0.06)),
+                        (26, (0, -0.14, 0.08), (0.32, side_f * 0.18, -side_f * 0.10)),
+                        (36, (0, -0.07, 0.04), (0.20, side_f * 0.08, -side_f * 0.04)),
+                        (48, (0, 0, 0), (0.10, side_f * 0.04, 0))
+                    ])
+                else:
+                    animate(arm, clip, [
+                        (1,  (0, 0, 0), (0.10, side_f * 0.04, 0)),
+                        (20, (0, 0, 0.01), (0.08, 0, 0)),
+                        (48, (0, 0, 0), (0.10, side_f * 0.04, 0))
+                    ])
+            for j, forearm in enumerate(forearms):
+                side_f = -1 if j == 0 else 1
+                is_active = (j == (0 if index % 2 == 0 else 1))
+                if is_active:
+                    animate(forearm, clip, [
+                        (1,  (0, 0, 0), (0.45, 0, 0)),
+                        (14, (0, 0, 0.02), (0.95, 0, -side_f * 0.08)),
+                        (26, (0, -0.04, 0.01), (0.22, 0, -side_f * 0.14)),
+                        (36, (0, -0.02, 0.01), (0.42, 0, -side_f * 0.06)),
+                        (48, (0, 0, 0), (0.45, 0, 0))
+                    ])
+                else:
+                    animate(forearm, clip, [
+                        (1,  (0, 0, 0), (0.45, 0, 0)),
+                        (20, (0, 0, 0), (0.50, 0, 0)),
+                        (48, (0, 0, 0), (0.45, 0, 0))
+                    ])
+            for j, hand in enumerate(hands):
+                side_f = -1 if j == 0 else 1
+                is_active = (j == (0 if index % 2 == 0 else 1))
+                if is_active:
+                    animate(hand, clip, [
+                        (1,  (0, 0, 0), (0, 0, 0)),
+                        (14, (0, 0, 0.01), (-0.30, side_f * 0.12, -side_f * 0.15)),
+                        (26, (0, 0, 0), (0.38, -side_f * 0.10, side_f * 0.22)),
+                        (36, (0, 0, 0), (0.12, 0, 0)),
+                        (48, (0, 0, 0), (0, 0, 0))
+                    ])
+                else:
+                    animate(hand, clip, [
+                        (1,  (0, 0, 0), (0, 0, 0)),
+                        (48, (0, 0, 0), (0, 0, 0))
+                    ])
 
     # Scene setup
     scene = bpy.context.scene
     scene.frame_start = 1
-    scene.frame_end = 48
+    scene.frame_end = 64
     scene.render.fps = 24
     scene.frame_set(1)
 
@@ -521,10 +758,10 @@ def build(index, ident, species, skinhex, coathex, accenthex, sechex):
     )
 
     # Studio Portrait Render (320x400 transparent PNG)
-    bpy.ops.object.camera_add(location=(1.8, -4.8, 2.1))
+    bpy.ops.object.camera_add(location=(1.7, -4.6, 2.0))
     camera = bpy.context.object
     camera.name = 'PortraitCamera'
-    camera.rotation_euler = (Vector((0, 0, 1.05)) - camera.location).to_track_quat('-Z', 'Y').to_euler()
+    camera.rotation_euler = (Vector((0, 0, 1.12)) - camera.location).to_track_quat('-Z', 'Y').to_euler()
     camera.data.type = 'ORTHO'
     camera.data.ortho_scale = 2.45
     scene.camera = camera
@@ -560,8 +797,9 @@ def main():
     manifest = {
         'generator': 'Blender 5.2.1 Stylized AAA Pipeline',
         'characters': [c[0] for c in CAST],
-        'clips': ['entrance', 'truco', 'victory', 'boss_intro', 'flourish'],
-        'style': 'Stylized Triple-A high-fidelity character meshes, continuous organic anatomy, tailored clothing & PBR materials'
+        'clips': ['idle', 'entrance', 'truco', 'victory', 'boss_intro', 'flourish', 'play_card'],
+        'articulated_groups': ['Pelvis', 'Body', 'Head', 'ArmL', 'ArmR', 'ForearmL', 'ForearmR', 'HandL', 'HandR'],
+        'style': 'Stylized Triple-A high-fidelity modular character meshes, 9 articulated anatomical groups, tailored clothing & PBR materials'
     }
     (OUT / 'manifest.json').write_text(json.dumps(manifest, indent=2))
     print("[Blender] All 8 Stylized AAA characters built successfully!", flush=True)

@@ -207,6 +207,81 @@ O modo inclui entrada dos quatro personagens, leques dos adversários, cartas f�
 
 ---
 
+### Patch 10: Perspectiva em Primeira Pessoa (POV), Rodízio do Baralho, Articulação Anatômica 3D e Descarte Proporcional — 06/09/2026
+
+**Base preservada:** Snapshot de segurança preservado na branch **Backup** (`a9ea168d3fbe9f4ba27743d7a5b15a4c31a0f921`). Trabalho realizado e consolidado na branch **review**; `main` preservada intacta. Experimentos locais do usuário (`test_*.glb`, etc.) mantidos fora do commit.
+
+1. **Câmera Imersiva em Primeira Pessoa (POV) com Rotação Limitada de Pescoço (`core/visuals/TableStage.cs`):**
+   * Ponto de vista do jogador no assento local (`LocalSeatIndex = 0` por padrão) elevado para `2.35m` acima da origem do assento (que repousa em $-0.72\text{m}$, totalizando $1.63\text{m}$ do plano de referência, correspondente à altura dos olhos de um participante sentado à mesa).
+   * Projeção em perspectiva com campo de visão vertical calibrado em $50^\circ$ (`KeepAspect = Height`).
+   * Rotação suave do olhar por arraste com botão direito do mouse (`MouseButton.Right` drag) restrita anatomicamente: limite horizontal (yaw) de até $\pm 48^\circ$ e vertical (pitch) de até $\pm 12^\circ$, impedindo giros irreais de $360^\circ$ e dispensando captura exclusiva do ponteiro do mouse (permitindo interações com cartas a qualquer momento).
+   * Deslocamento sutil do pescoço (*body lean*) acompanhando o olhar e micro-respiração orgânica (~1–2 mm) sincronizada com o ritmo do jogo.
+   * Ocultação do próprio corpo/cadeira do jogador local no assento ativo para prevenir oclusão e *clipping* de câmera.
+   * Alternância instantânea entre modo Primeira Pessoa (POV) e visão clássica aérea 2.5D através da tecla `C` ou botão de interface `"Visão: POV [C]"` / `"Visão: Mesa [C]"`. Botão `"Centralizar"` disponível para recentralizar o olhar de imediato.
+
+2. **Rodízio e Automação de Baralho (Truco e Fodinha):**
+   * **Truco (`games/truco/scripts/TrucoGameManager.cs` e `TrucoUI.cs`):** Nova fase `TrucoPhase.Shuffling`. IAs embaralham, cortam e distribuem automaticamente com temporizações dedicadas. O jogador humano corta somente quando a sua vez de corte chega (`CutterIsPlayer`), sem exigir comandos manuais para turnos dos bots. Rotação do distribuidor e cortador sincronizada anti-horária a cada mão. Decisão de Pena pela IA resolvida autonomamente; oferta e aceitação/rejeição de Pena apresentadas ao humano exclusivamente quando ele for o destinatário.
+   * **Fodinha (`games/fodinha/scripts/FodinhaMatch.cs` e `FodinhaUI.cs`):** Fase `Cutting` formalizada com validação de participante autorizado (`CutterSeat`), mãos vazias antes do corte e revelação da vira exclusivamente após o corte autorizado. Descarte de participantes eliminados na rotação de distribuidor e cortador.
+
+3. **Redesenho Anatômico 3D & Hierarquia de Braço no Blender 5.2 (`tools/build_blender_cast.py`):**
+   * **Hierarquia Articulada em 2 Fases:** Braços divididos entre ombro (`ArmL`, `ArmR`) e antebraço/cotovelo (`ForearmL`, `ForearmR`), eliminando o efeito de haste rígida esticada. Todas as 6 animações (`idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish`) reescritas com flexão orgânica do cotovelo e pronação/supinação das mãos.
+   * **Alfaiataria Contornada em V:** Torsos remodelados com afunilamento em V, lapelas curvas em 3 níveis (`LapelGorge`, `LapelRoll`, `LapelLower`), decote integrado e punhos de camisa de linho branco com abotoaduras douradas sob as mangas.
+   * **Redesenho Completo do Corvo (`corvo`):** Eliminação da silhueta anterior. Construção de crânio esguio com cúlmen arqueado projetado para a frente, mandíbula inferior afilada, cerdas nariais, plumagem na crista e óculos *pince-nez* dourados repousados sobre a ponte nasal.
+   * Reconstrução e reexportação dos 8 modelos `.glb` e retratos de estúdio `.png`.
+
+4. **Descarte de Cartas Proporcional e Alinhado:**
+   * Na fase de recolhimento de cartas ao término de cada vaza/rodada, a escala das cartas jogadas é reduzida dinamicamente de `1.0` para `0.464f` (medida idêntica à do baralho físico na mesa: $0.58 \times 0.82$).
+   * Rótulos 3D de identificação e selo de MANILHA esmaecem suavemente (`modulate:a` $\to 0$).
+   * As cartas são empilhadas face para baixo na bandeja de descarte ao lado do baralho (`Position = new Vector3(-1.85f, 0.082f + pileIdx * 0.018f, -0.65f)`).
+
+5. **Estabilidade de Recursos e Caching:**
+   * Caching estático de texturas de mapa em `TrucoGameManager` e `PokerGameManager`, eliminando falhas de coleta de `GCHandle` por troca repetida de cenas sob o garbage collector do .NET.
+
+6. **Validação de QA e Executável:**
+   * **Bateria Automatizada (`visual_smoke.ps1`):** **155 asserções aprovadas com êxito** em `GameplayChecks.cs` (rodízio 2v2/3v3, unicidade de baralho, autoridade de corte/pena, integridade de modelos articulados).
+   * **Fumaça Visual:** **24 capturas de tela e 21 ações aprovadas com 0 falhas**, testadas nos renderizadores `Forward+` e `GL Compatibility` em resolução 4K Ultra HD.
+   * **Executável Exportado:** `Game Hub.exe` e `Game Hub.pck` gerados com sucesso para Windows x86_64 em modo debug; abertura autônoma sem interface validada via `Game Hub.console.exe` em APPDATA temporário.
+
+---
+
+### Patch 11: Separação Anatômica Modular em 9 Partes, Gesto de Jogada (`play_card`) e Imersão em Primeira Pessoa (POV) — 06/09/2026
+
+**Base preservada:** Trabalho executado e verificado na branch **review** com preservação da identidade dos 8 personagens e sem adição de bibliotecas externas proprietárias.
+
+1. **Separação Anatômica Modular em 9 Partes Independentes (`tools/build_blender_cast.py`):**
+   * Desacoplamento estrutural completo da malha dos 8 personagens (`nina`, `bento`, `corvo`, `onca`, `iara`, `zeca`, `barao`, `dama`) em 9 nós de malha modulares independentes:
+     * `PelvisMesh`: pernas e calças de alfaiataria em repouso sentadas na poltrona do clube, sapatos Oxford de couro polido.
+     * `BodyMesh`: torso em V estilizado, coletes adamascados, peitilho de linho, lapelas curvas em 3 níveis (`LapelGorge`, `LapelRoll`, `LapelLower`), botões dourados, gravatas, suspensórios, correntes e capas.
+     * `HeadMesh`: crânio anatômico, feições expressivas, bicos arqueados, cerdas nariais, óculos *pince-nez*, monóculos, orelhas felinas e coroas aristocráticas.
+     * `ArmLMesh` / `ArmRMesh`: ombros esferoidais articulados e mangas dos braços superiores (bíceps).
+     * `ForearmLMesh` / `ForearmRMesh`: cotovelos mecânicos/orgânicos articulados, mangas de antebraço, bainhas e abotoaduras de ouro.
+     * `HandLMesh` / `HandRMesh`: pulsos desacoplados, palmas com sulcos, nós dos dedos, polegares articulados e garras orgânicas (especialmente no Seu Corvo e na Onça).
+   * Eliminação de deformações espúrias: a respiração e inclinação do tronco ocorrem sem mover as pernas sentadas, e a pronação/supinação do pulso opera livremente em relação ao antebraço.
+
+2. **Nova Animação de Jogar Carta na Mesa (`play_card`):**
+   * Criada em curvas Bezier no Blender 5.2.1 LTS (48 quadros a 24 fps) para todos os 8 personagens, expandindo o catálogo para 7 clipes por ator (`idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish`, `play_card`).
+   * Coreografia fluida de colocar a carta no feltro:
+     * Quadro 1-12: torso inclina-se levemente para a frente na direção da mesa, antebraço levanta trazendo a carta para cima da borda da mesa.
+     * Quadro 13-26: extensão do braço e do cotovelo projetando a carta ao centro do feltro, com rotação descendente do pulso ("snap").
+     * Quadro 27-36: mão assenta a carta sobre o feltro com toque amortecido.
+     * Quadro 37-48: recolhimento suave do braço de volta à poltrona, retornando ao ciclo de respiração do `idle`.
+
+3. **Imersão em Primeira Pessoa (POV) com Preservação do Próprio Corpo (`core/visuals/TableStage.cs`):**
+   * Ao jogar em visão de Primeira Pessoa (`CurrentCameraMode == CameraPerspectiveMode.FirstPersonPov`), apenas a cabeça do jogador local (`seat == LocalSeatIndex`) é desativada (`Visible = false`), evitando oclusão da lente.
+   * O peito, as lapelas, os ombros, os antebraços e as mãos permanecem visíveis no campo periférico do olhar. Ao olhar para baixo ou em direção à mesa, o jogador enxerga seu próprio corpo na poltrona do clube.
+   * Sincronização de lançamento: ao disparar `PlayCard`, `TableStage` aciona `PlayGesture(seat, isSpecial ? "flourish" : "play_card")`. O jogador em primeira pessoa vê seu próprio braço estendendo-se e colocando a carta no feltro, sincronizado com o efeito sonoro de contato com o feltro.
+
+4. **Robustez de Entrada e Redimensionamento de Janela (`TableStage.cs` e `tools/camera_smoke.gd`):**
+   * O teste de contenção de ponteiro (`inside`) em `TableStage._Input` agora calcula a proporção de escala da janela (`Root.Size / Root.ContentScaleSize`), assegurando que o controle de rotação de pescoço por arraste funcione perfeitamente em 720p, 1080p, 1440p e 4K Ultra HD.
+
+5. **Validação de QA e Executável:**
+   * **Bateria C# (`GameplayChecks.cs`):** Atualizada para validar os 9 nós modulares e 7 clipes de animação em todos os modelos. **155 asserções aprovadas com êxito**.
+   * **Suíte de Câmera (`camera_smoke.gd`):** **100% aprovada (`CAMERA_QA PASS []`)** em Pôquer, Truco e Fodinha.
+   * **Fumaça Visual Completa (`visual_smoke.ps1`):** **24 capturas de tela e 21 ações com 0 falhas de layout**.
+   * **Executável Exportado:** `Game Hub.exe` e `Game Hub.pck` gerados com sucesso para Windows Desktop x86_64.
+
+---
+
 ## 3. Guia de Operações e Comandos Essenciais
 
 Para qualquer IA ou desenvolvedor executando tarefas neste projeto, utilize sempre os comandos abaixo:

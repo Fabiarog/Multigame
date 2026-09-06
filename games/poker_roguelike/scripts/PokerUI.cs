@@ -129,12 +129,14 @@ public partial class PokerUI : Control
         dealerRow.AddChild(rack);
         main.AddChild(dealerPanel);
 
-        _tableArea = new Control
+        _tableArea = new PanelContainer
         {
             CustomMinimumSize = new Vector2(0, 140),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
             MouseFilter = MouseFilterEnum.Ignore
         };
+        _tableArea.AddThemeStyleboxOverride("panel", ClubTheme.Box(Colors.Transparent, Colors.Transparent, 0, 0));
         main.AddChild(_tableArea);
         _stage = new TableStage { SeatCount = 2, RivalIndex = 2 };
         _tableArea.AddChild(_stage);
@@ -142,6 +144,7 @@ public partial class PokerUI : Control
         tableHint.HorizontalAlignment = HorizontalAlignment.Center;
         tableHint.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         tableHint.VerticalAlignment = VerticalAlignment.Bottom;
+        tableHint.MouseFilter = MouseFilterEnum.Ignore;
         _tableArea.AddChild(tableHint);
 
         var tray = Panel(ClubTheme.Panel, ClubTheme.Border, 16);

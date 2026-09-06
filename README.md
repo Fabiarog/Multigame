@@ -1,6 +1,6 @@
 # MultiGame — Clube de cartas
 
-Pôquer roguelike e truco em Godot .NET/C#, com mesas em **2.5D**, personagens pixel art e uma identidade de clube brasileiro: feltro verde, papel creme e detalhes de latão.
+Pôquer roguelike e truco em Godot .NET/C#, com mesas em **2.5D**, elenco articulado feito no Blender e uma identidade de clube brasileiro: feltro verde, papel creme e detalhes de latão. O acervo pixel art original foi preservado.
 
 ![Abertura do clube](docs/screenshots/abertura.png)
 
@@ -9,9 +9,11 @@ Pôquer roguelike e truco em Godot .NET/C#, com mesas em **2.5D**, personagens p
 - **Pôquer roguelike solo:** seleção de cartas, prévia de pontuação, descartes, metas por rodada, relíquias, loja e tutorial. A apresentação dos rivais usa o novo elenco.
 - **Truco solo:** 1×1, 2×2 e 3×3 com os demais lugares controlados por IA. Cada participante joga sua própria mão; o resultado do tombo considera a melhor carta de cada equipe.
 - **Pena nas equipes:** o aliado que recebe a carta decide se fica com ela. A IA resolve sua própria decisão no solo; o jogador local recebe os botões quando é o destinatário.
-- **Apresentação:** mesa 3D com personagens 2D, leques de cartas ocultas e animações de embaralhar, cortar, entregar a pena, distribuir, jogar e recolher no truco. O pôquer anima distribuição, seleção e pontuação.
-- **Elenco:** Nina, Bento, Seu Corvo e Dona Onça, com duas poses cada; seleção de personagem nos ajustes. Nesta versão, a escolha é cosmética.
-- **Áudio:** três loops originais sintetizados, efeitos de cartas e transições entre trilhas; volumes de música/efeitos e seleção de faixa.
+- **Apresentação:** mesa e personagens 3D em câmera ortográfica 2.5D, leques de cartas ocultas e animações de embaralhar, cortar, entregar a pena, distribuir, jogar e recolher no truco. O pôquer anima distribuição, seleção e pontuação.
+- **Elenco Blender:** seis jogáveis (Nina, Bento, Seu Corvo, Dona Onça, Iara e Zeca) e dois bosses exclusivos (Barão da Meia-Noite e Dama de Copas). Fontes `.blend`, exports GLB e cinco animações por modelo incluídos. Três vitórias com um personagem desbloqueiam seu floreio de truco.
+- **Pilhas e entradas:** cartas jogadas se acumulam sobre a mesa 3D; cutscenes apresentam os participantes e os bosses, com opção de pular. No truco, os resultados indicam a equipe vencedora.
+- **Áudio:** cinco loops originais sintetizados, efeitos de cartas e vinhetas de entrada; volumes de música/efeitos e seleção de faixa.
+- **Vídeo:** saída até 4K com escala de interface corrigida, escala 3D configurável e iluminação leve com opções extras em Forward+. Os controles gráficos herdados usam aproximações; não há ray tracing por hardware nesta revisão.
 - **Ajustes:** perfil, áudio, opções visuais e acessibilidade, incluindo redução de movimento e modos de cor.
 
 ## Limites atuais
@@ -35,7 +37,7 @@ $env:GODOT_BIN = 'C:\caminho\para\Godot_v4.7.2-stable_mono_win64_console.exe'
 .\tools\play.ps1
 ```
 
-O launcher também encontra o ambiente temporário preparado neste PC enquanto ele existir em `%TEMP%\multigame-tools`. Para uso permanente, configure os caminhos acima. O executável antigo que já estava no repositório não foi reexportado; use o projeto fonte para ver esta revisão.
+O launcher também encontra o ambiente temporário preparado neste PC enquanto ele existir em `%TEMP%\multigame-tools`. Para uso permanente, configure os caminhos acima. O `Game Hub.exe` local foi atualizado como **build de revisão/debug**; mantenha `Game Hub.pck` e a pasta `data_GameHub_windows_x86_64` ao lado dele. Essa pasta de runtime é gerada pelo export e não é versionada: em outro computador, compile/exporte o fonte ou transfira os três juntos. Os templates release instalados estão incompletos; este build não é um pacote final de distribuição.
 
 O identificador interno `Game Hub` foi mantido para preservar o caminho dos ajustes existentes. O título visível foi atualizado para MultiGame.
 
@@ -62,7 +64,9 @@ O script compila C#, importa recursos, verifica duplas/trios e captura o renderi
 | `assets` | Acervo preservado e novos recursos visuais/sonoros |
 | `tools` | Launcher, geração de áudio e verificações |
 
-- [Plano completo: implementado, pendências, critérios e perguntas](docs/plano-repaginacao-clube.md).
+- **[Guia para IAs e Patch Notes Cumulativo](AI_DEV_PATCH_NOTES.md)** — Documentação técnica completa de arquitetura, todos os patches implementados, automação no Blender 5.2, comandos de build e regras de manutenção.
+- [Entrega atual: Blender, pilhas, cutscenes, gráficos e próximas etapas](docs/plano-mesas-blender.md).
+- [Primeira repaginada: implementado, pendências, critérios e perguntas](docs/plano-repaginacao-clube.md).
 - [Origem das artes, prompts, áudio e licenças de fontes](assets/art-provenance.md).
 - [Plano anterior de personagens/cartas/truco](docs/plano-implementacao-personagens-cartas-truco.md), mantido como histórico.
 

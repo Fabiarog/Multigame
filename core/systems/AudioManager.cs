@@ -7,8 +7,8 @@ namespace GameHub.Core.Systems;
 public partial class AudioManager : Node
 {
     public static AudioManager Instance { get; private set; }
-    public static readonly string[] TrackIds = { "midnight-club", "velvet-table", "last-manilha" };
-    public static readonly string[] TrackNames = { "Depois da meia-noite", "Mesa de veludo", "Última manilha" };
+    public static readonly string[] TrackIds = { "midnight-club", "velvet-table", "last-manilha", "copper-steps", "midnight-baron" };
+    public static readonly string[] TrackNames = { "Depois da meia-noite", "Mesa de veludo", "Última manilha", "Passos de cobre", "O barão da noite" };
     private readonly List<AudioStreamPlayer> _effects = new();
     private readonly Dictionary<string, AudioStream> _cache = new();
     private AudioStreamPlayer _music, _outgoing;

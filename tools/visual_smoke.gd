@@ -54,7 +54,9 @@ func run_checks() -> void:
 			fail("Scene did not initialize: " + scene_name)
 			continue
 		if scene_name == "truco":
-			await wait_for_button("Cortar o baralho")
+			if find_button("Pular entrada") != null:
+				press_button("Pular entrada")
+			await wait_for_button("Cortar o baralho", 10.0)
 			await capture("truco-corte")
 			if press_button("Cortar o baralho"):
 				await settle(1.75)
@@ -62,6 +64,9 @@ func run_checks() -> void:
 				if find_button("Sem pena") != null:
 					press_button("Sem pena")
 					await settle(1.75)
+		if scene_name == "poker":
+			await capture("boss-entrada")
+			await settle(2.3)
 		await capture(scene_name)
 		if scene_name == "abertura":
 			await check_hub_menus()
@@ -80,6 +85,7 @@ func run_checks() -> void:
 	print("VISUAL_QA_RESULT ", "FAIL" if failed else "PASS", " | screenshots=", report.screenshots.size(),
 		" actions=", report.actions.size(), " layout_issues=", report.layout_issues.size(), " failures=", report.failures.size())
 	print("VISUAL_QA_REPORT ", report_path)
+	await load("res://tools/qa_teardown.gd").finish(self)
 	quit(1 if failed else 0)
 
 
@@ -156,7 +162,7 @@ func press_button(prefix: String) -> bool:
 	return true
 
 
-func wait_for_button(prefix: String, timeout_seconds := 3.0) -> void:
+func wait_for_button(prefix: String, timeout_seconds := 7.0) -> void:
 	var deadline := Time.get_ticks_msec() + int(timeout_seconds * 1000)
 	while find_button(prefix) == null and Time.get_ticks_msec() < deadline:
 		await process_frame
@@ -195,7 +201,11 @@ func check_team_tables() -> void:
 		config.ConfigureTeams(team_size)
 		change_scene_to_file(SCENES.truco)
 		await settle(0.65)
-		await wait_for_button("Cortar o baralho")
+		if team_size == 2:
+			await capture("truco-entrada")
+		if find_button("Pular entrada") != null:
+			press_button("Pular entrada")
+		await wait_for_button("Cortar o baralho", 10.0)
 		if press_button("Cortar o baralho"):
 			await settle(0.55)
 			await capture("truco-%sx%s-pena" % [team_size, team_size])
@@ -241,7 +251,9 @@ func check_poker_actions() -> void:
 	activate_card(cards[0])
 	await settle()
 	if press_button("Jogar mão"):
-		await settle(2.5)
+		await settle(0.9)
+		await capture("poker-pilha")
+		await settle(1.6)
 		await capture("poker-jogada")
 
 

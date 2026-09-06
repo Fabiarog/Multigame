@@ -1,0 +1,21 @@
+{
+  "generator": "Blender 5.2.1 High-Aesthetic Pipeline",
+  "characters": [
+    "nina",
+    "bento",
+    "corvo",
+    "onca",
+    "iara",
+    "zeca",
+    "barao",
+    "dama"
+  ],
+  "clips": [
+    "entrance",
+    "truco",
+    "victory",
+    "boss_intro",
+    "flourish"
+  ],
+  "style": "High-fidelity stylized 3D club cast, tailored clothing & PBR velvet/metals"
+}

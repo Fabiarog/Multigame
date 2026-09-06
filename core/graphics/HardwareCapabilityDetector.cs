@@ -61,7 +61,7 @@ public static class HardwareCapabilityDetector
         GpuName         = RenderingServer.GetVideoAdapterName();
         ApiVersion      = RenderingServer.GetVideoAdapterApiVersion();
         CurrentRenderer = DetermineRenderer();
-        IsForwardPlusRenderer = CurrentRenderer.Contains("Forward");
+        IsForwardPlusRenderer = CurrentRenderer.Equals("forward_plus", System.StringComparison.OrdinalIgnoreCase);
         EstimatedVramMb = EstimateVram();
         SupportsRayTracing = EvaluateRayTracingSupport();
         HasProbed = true;
@@ -83,7 +83,7 @@ public static class HardwareCapabilityDetector
     {
         // Godot exposes the configured method; at runtime the actual
         // method may differ if the driver doesn't support it.
-        var method = ProjectSettings.GetSetting("rendering/renderer/rendering_method").AsString();
+        var method = RenderingServer.GetCurrentRenderingMethod();
         return string.IsNullOrEmpty(method) ? "Unknown" : method;
     }
 

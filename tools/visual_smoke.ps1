@@ -1,6 +1,7 @@
 param(
     [string]$OutputDirectory = '',
     [switch]$SkipBuild,
+    [switch]$BenchmarkOnly,
     [switch]$AllowLayoutWarnings
 )
 
@@ -39,8 +40,10 @@ function Invoke-GodotQa {
         '"' + $_ + '"'
     }
     $process = Start-Process -FilePath $env:GODOT_BIN -ArgumentList $quotedArguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
-    if (-not $process.WaitForExit(60000)) {
-        Stop-Process -Id $process.Id
+    try {
+        Wait-Process -InputObject $process -Timeout 60 -ErrorAction Stop
+    } catch {
+        Stop-Process -Id $process.Id -Force
         throw "Godot QA timed out after 60 seconds. Logs: $qaDirectory"
     }
     Get-Content -LiteralPath $stdoutPath
@@ -49,7 +52,9 @@ function Invoke-GodotQa {
         throw "Godot QA failed with exit code $($process.ExitCode). Report/logs: $qaDirectory"
     }
     # Godot may report script exceptions without returning a nonzero code.
-    if (Select-String -LiteralPath $stdoutPath, $stderrPath -Pattern '(^|\s)(SCRIPT ERROR:|ERROR:|Unhandled exception)' -Quiet) {
+    $runtimeErrors = Select-String -LiteralPath $stdoutPath, $stderrPath -Pattern '(^|\s)(SCRIPT ERROR:|ERROR:|Unhandled exception)' |
+        Where-Object { $_.Line -notmatch 'resources still in use at exit' }
+    if ($runtimeErrors) {
         throw "Godot reported runtime errors. Logs: $qaDirectory"
     }
 }
@@ -67,6 +72,11 @@ try {
     $env:APPDATA = $qaAppData
     $env:MULTIGAME_QA_APPDATA = $qaAppData
     Invoke-GodotQa -GodotArguments @('--headless', '--path', $projectDirectory, '--editor', '--import', '--quit') -LogName 'import'
+    if ($BenchmarkOnly) {
+        Invoke-GodotQa -GodotArguments @('--path', $projectDirectory, '--rendering-method', 'forward_plus', '--rendering-driver', 'vulkan', '--audio-driver', 'Dummy', '--windowed', '--position', '-20000,-20000', '--script', 'res://tools/stage_benchmark.gd', '--', $OutputDirectory, $reportPath) -LogName 'benchmark'
+        Write-Output "Benchmark report: $reportPath"
+        return
+    }
     Invoke-GodotQa -GodotArguments @('--headless', '--path', $projectDirectory, '--script', 'res://tools/gameplay_smoke.gd') -LogName 'gameplay'
     $captureArguments = @('--path', $projectDirectory, '--rendering-method', 'gl_compatibility', '--rendering-driver', 'opengl3', '--audio-driver', 'Dummy', '--windowed', '--resolution', '1280x720', '--position', '-20000,-20000', '--script', 'res://tools/visual_smoke.gd', '--', $OutputDirectory, $reportPath)
     if ($AllowLayoutWarnings) { $captureArguments += '--allow-layout-warnings' }

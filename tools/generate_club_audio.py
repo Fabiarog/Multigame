@@ -78,12 +78,14 @@ if __name__ == "__main__":
     track("midnight-club", 80, [[57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65], [52, 56, 59, 62]], 41)
     track("velvet-table", 92, [[60, 64, 67, 71], [57, 60, 64, 67], [62, 65, 69, 72], [55, 59, 62, 65]], 42)
     track("last-manilha", 108, [[62, 65, 69, 72], [58, 62, 65, 69], [60, 64, 67, 70], [57, 61, 64, 67]], 43, True)
+    track("copper-steps", 96, [[65,69,72,76],[62,65,69,72],[67,71,74,77],[60,64,67,70]], 61, True)
+    track("midnight-baron", 72, [[48,51,55,59],[44,48,51,55],[46,50,53,57],[43,47,50,54]], 62)
     for name, offsets in {"shuffle": [0, .07, .14, .21, .28], "cut": [0, .13], "deal": [0, .11, .22, .33], "play": [0], "select": [0]}.items():
         buffer = array("f", [0]) * int((max(offsets) + .24) * RATE * 2)
         rng = random.Random(7)
         for at in offsets: percussion(buffer, at, .12, rng)
         write(name, buffer)
-    for name, notes in {"score": [72, 76, 79], "win": [60, 64, 67, 72], "truco": [50, 57, 62], "buy": [76, 79]}.items():
+    for name, notes in {"score": [72, 76, 79], "win": [60, 64, 67, 72], "truco": [50, 57, 62], "buy": [76, 79], "arrival": [60,67,72,76], "boss-arrival": [36,43,48,51,59]}.items():
         buffer = array("f", [0]) * int(1.2 * RATE * 2)
         for n, midi in enumerate(notes): note(buffer, n * .065, .7, midi, .12, "pluck")
         write(name, buffer)

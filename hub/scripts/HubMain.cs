@@ -155,15 +155,15 @@ public partial class HubMain : Control
         profile.AddChild(legacy);
         profile.AddChild(ClubTheme.Label("SEU PERSONAGEM", 13, Gold));
         _characterSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 40) };
-        foreach (var name in CharacterCatalog.Names) _characterSelect.AddItem(name);
+        for (int i = 0; i < CharacterCatalog.PlayableCount; i++) _characterSelect.AddItem(CharacterCatalog.Names[i]);
         profile.AddChild(_characterSelect);
         var portrait = new TextureRect { Texture = CharacterCatalog.Portrait(0), CustomMinimumSize = new Vector2(0, 120),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered };
         profile.AddChild(portrait);
-        var characterNote = ClubTheme.Label(CharacterCatalog.Descriptions[0], 13, TextSecondary);
+        var characterNote = ClubTheme.Label(CharacterCatalog.Descriptions[0]+"\n"+CharacterProgress.MissionText(0), 13, TextSecondary);
         characterNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         profile.AddChild(characterNote);
-        _characterSelect.ItemSelected += index => { portrait.Texture = CharacterCatalog.Portrait((int)index); characterNote.Text = CharacterCatalog.Descriptions[(int)index]; };
+        _characterSelect.ItemSelected += index => { portrait.Texture = CharacterCatalog.Portrait((int)index); characterNote.Text = CharacterCatalog.Descriptions[(int)index]+"\n"+CharacterProgress.MissionText((int)index); };
         var wardrobeNote = ClubTheme.Label("Personagens visuais · sem bônus de jogabilidade.", 13, ClubTheme.Muted);
         wardrobeNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         profile.AddChild(wardrobeNote);
@@ -610,7 +610,7 @@ public partial class HubMain : Control
         _nicknameEdit.Text = SettingsManager.Instance.PlayerNickname;
         _characterSelect.Select(CharacterCatalog.Find(SettingsManager.Instance.CharacterId));
         _characterSelect.EmitSignal(OptionButton.SignalName.ItemSelected, _characterSelect.Selected);
-        _musicTrackSelect.Select(Mathf.Clamp(SettingsManager.Instance.MusicTrack, 0, 3));
+        _musicTrackSelect.Select(Mathf.Clamp(SettingsManager.Instance.MusicTrack, 0, AudioManager.TrackIds.Length));
         
         SelectAvatarItem(_baseSelect, SettingsManager.Instance.AvatarBase);
         SelectAvatarItem(_shirtSelect, SettingsManager.Instance.AvatarShirt);
@@ -630,7 +630,7 @@ public partial class HubMain : Control
     {
         if (SettingsManager.Instance == null) return;
         SettingsManager.Instance.PlayerNickname = string.IsNullOrWhiteSpace(_nicknameEdit.Text) ? "Jogador" : _nicknameEdit.Text.Trim();
-        SettingsManager.Instance.CharacterId = CharacterCatalog.Ids[Mathf.Clamp(_characterSelect.Selected, 0, 3)];
+        SettingsManager.Instance.CharacterId = CharacterCatalog.Ids[Mathf.Clamp(_characterSelect.Selected, 0, CharacterCatalog.PlayableCount - 1)];
         SettingsManager.Instance.MusicTrack = _musicTrackSelect.Selected;
         
         SettingsManager.Instance.AvatarBase = GetSelectedAvatarId(_baseSelect, "default_base");

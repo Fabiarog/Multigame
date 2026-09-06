@@ -16,6 +16,10 @@ Use case: stylized-concept. Asset type: production-ready character spritesheet f
 
 ## Recursos feitos em código
 
+- Atualização Blender: `models/club/*.glb` e retratos PNG construídos e renderizados no **Blender 5.2.1**, por `tools/build_blender_cast.py`. Modelos originais, sem downloads de modelos prontos. Fontes editáveis em `art/blender/*.blend`. Corvo e Onça são reinterpretações do elenco original desta repaginada.
+- `models/cards/*.png`: 52 faces geradas por `tools/generate_card_faces.ps1`, com valor/naipe e moldura desenhados em código. O jogo mapeia essas texturas em malhas de carta com espessura.
+- Música adicional: `copper-steps.wav`, `midnight-baron.wav`; vinhetas `arrival.wav`, `boss-arrival.wav`, produzidas pelo mesmo sintetizador original. Total atualizado: cinco loops.
+
 - `ui/club-mark.svg`: marca geométrica de espadas, vetorial, criada nesta repaginada.
 - Faces e versos de cartas: desenhados por `core/visuals/PlayingCard.cs`, seguindo os valores reais do jogo.
 - Mesa, aro, baralho e leques: malhas simples em `core/visuals/TableStage.cs`.

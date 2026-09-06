@@ -23,6 +23,7 @@ public partial class PokerUI : Control
     private bool _ignoreInput;
     private Tween _popupTween;
     private TableStage _stage;
+    private int _presentedRound = -1;
 
     private Control _overlayPanel, _shopOverlay, _tutorialPanel;
     private Label _overlayTitle, _overlaySubtitle, _goldLabel, _shopMessage;
@@ -392,6 +393,7 @@ public partial class PokerUI : Control
 
     private void OnHandDealt()
     {
+        _stage.ClearPlayedCards();
         _ignoreInput = _game.CurrentPhase != PokerGameManager.GamePhase.PlayerTurn;
         ClearTableCards();
         ClearContainer(_cardContainer);
@@ -493,16 +495,29 @@ public partial class PokerUI : Control
         }
     }
 
-    private void RefreshBoss()
+    private async void RefreshBoss()
     {
-        int rival = (_game.CurrentRound + 1) % 4;
-        _stage.SetCast(rival, Mathf.Clamp(_game.OpponentCount + 1, 2, 4));
+        int rival = CharacterCatalog.BossForRound(_game.CurrentRound);
+        bool introduce = _presentedRound != _game.CurrentRound;
+        if (introduce)
+        {
+            _presentedRound = _game.CurrentRound;
+            _stage.SetCast(rival, Mathf.Clamp(_game.OpponentCount + 1, 2, 4));
+            string theme = rival == 6 ? "barao_lounge" : "dama_salon";
+            _stage.SetRoomTheme(theme);
+        }
         _stage.SetCardCount(0, _game.GetPlayerHand().Count);
         _stage.SetCardCount(1, _game.GetDealerHand().Count);
         _bossName.Text = CharacterCatalog.Names[rival];
         _bossPortrait.Material = null;
         _bossPortrait.Texture = CharacterCatalog.Portrait(rival);
         _opponentsLabel.Text = $"{_game.OpponentCount} bot{(_game.OpponentCount == 1 ? "" : "s")} à mesa · vença a meta";
+        if (introduce)
+        {
+            Core.Systems.AudioManager.Instance?.PlayMusic(rival == 6 ? "midnight-baron" : "velvet-table");
+            await _stage.PlayEntrance(true);
+            if (IsInsideTree()) UpdateActionButtons();
+        }
     }
 
     private void RefreshResources()
@@ -516,8 +531,8 @@ public partial class PokerUI : Control
 
     private void UpdateActionButtons()
     {
-        _playBtn.Disabled = _ignoreInput || !_game.CanPlayHand();
-        _discardBtn.Disabled = _ignoreInput || !_game.CanDiscard();
+        _playBtn.Disabled = _ignoreInput || _stage.IsPresenting || !_game.CanPlayHand();
+        _discardBtn.Disabled = _ignoreInput || _stage.IsPresenting || !_game.CanDiscard();
         int count = _game.GetSelectedIndices().Count;
         _selectionLabel.Text = $"{count} / {PokerGameManager.MaxPlayCards} selecionadas";
         _playBtn.Text = count > 0 ? $"Jogar mão · {count}" : "Jogar mão";
@@ -553,6 +568,7 @@ public partial class PokerUI : Control
 
     private void OnHandScored(string handName, int score, string breakdown)
     {
+        _stage.SetCardCount(1, 0);
         _stage.React(1);
         Core.Systems.AudioManager.Instance?.PlaySound("score");
         _ignoreInput = true;
@@ -563,6 +579,7 @@ public partial class PokerUI : Control
         var hand = _game.GetDealerHand();
         for (int i = 0; i < _dealerCardPanels.Count && i < hand.Count; i++)
         {
+            _stage.PlayCard(1, hand[i].ToString(), .15f + i * .08f);
             var panel = _dealerCardPanels[i];
             var card = hand[i];
             if (panel.GetChildOrNull<PlayingCard>(0) is PlayingCard face)
@@ -592,6 +609,7 @@ public partial class PokerUI : Control
 
     private void OnGameEnded(bool won, int totalScore)
     {
+        if (won) CharacterProgress.RecordWin();
         _shopOverlay.Visible = false;
         _tutorialPanel.Visible = false;
         _overlayTitle.Text = won ? "O clube é seu." : "Fim da corrida";
@@ -613,7 +631,7 @@ public partial class PokerUI : Control
 
     private void OnPlayPressed()
     {
-        if (_ignoreInput || !_game.CanPlayHand()) return;
+        if (_ignoreInput || _stage.IsPresenting || !_game.CanPlayHand()) return;
         _ignoreInput = true;
         _stage.React(0);
         Core.Systems.AudioManager.Instance?.PlaySound("play");
@@ -624,7 +642,7 @@ public partial class PokerUI : Control
 
     private void OnDiscardPressed()
     {
-        if (!_ignoreInput && _game.CanDiscard()) _game.DiscardCards();
+        if (!_ignoreInput && !_stage.IsPresenting && _game.CanDiscard()) _game.DiscardCards();
     }
 
     private void AnimatePlayedCards()
@@ -632,22 +650,13 @@ public partial class PokerUI : Control
         ClearTableCards();
         var selected = _game.GetSelectedIndices().OrderBy(i => i).ToList();
         var hand = _game.GetPlayerHand();
-        var center = _tableArea.GetGlobalRect().GetCenter() + new Vector2(0, 24);
         for (int i = 0; i < selected.Count; i++)
         {
             int index = selected[i];
             if (index >= hand.Count || index >= _cardPanels.Count) continue;
-            var card = WrapCard(hand[index], new Vector2(78, 110));
-            card.Size = card.CustomMinimumSize;
-            card.Position = _cardPanels[index].GlobalPosition;
-            card.MouseFilter = MouseFilterEnum.Ignore;
-            _tableCardLayer.AddChild(card);
-            var target = center + new Vector2((i - (selected.Count - 1) / 2f) * 88, 0) - card.Size / 2;
-            var tween = CreateTween();
-            tween.SetParallel(true);
-            tween.TweenProperty(card, "position", target, MotionDuration(0.35f)).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
-            tween.TweenProperty(card, "rotation", Mathf.DegToRad((i - selected.Count / 2f) * 2), MotionDuration(0.35f));
+            _stage.PlayCard(0, hand[index].ToString(), i * .06f);
         }
+        _stage.SetCardCount(0, hand.Count-selected.Count);
     }
 
     private void ShowScorePopup(string handName, int score)

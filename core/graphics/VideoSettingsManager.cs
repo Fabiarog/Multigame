@@ -228,8 +228,9 @@ public partial class VideoSettingsManager : Node
             CenterWindow();
         }
 
-        // Always update the viewport base size so the engine scales content.
-        GetTree().Root.ContentScaleSize = chosen.Size;
+        // Resolution controls the output, while UI keeps its authored logical size.
+        // Using 3840x2160 as the UI base made labels/buttons three times smaller.
+        GetTree().Root.ContentScaleSize = new Vector2I(1280, 720);
 
         EmitSignal(SignalName.ResolutionChanged, chosen.Size.X, chosen.Size.Y);
         GD.Print($"[Video] Resolution set to {chosen}");

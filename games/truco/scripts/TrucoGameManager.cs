@@ -59,6 +59,8 @@ public partial class TrucoGameManager : Node
     public List<List<TrucoCardData>> TeamOneHands { get; } = new();
     public List<List<TrucoCardData>> TeamTwoHands { get; } = new();
     public int DealerSeatIndex { get; private set; }
+    public int CutterSeatIndex => (DealerSeatIndex - 1 + TeamSize * 2) % (TeamSize * 2);
+    public bool CutterIsPlayer => CutterSeatIndex == 0;
     public int PenaRecipientSeatIndex { get; private set; } = -1;
 
     // Hand state
@@ -95,6 +97,10 @@ public partial class TrucoGameManager : Node
     private SyncRng _rng;
     private float _aiThinkTimer = 0f;
     private bool _aiThinking = false;
+    private float _aiCutTimer = 0f;
+    private bool _aiCutting = false;
+    private float _aiPenaTimer = 0f;
+    private bool _aiPenaThinking = false;
 
     public const int WinScore = 12;
 
@@ -165,6 +171,26 @@ public partial class TrucoGameManager : Node
                 ExecuteAITurn();
             }
         }
+        if (_aiCutting)
+        {
+            _aiCutTimer -= (float)delta;
+            if (_aiCutTimer <= 0)
+            {
+                _aiCutting = false;
+                if (CurrentPhase == TrucoPhase.Cutting)
+                    CutDeck();
+            }
+        }
+        if (_aiPenaThinking)
+        {
+            _aiPenaTimer -= (float)delta;
+            if (_aiPenaTimer <= 0)
+            {
+                _aiPenaThinking = false;
+                if (CurrentPhase == TrucoPhase.PenaDecision && !_penaDelivered)
+                    GivePena();
+            }
+        }
     }
 
     // ===== PUBLIC API =====
@@ -213,16 +239,25 @@ public partial class TrucoGameManager : Node
 
         // The deck stays available until the player cuts it. This makes the
         // shuffle/cut a real game action rather than a cosmetic message.
+        _aiCutting = false;
+        _aiPenaThinking = false;
         _deck = TrucoCardData.CreateDeck();
         _rng.ShuffleList(_deck);
         CurrentPhase = TrucoPhase.Cutting;
         EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
         EmitSignal(SignalName.DeckShuffled);
+
+        if (!CutterIsPlayer)
+        {
+            _aiCutting = true;
+            _aiCutTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 1.5f : 10.0f;
+        }
     }
 
     public async void CutDeck()
     {
         if (CurrentPhase != TrucoPhase.Cutting || _deck.Count == 0) return;
+        _aiCutting = false;
 
         CurrentPhase = TrucoPhase.Dealing;
         int cutPosition = _rng.RandiRange(4, _deck.Count - 4);
@@ -245,6 +280,11 @@ public partial class TrucoGameManager : Node
             CurrentPhase = TrucoPhase.PenaDecision;
             EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
             EmitSignal(SignalName.PenaAvailable, GetSeatName(PenaRecipientSeatIndex));
+            if (!CutterIsPlayer)
+            {
+                _aiPenaThinking = true;
+                _aiPenaTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.35f : 0.75f;
+            }
             return;
         }
 
@@ -255,6 +295,7 @@ public partial class TrucoGameManager : Node
     public async void GivePena()
     {
         if (CurrentPhase != TrucoPhase.PenaDecision || _penaDelivered || PenaCard == null) return;
+        _aiPenaThinking = false;
         _penaDelivered = true;
         EmitSignal(SignalName.PenaDelivered, PenaCard.ToString(), GetSeatName(PenaRecipientSeatIndex));
         if (PenaDecisionIsBot)

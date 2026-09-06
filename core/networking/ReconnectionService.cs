@@ -96,7 +96,7 @@ public partial class ReconnectionService : Node
     public void OnPeerDisconnected(long peerId)
     {
         // Only the server tracks disconnected peers.
-        if (!Multiplayer.IsServer()) return;
+        if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
 
         // Resolve player name from NetworkManager.
         string name = $"Player_{peerId}";
@@ -171,7 +171,7 @@ public partial class ReconnectionService : Node
     /// </summary>
     private void ProcessServerTimeouts()
     {
-        if (!Multiplayer.IsServer()) return;
+        if (Multiplayer.MultiplayerPeer == null || !Multiplayer.IsServer()) return;
 
         // Collect expired peers (can't modify dictionary while iterating).
         List<long> expired = null;

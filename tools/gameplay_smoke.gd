@@ -14,5 +14,6 @@ func run():
 		print("GAMEPLAY_QA ", "PASS" if passed else "FAIL", " | ", detail)
 		change_scene_to_file("res://hub/scenes/HubMain.tscn")
 		await create_timer(1.0).timeout
+		await load("res://tools/qa_teardown.gd").finish(self)
 		quit(0 if passed else 1))
 	checks.Run()

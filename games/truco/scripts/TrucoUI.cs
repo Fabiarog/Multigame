@@ -201,36 +201,35 @@ public partial class TrucoUI : Control
         _dealerLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         scoreBox.AddChild(_dealerLabel);
 
-        var table = Column(8);
-        table.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        table.Alignment = BoxContainer.AlignmentMode.Center;
-        var tableSurface = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var tableSurface = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
         tableSurface.AddThemeStyleboxOverride("panel", ClubTheme.Box(Colors.Transparent, ClubTheme.Border, 18, 12));
         _stage = new TableStage { SeatCount = _game.TeamSize * 2, RivalIndex = 1 };
         tableSurface.AddChild(_stage);
-        tableSurface.AddChild(table);
-        body.AddChild(tableSurface);
-        var opponentLabel = ClubTheme.Label("ADVERSÁRIO  /  CARTAS NA MESA", 12, TextSecondary);
-        opponentLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        table.AddChild(opponentLabel);
-        _tableOpponentRow = BuildCardRow(table, 16);
-        var tableCenter = Column(2);
-        tableCenter.SizeFlagsVertical = SizeFlags.ExpandFill;
-        tableCenter.Alignment = BoxContainer.AlignmentMode.Center;
-        table.AddChild(tableCenter);
+
+        // Elegant floating HUD badge for Round & Status without blocking the 3D table felt
+        var tableHud = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        tableHud.SetAnchorsAndOffsetsPreset(LayoutPreset.TopWide);
+        tableHud.OffsetTop = 14;
+        var hudBadge = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
+        hudBadge.AddThemeStyleboxOverride("panel", ClubTheme.Box(new Color(0.02f, 0.06f, 0.05f, 0.85f), ClubTheme.Border, 8));
+        var hudCol = Column(2);
+        hudBadge.AddChild(hudCol);
         _roundLabel = ClubTheme.Label("TOMBO 01 / 03", 12, Gold);
         _roundLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        tableCenter.AddChild(_roundLabel);
-        _statusLabel = ClubTheme.Label("Preparando o baralho...", 17, TextPrimary);
+        hudCol.AddChild(_roundLabel);
+        _statusLabel = ClubTheme.Label("Preparando o baralho...", 16, TextPrimary);
         _statusLabel.HorizontalAlignment = HorizontalAlignment.Center;
         _statusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _statusLabel.CustomMinimumSize = new Vector2(0, 44);
-        _statusLabel.VerticalAlignment = VerticalAlignment.Center;
-        tableCenter.AddChild(_statusLabel);
-        _tablePlayerRow = BuildCardRow(table, 16);
-        var playerLabel = ClubTheme.Label("VOCÊ  /  CARTAS NA MESA", 12, TextSecondary);
-        playerLabel.HorizontalAlignment = HorizontalAlignment.Center;
-        table.AddChild(playerLabel);
+        _statusLabel.CustomMinimumSize = new Vector2(360, 24);
+        hudCol.AddChild(_statusLabel);
+        var hudCenter = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+        hudCenter.AddChild(hudBadge);
+        tableHud.AddChild(hudCenter);
+        tableSurface.AddChild(tableHud);
+        body.AddChild(tableSurface);
+
+        _tableOpponentRow = new HBoxContainer();
+        _tablePlayerRow = new HBoxContainer();
 
         var viraPanel = NewPanel(PanelBg, ClubTheme.Border, 18);
         viraPanel.CustomMinimumSize = new Vector2(210, 0);
@@ -485,33 +484,7 @@ public partial class TrucoUI : Control
 
     private void RefreshTableCards()
     {
-        ClearContainer(_tablePlayerRow);
-        ClearContainer(_tableOpponentRow);
-
-        for (int i = 0; i < 3; i++)
-        {
-            // Player played
-            if (_game.PlayerPlayed[i] != null)
-            {
-                var card = _game.PlayerPlayed[i];
-                _tablePlayerRow.AddChild(CreateSmallCard(card, false));
-            }
-            else
-            {
-                _tablePlayerRow.AddChild(CreateEmptySlot());
-            }
-
-            // Opponent played
-            if (_game.OpponentPlayed[i] != null)
-            {
-                var card = _game.OpponentPlayed[i];
-                _tableOpponentRow.AddChild(CreateSmallCard(card, false));
-            }
-            else
-            {
-                _tableOpponentRow.AddChild(CreateEmptySlot());
-            }
-        }
+        // 2D cards overlaid on the table felt are removed; cards are rendered directly in 3D on the table.
     }
 
     private void RefreshTombos()
@@ -541,6 +514,8 @@ public partial class TrucoUI : Control
         _trucoOverlay.Visible = false;
         _handOverlay.Visible = false;
         UpdateTrucoButton();
+        for (int s = 0; s < _game.TeamSize * 2; s++)
+            _stage.SetCardCount(s, 3);
     }
 
     private void OnDeckShuffled()
@@ -552,6 +527,7 @@ public partial class TrucoUI : Control
         _dealerLabel.Text = $"DISTRIBUIDOR\n{_game.GetSeatName(_game.DealerSeatIndex)}";
         ClearContainer(_playerHandContainer);
         _cardPanels.Clear();
+        _stage.ClearPlayedCards();
         RefreshTableCards();
         RefreshTombos();
         ShowClosedVira();
@@ -860,24 +836,16 @@ public partial class TrucoUI : Control
         int seat = _game.LastPlayedSeatIndex;
         _stage.React(seat);
         _stage.SetCardCount(seat, _game.GetSeatCardCount(seat));
-        if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true) return;
-        var data = who == 0 ? _game.PlayerPlayed[roundIdx] : _game.OpponentPlayed[roundIdx];
-        var row = who == 0 ? _tablePlayerRow : _tableOpponentRow;
-        var targetCard = row.GetChild<Control>(roundIdx);
-        targetCard.Modulate = new Color(1, 1, 1, 0);
-        var flying = CreateSmallCard(data, who != 0);
-        flying.Size = new Vector2(76, 108);
-        flying.Position = seat == 0 ? _playerHandContainer.GetGlobalRect().GetCenter() : _stage.SeatScreenPosition(seat);
-        flying.PivotOffset = flying.Size / 2;
-        _dealAnimationLayer.AddChild(flying);
-        var tween = CreateTween();
-        tween.TweenProperty(flying, "position", targetCard.GlobalPosition, .34f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
-        tween.Parallel().TweenProperty(flying, "rotation", .08f, .34f);
-        tween.TweenCallback(Callable.From(() =>
+        string seatName = _game.GetSeatName(seat);
+        string manilhaRankStr = _game.ManilhaRank switch
         {
-            if (IsInstanceValid(targetCard)) targetCard.Modulate = Colors.White;
-            if (IsInstanceValid(flying)) flying.QueueFree();
-        }));
+            TrucoRank.Four => "4", TrucoRank.Five => "5", TrucoRank.Six => "6", TrucoRank.Seven => "7",
+            TrucoRank.Queen => "Q", TrucoRank.Jack => "J", TrucoRank.King => "K",
+            TrucoRank.Ace => "A", TrucoRank.Two => "2", TrucoRank.Three => "3",
+            _ => ""
+        };
+        bool isManilha = !string.IsNullOrEmpty(manilhaRankStr) && cardDisplay.StartsWith(manilhaRankStr);
+        _stage.PlayCard(seat, cardDisplay, 0, seatName, isManilha);
     }
 
     private void OnRoundResolved(int roundIdx, int winner)

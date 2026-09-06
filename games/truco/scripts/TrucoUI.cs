@@ -73,6 +73,19 @@ public partial class TrucoUI : Control
         _game.StartMatch();
     }
 
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is InputEventKey key && key.Pressed && !key.Echo)
+        {
+            if ((key.Keycode == Key.Space || key.Keycode == Key.Enter) && _cutDeckBtn != null && _cutDeckBtn.Visible && !_cutDeckBtn.Disabled)
+            {
+                GetViewport().SetInputAsHandled();
+                _game.CutDeck();
+                return;
+            }
+        }
+    }
+
     private void ConnectSignals()
     {
         _game.HandDealt += OnHandDealt;
@@ -505,32 +518,41 @@ public partial class TrucoUI : Control
         _stakesLabel.Text = "VALE 1 PONTO";
         _viraLabel.Text = "Vira ainda fechada";
         _handCountLabel.Text = "O corte abre a mesa.";
-        _dealerLabel.Text = $"DISTRIBUIDOR\n{_game.GetSeatName(_game.DealerSeatIndex)}";
+        _dealerLabel.Text = $"DISTRIBUI: {_game.GetSeatName(_game.DealerSeatIndex)}\nCORTA: {_game.GetSeatName(_game.CutterSeatIndex)}";
         ClearContainer(_playerHandContainer);
         _cardPanels.Clear();
         _stage.ClearPlayedCards();
         RefreshTableCards();
         RefreshTombos();
         ShowClosedVira();
-        _statusLabel.Text = "Baralho embaralhado — corte para distribuir";
+        _statusLabel.Text = $"{_game.GetSeatName(_game.DealerSeatIndex)} embaralhando…";
         _statusLabel.AddThemeColorOverride("font_color", Gold);
-        _cutDeckBtn.Visible = true;
+        _cutDeckBtn.Visible = false;
         AnimateShuffle();
     }
 
     private void OnDeckCut(int cutPosition)
     {
         Core.Systems.AudioManager.Instance?.PlaySound("cut");
-        _statusLabel.Text = "Corte feito — distribuindo cartas...";
+        _statusLabel.Text = $"{_game.GetSeatName(_game.CutterSeatIndex)} cortou o baralho.";
         _cutDeckBtn.Visible = false;
+        _stage?.AnimateDeck(true);
+        _stage?.React(_game.CutterSeatIndex);
         AnimateCut();
     }
 
     private void OnPenaAvailable(string recipient)
     {
-        _penaLabel.Text = $"Você pode entregar a pena para\n{recipient}.";
-        _givePenaBtn.Visible = true; _skipPenaBtn.Visible = true;
-        _keepPenaBtn.Visible = false; _tomboPenaBtn.Visible = false;
+        bool canOffer = _game.CutterIsPlayer;
+        _penaLabel.Text = canOffer
+            ? $"Você pode entregar a pena para\n{recipient}."
+            : $"{_game.GetSeatName(_game.CutterSeatIndex)} está decidindo sobre a pena para\n{recipient}...";
+        _givePenaBtn.Visible = canOffer;
+        _skipPenaBtn.Visible = canOffer;
+        _givePenaBtn.Disabled = !canOffer;
+        _skipPenaBtn.Disabled = !canOffer;
+        _keepPenaBtn.Visible = false;
+        _tomboPenaBtn.Visible = false;
         _penaOverlay.Visible = true;
     }
 
@@ -556,7 +578,8 @@ public partial class TrucoUI : Control
         Core.Systems.AudioManager.Instance?.PlaySound("deal");
         _statusLabel.Text = penaKept
             ? "Pena guardada: o aliado receberá só mais 2 cartas."
-            : "Distribuindo 3 cartas para cada jogador...";
+            : $"{_game.GetSeatName(_game.DealerSeatIndex)} distribuindo 3 cartas para cada jogador…";
+        _stage?.React(_game.DealerSeatIndex);
         AnimateDistribution(cardCount, penaRecipientSeat, penaKept);
     }
 
@@ -576,12 +599,14 @@ public partial class TrucoUI : Control
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (!IsInsideTree() || _game.CurrentPhase != TrucoGameManager.TrucoPhase.Cutting) return;
         ClearDealAnimationLayer();
+        _stage?.AnimateDeck(false);
         if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true)
         {
             _deckStackVisual = CreateAnimatedCardBack();
             _deckStackVisual.Position = GetDeckScreenPosition() - _deckStackVisual.Size / 2f;
             _dealAnimationLayer.AddChild(_deckStackVisual);
-            _cutDeckBtn.Disabled = false;
+            _cutDeckBtn.Visible = _game.CutterIsPlayer && _game.CurrentPhase == TrucoGameManager.TrucoPhase.Cutting;
+            _cutDeckBtn.Disabled = !_cutDeckBtn.Visible;
             return;
         }
         _cutDeckBtn.Disabled = true;
@@ -609,8 +634,17 @@ public partial class TrucoUI : Control
         {
             foreach (var child in _dealAnimationLayer.GetChildren())
                 if (child != _deckStackVisual) child.QueueFree();
-            _cutDeckBtn.Disabled = false;
-            PulseControl(_cutDeckBtn);
+            if (_game.CutterIsPlayer && _game.CurrentPhase == TrucoGameManager.TrucoPhase.Cutting)
+            {
+                _cutDeckBtn.Visible = true;
+                _cutDeckBtn.Disabled = false;
+                PulseControl(_cutDeckBtn);
+            }
+            else
+            {
+                _cutDeckBtn.Visible = false;
+                _cutDeckBtn.Disabled = true;
+            }
         }));
     }
 
@@ -857,6 +891,8 @@ public partial class TrucoUI : Control
     private void OnPhaseChanged(int phase)
     {
         var p = (TrucoGameManager.TrucoPhase)phase;
+        _cutDeckBtn.Visible = p == TrucoGameManager.TrucoPhase.Cutting && _game.CutterIsPlayer;
+        _cutDeckBtn.Disabled = !_cutDeckBtn.Visible;
         _roundLabel.Text = $"TOMBO {_game.CurrentRound + 1:00} / 03";
         if (p == TrucoGameManager.TrucoPhase.PlayerTurn)
         {
@@ -865,7 +901,7 @@ public partial class TrucoUI : Control
         }
         else if (p == TrucoGameManager.TrucoPhase.Cutting)
         {
-            _statusLabel.Text = "Corte o baralho para começar";
+            _statusLabel.Text = _game.CutterIsPlayer ? "Sua vez de cortar o baralho." : $"{_game.GetSeatName(_game.CutterSeatIndex)} cortando o baralho…";
             _statusLabel.AddThemeColorOverride("font_color", Gold);
         }
         else if (p == TrucoGameManager.TrucoPhase.OpponentTurn)

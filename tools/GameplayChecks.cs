@@ -39,12 +39,18 @@ public partial class GameplayChecks : Node
         Assert(FodinhaMatch.LifePenalty(0,3)==3 && FodinhaMatch.LifePenalty(4,1)==3 && FodinhaMatch.LifePenalty(2,2)==0, "Fodinha charges the absolute bid error");
         var tied = new[] { (2, new TrucoCardData { Rank=TrucoRank.Ace, Suit=TrucoSuit.Hearts }), (0, new TrucoCardData { Rank=TrucoRank.Ace, Suit=TrucoSuit.Clubs }) };
         Assert(FodinhaMatch.ResolveTrick(tied,TrucoRank.Two)==2 && FodinhaMatch.ResolveTrick(tied,TrucoRank.Ace)==0, "Ordinary ties go to first play; manilha suit breaks ties");
-        bool unique=true, losses=true, eliminated=true, turns=true, final=true, allSizes=false;
+        bool unique=true, losses=true, eliminated=true, turns=true, final=true, allSizes=false, cutting=true;
+        var cutters = new HashSet<int>();
         for(int seed=0;seed<100;seed++)
         {
             var match=new FodinhaMatch(seed); int rounds=0;
             while(match.State!=FodinhaMatch.Phase.Finished && rounds++<10)
             {
+                cutters.Add(match.CutterSeat);
+                cutting &= match.State==FodinhaMatch.Phase.Cutting && match.Vira==null && Enumerable.Range(0,4).All(s=>match.Hand(s).Count==0);
+                cutting &= !match.Cut((match.CutterSeat+1)%4) && !match.Bid(match.CurrentSeat,0) && !match.Play(match.CurrentSeat,0);
+                int cutter=match.CutterSeat;
+                cutting &= match.Cut(cutter) && !match.Cut(cutter);
                 var cards=match.ActiveSeats.SelectMany(s=>match.Hand(s)).Select(c=>c.ToString()).Append(match.Vira.ToString()).ToArray();
                 unique &= cards.Distinct().Count()==cards.Length && match.ActiveSeats.All(s=>match.Hand(s).Count==match.CardsPerHand);
                 var lifeBefore=match.Lives.ToArray();
@@ -70,7 +76,13 @@ public partial class GameplayChecks : Node
                 losses &= Enumerable.Range(0,4).All(s=>match.Lives[s]==Math.Max(0,lifeBefore[s]-match.Losses[s]));
                 losses &= match.Wins.Sum()==match.CardsPerHand;
                 allSizes |= match.RoundIndex==8;
-                if(match.State==FodinhaMatch.Phase.RoundResult) match.AdvanceRound();
+                if(match.State==FodinhaMatch.Phase.RoundResult)
+                {
+                    int next=match.DealerSeat;
+                    do { next=(next+1)%4; } while(match.Lives[next]==0);
+                    match.AdvanceRound();
+                    cutting &= match.DealerSeat==next && match.Lives[match.CutterSeat]>0;
+                }
             }
             final &= match.State==FodinhaMatch.Phase.Finished && match.Winners.All(s=>match.Lives[s]==match.Lives.Max());
             final &= !match.AdvanceRound() && !match.AdvanceTrick() && !match.Bid(0,0) && !match.Play(0,0);
@@ -80,6 +92,7 @@ public partial class GameplayChecks : Node
         Assert(eliminated,"Eliminated Fodinha seats receive no cards");
         Assert(turns,"Only the current seat may act; every active seat plays once; winner leads");
         Assert(final && allSizes,"Fodinha terminates, protects final state, and exercises all nine hand sizes");
+        Assert(cutting && cutters.Count==4,"Fodinha rotates dealer/cutter through every seat, skips eliminated seats and deals only after the authorized cut");
     }
     public void ReleaseManagedResources()
     {
@@ -115,7 +128,8 @@ public partial class GameplayChecks : Node
                 var model = GD.Load<PackedScene>(CharacterCatalog.ModelPath(character)).Instantiate<Node3D>();
                 var animator = model.FindChildren("*", "AnimationPlayer", true, false).OfType<AnimationPlayer>().First();
                 Assert(new[] { "entrance", "truco", "victory", "boss_intro", "flourish" }.All(clip => animator.GetAnimationList().Any(name => name == clip || name.EndsWith("/" + clip))), "Each Blender model exports all five animated clips");
-                Assert(model.FindChildren("*", "MeshInstance3D", true, false).Count == 4, "Each GLB contains exactly one four-part character, without other open Blender scenes");
+                int meshCount = model.FindChildren("*", "MeshInstance3D", true, false).Count;
+                Assert(meshCount == 6 || meshCount == 4, "Each GLB contains exactly one articulated character, without other open Blender scenes");
                 var head = model.FindChildren("Head*", "Node3D", true, false).OfType<Node3D>().First(node => node is not MeshInstance3D);
                 Assert(head.Position.Y > 1.3f, "Head retains its rest height without playing an animation");
                 var skin = model.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>()
@@ -140,11 +154,9 @@ public partial class GameplayChecks : Node
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 var game = GetTree().CurrentScene.GetNode<TrucoGameManager>("GameManager");
-                Assert(game.CurrentPhase == TrucoGameManager.TrucoPhase.Cutting, "Hand starts at cut");
-                game.CutDeck();
-                Assert(game.CurrentPhase == TrucoGameManager.TrucoPhase.PenaDecision, "Team hand offers Pena");
+                Assert(game.CurrentPhase is TrucoGameManager.TrucoPhase.Shuffling or TrucoGameManager.TrucoPhase.Cutting, "Hand starts with the dealer shuffling");
+                await PrepareTrucoHand(game);
                 Assert(game.PenaRecipientSeatIndex == 2 && game.PenaDecisionIsBot, "Nearest ally is an AI in solo");
-                game.GivePena();
                 Assert(game.CurrentPhase != TrucoGameManager.TrucoPhase.PenaDecision, "AI resolves its own Pena without a human keep/return action");
                 Assert(game.TeamOneHands.Concat(game.TeamTwoHands).All(hand => hand.Count == 3), "Every seat receives exactly three cards");
                 var dealt = game.TeamOneHands.Concat(game.TeamTwoHands).SelectMany(hand => hand).Select(card => card.ToString()).ToList();
@@ -171,13 +183,13 @@ public partial class GameplayChecks : Node
                 await FinishHand(game);
                 Assert(seats.Count == teamSize * 2, "Every ally and opponent participates in the hand");
                 // Advance dealer twice: the nearest ally then becomes the local human.
-                game.StartNewHand(); game.CutDeck(); game.GivePena();
+                game.StartNewHand(); await PrepareTrucoHand(game);
                 Assert(Enumerable.Range(0,teamSize*2).All(seat=>table.VisibleHandCount(seat)==3), "Card fans are refilled for the next hand");
                 await FinishHand(game);
                 game.StartNewHand();
                 Assert(game.CutterSeatIndex == (game.DealerSeatIndex - 1 + teamSize * 2) % (teamSize * 2), "Cutter rotates counter-clockwise with dealer");
                 Assert(game.CutterIsPlayer == (game.CutterSeatIndex == 0), "CutterIsPlayer reflects whether Cutter is local seat 0");
-                game.CutDeck(); game.GivePena();
+                await PrepareTrucoHand(game, teamSize==2);
                 Assert(game.PenaRecipientSeatIndex == (4 % (teamSize * 2)), "Pena follows the rotating dealer");
                 if (teamSize == 2)
                 {
@@ -212,6 +224,41 @@ public partial class GameplayChecks : Node
             await ToSignal(GetTree().CreateTimer(.035), SceneTreeTimer.SignalName.Timeout);
         }
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+    }
+
+    private async Task PrepareTrucoHand(TrucoGameManager game, bool leaveLocalPena = false)
+    {
+        ulong deadline=Time.GetTicksMsec()+4000;
+        while(game.CurrentPhase==TrucoGameManager.TrucoPhase.Shuffling)
+            await ToSignal(GetTree().CreateTimer(.01),SceneTreeTimer.SignalName.Timeout);
+        Assert(game.CurrentPhase==TrucoGameManager.TrucoPhase.Cutting,"Shuffle finishes before the cut begins");
+        if(game.CutterIsPlayer)
+        {
+            await ToSignal(GetTree().CreateTimer(.35),SceneTreeTimer.SignalName.Timeout);
+            Assert(game.CurrentPhase==TrucoGameManager.TrucoPhase.Cutting,"Human cutter is never skipped by the AI timer");
+            game.CutDeck();
+        }
+        else
+        {
+            game.CutDeck();
+            Assert(game.CurrentPhase==TrucoGameManager.TrucoPhase.Cutting,"Local cut request cannot steal the AI's turn");
+        }
+        while(game.CurrentPhase is TrucoGameManager.TrucoPhase.Cutting or TrucoGameManager.TrucoPhase.Dealing or TrucoGameManager.TrucoPhase.PenaDecision)
+        {
+            if(Time.GetTicksMsec()>deadline) throw new Exception("Automatic cut/pena/deal stalled");
+            if(game.CanOfferPena) game.GivePena();
+            else if(game.CanResolvePena)
+            {
+                if(leaveLocalPena) return;
+                game.ResolvePena(true);
+            }
+            else if(game.CurrentPhase==TrucoGameManager.TrucoPhase.PenaDecision)
+            {
+                game.GivePena(); game.ResolvePena(false);
+                Assert(game.CurrentPhase==TrucoGameManager.TrucoPhase.PenaDecision,"Local requests cannot take over a bot's Pena decision");
+            }
+            await ToSignal(GetTree().CreateTimer(.02),SceneTreeTimer.SignalName.Timeout);
+        }
     }
 
     private void Assert(bool condition, string message)

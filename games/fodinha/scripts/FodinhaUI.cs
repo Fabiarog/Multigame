@@ -15,6 +15,7 @@ public partial class FodinhaUI : Control
     private HBoxContainer _actions, _hand;
     private double _cooldown;
     private bool _collecting, _starting = true;
+    private bool _cutReady, _dealing;
     public FodinhaMatch Match => _match;
 
     public override async void _Ready()
@@ -58,7 +59,7 @@ public partial class FodinhaUI : Control
         AccessibilityVisuals.AddGlobalFilter(this);
         await _table.PlayEntrance();
         if (!IsInsideTree()) return;
-        _starting = false; _cooldown = .65; Render();
+        _starting = false; PrepareDeck();
     }
 
     private string SeatName(int seat) => seat == 0 ? "Você" : CharacterCatalog.Names[_table.CharacterAt(seat)];
@@ -78,7 +79,8 @@ public partial class FodinhaUI : Control
     private void Render()
     {
         _round.Text = $"MÃO {_match.RoundIndex + 1} / 9  ·  {_match.CardsPerHand} CARTA(S)";
-        _vira.Text = $"Vira: {_match.Vira}\nManilha: {new GameHub.Games.Truco.TrucoCardData { Rank = _match.Manilha }.GetRankString()}";
+        string vira = _match.Vira == null ? "Vira fechada" : $"Vira: {_match.Vira} · Manilha: {new GameHub.Games.Truco.TrucoCardData { Rank = _match.Manilha }.GetRankString()}";
+        _vira.Text = $"Distribui: {SeatName(_match.DealerSeat)}\nCorta: {SeatName(_match.CutterSeat)}\n{vira}";
         for (int seat = 0; seat < 4; seat++)
         {
             string bid = _match.Bids[seat] < 0 ? "—" : _match.Bids[seat].ToString();
@@ -88,7 +90,7 @@ public partial class FodinhaUI : Control
         }
         Clear(_actions); Clear(_hand);
         bool playable = !_starting && _match.State == FodinhaMatch.Phase.Playing && _match.CurrentSeat == 0;
-        for (int i = 0; i < _match.Hand(0).Count; i++)
+        for (int i = 0; i < (_dealing ? 0 : _match.Hand(0).Count); i++)
         {
             int index = i; var card = _match.Hand(0)[i];
             string suit = new[] { "diamonds", "spades", "hearts", "clubs" }[(int)card.Suit];
@@ -100,8 +102,14 @@ public partial class FodinhaUI : Control
             button.AddChild(face); face.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.Minsize, 5);
             button.Pressed += () => Play(0, index); _hand.AddChild(button);
         }
+        if (_dealing) { _status.Text = $"{SeatName(_match.DealerSeat)} distribuindo as cartas…"; return; }
         switch (_match.State)
         {
+            case FodinhaMatch.Phase.Cutting:
+                _status.Text = !_cutReady ? $"{SeatName(_match.DealerSeat)} embaralhando…" :
+                    _match.CutterSeat == 0 ? "Sua vez de cortar o baralho." : $"{SeatName(_match.CutterSeat)} vai cortar…";
+                if (!_starting && _cutReady && _match.CutterSeat == 0) Action("Cortar o baralho", () => Cut(0), true);
+                break;
             case FodinhaMatch.Phase.Bidding:
                 _status.Text = _match.CurrentSeat == 0 ? "Quantas vazas você vai ganhar? Escolha seu palpite antes de jogar." : $"{SeatName(_match.CurrentSeat)} está dando seu palpite…";
                 if (_match.CurrentSeat == 0 && !_starting)
@@ -117,7 +125,7 @@ public partial class FodinhaUI : Control
                 break;
             case FodinhaMatch.Phase.RoundResult:
                 _status.Text = _match.Lives[0] == 0 ? "Você foi eliminado. Acompanhe os palpites restantes ou comece outra partida." : "Mão encerrada. Confira seu palpite, suas vitórias e as vidas perdidas.";
-                Action("Próxima mão →", () => { if (_match.AdvanceRound()) { _table.ClearPlayedCards(); SyncFans(); AudioManager.Instance?.PlaySound("deal"); _cooldown = .8; Render(); } }, true);
+                Action("Próxima mão →", () => { if (_match.AdvanceRound()) PrepareDeck(); }, true);
                 if (_match.Lives[0] == 0) Action("Jogar novamente", Restart);
                 break;
             case FodinhaMatch.Phase.Finished:
@@ -130,6 +138,19 @@ public partial class FodinhaUI : Control
     }
 
     private void Restart() => GetTree().ReloadCurrentScene();
+    private void PrepareDeck()
+    {
+        _table.ClearPlayedCards(); SyncFans();
+        _cutReady = false; _cooldown = .85;
+        AudioManager.Instance?.PlaySound("shuffle"); _table.AnimateDeck(false); Render();
+    }
+
+    private void Cut(int seat)
+    {
+        if (!_cutReady || !_match.Cut(seat)) return;
+        _dealing = true; _cooldown = .6;
+        AudioManager.Instance?.PlaySound("cut"); _table.AnimateDeck(true); Render();
+    }
     private void Play(int seat, int cardIndex)
     {
         if (_starting || _match.State != FodinhaMatch.Phase.Playing || _match.CurrentSeat != seat) return;
@@ -146,8 +167,17 @@ public partial class FodinhaUI : Control
     {
         if (_starting || _match == null || _collecting) return;
         _cooldown -= delta; if (_cooldown > 0) return;
+        if (_dealing)
+        {
+            _dealing = false; SyncFans(); AudioManager.Instance?.PlaySound("deal"); _cooldown = .65; Render(); return;
+        }
         int seat = _match.CurrentSeat;
-        if (_match.State == FodinhaMatch.Phase.Bidding && seat != 0)
+        if (_match.State == FodinhaMatch.Phase.Cutting)
+        {
+            if (!_cutReady) { _cutReady = true; _cooldown = .65; Render(); }
+            else if (seat != 0) Cut(seat);
+        }
+        else if (_match.State == FodinhaMatch.Phase.Bidding && seat != 0)
         {
             _match.Bid(seat, FodinhaBot.Predict(_match.Hand(seat), _match.Vira, _match.ActiveSeats.Length));
             _table.PlayGesture(seat, "truco"); _cooldown = .65; Render();

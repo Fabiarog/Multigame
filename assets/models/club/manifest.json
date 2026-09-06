@@ -11,6 +11,7 @@
     "dama"
   ],
   "clips": [
+    "idle",
     "entrance",
     "truco",
     "victory",

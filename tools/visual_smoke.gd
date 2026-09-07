@@ -161,8 +161,9 @@ func layout_issue(scene_name: String, control: Control, kind: String, detail: St
 
 func find_button(prefix: String) -> Button:
 	for node in current_scene.find_children("*", "Button", true, false):
-		if node.is_visible_in_tree() and not node.disabled and node.text.begins_with(prefix):
-			return node
+		if node.is_visible_in_tree() and not node.disabled:
+			if node.text.begins_with(prefix) or prefix.to_lower() in node.text.to_lower():
+				return node
 	return null
 
 
@@ -189,6 +190,14 @@ func check_hub_menus() -> void:
 			continue
 		await settle(0.35)
 		await capture(menus[button_text])
+		if button_text == "Coleção":
+			if find_button("Artes Conceituais") != null:
+				press_button("Artes Conceituais")
+				await settle(0.35)
+				await capture("colecao-conceito")
+				if find_button("Modelos 3D") != null:
+					press_button("Modelos 3D")
+					await settle(0.2)
 		if not press_button("Voltar"):
 			return
 		await settle(0.2)
@@ -270,6 +279,21 @@ func check_poker_actions() -> void:
 		await capture("poker-pilha")
 		await settle(1.6)
 		await capture("poker-jogada")
+	var poker_ui = current_scene.find_child("PokerUI", true, false)
+	if poker_ui != null and poker_ui.has_method("OpenShop"):
+		poker_ui.OpenShop()
+		await settle(0.6)
+		await capture("poker-loja")
+		if find_button("Ajustes") != null:
+			press_button("Ajustes")
+			await settle(0.4)
+			await capture("poker-loja-ajustes")
+			if find_button("Continuar") != null:
+				press_button("Continuar")
+				await settle(0.3)
+		if find_button("Próxima rodada") != null:
+			press_button("Próxima rodada")
+			await settle(0.4)
 
 
 func check_truco_actions() -> void:

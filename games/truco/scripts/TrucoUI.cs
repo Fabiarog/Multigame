@@ -31,6 +31,7 @@ public partial class TrucoUI : Control
     private Button _tomboPenaBtn;
     private Control _dealAnimationLayer;
     private PanelContainer _deckStackVisual;
+    private TextureRect _povHandsOverlay;
 
     // Overlay
     private Control _trucoOverlay;
@@ -77,6 +78,26 @@ public partial class TrucoUI : Control
     {
         if (@event is InputEventKey key && key.Pressed && !key.Echo)
         {
+            if (key.Keycode == Key.Escape)
+            {
+                GetViewport().SetInputAsHandled();
+                _stage?.ToggleInGameSettings();
+                return;
+            }
+            if (key.Keycode == Key.M)
+            {
+                GetViewport().SetInputAsHandled();
+                _stage?.CycleNextRoomTheme();
+                return;
+            }
+            if (key.Keycode == Key.C)
+            {
+                GetViewport().SetInputAsHandled();
+                _stage?.ToggleCameraMode();
+                if (_povHandsOverlay != null)
+                    _povHandsOverlay.Visible = (_stage?.CurrentCameraMode == TableStage.CameraPerspectiveMode.FirstPersonPov) && _game.PlayerHand.Count > 0;
+                return;
+            }
             if ((key.Keycode == Key.Space || key.Keycode == Key.Enter) && _cutDeckBtn != null && _cutDeckBtn.Visible && !_cutDeckBtn.Disabled)
             {
                 GetViewport().SetInputAsHandled();
@@ -134,156 +155,177 @@ public partial class TrucoUI : Control
     private void BuildUI()
     {
         Theme = ClubTheme.Create();
-        var backdrop = new ClubBackdrop { ShowTable = false };
-        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(backdrop);
 
-        var margin = new MarginContainer();
-        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 24);
-        margin.AddThemeConstantOverride("margin_right", 24);
-        margin.AddThemeConstantOverride("margin_top", 20);
-        margin.AddThemeConstantOverride("margin_bottom", 20);
-        AddChild(margin);
-        var main = Column(14);
-        margin.AddChild(main);
+        // 3D TableStage fills 100% of the screen directly as the immersive canvas
+        int playerChar = CharacterCatalog.Find(Core.Systems.SettingsManager.Instance?.CharacterId ?? "corvo");
+        int rival = (playerChar == 2) ? 6 : 2;
+        _stage = new TableStage { SeatCount = _game.TeamSize * 2, RivalIndex = rival };
+        _stage.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _stage.MouseFilter = MouseFilterEnum.Pass;
+        AddChild(_stage);
 
-        var header = new HBoxContainer { CustomMinimumSize = new Vector2(0, 64) };
-        header.AddThemeConstantOverride("separation", 20);
-        main.AddChild(header);
-        var title = Column(0);
-        title.AddChild(ClubTheme.Label("MULTI GAME  /  CLUBE DE CARTAS", 12, Gold));
-        var gameTitle = ClubTheme.Label("Truco", 40, TextPrimary);
-        gameTitle.AddThemeFontOverride("font", ClubTheme.DisplayFont);
-        title.AddChild(gameTitle);
-        header.AddChild(title);
-        header.AddChild(CreateExpandSpacer());
-        var mode = Column(2);
-        mode.Alignment = BoxContainer.AlignmentMode.Center;
-        mode.AddChild(ClubTheme.Label($"MESA {_game.TeamSize} × {_game.TeamSize}", 17, TextPrimary));
-        mode.AddChild(ClubTheme.Label("A primeira equipe a 12 vence", 13, TextSecondary));
-        header.AddChild(mode);
-        var stakesPanel = NewPanel(new Color(0.18f, 0.19f, 0.12f), Gold, 16);
-        _stakesLabel = ClubTheme.Label("VALE 1 PONTO", 18, Gold);
-        _stakesLabel.VerticalAlignment = VerticalAlignment.Center;
-        stakesPanel.AddChild(_stakesLabel);
-        header.AddChild(stakesPanel);
-        var back = ClubTheme.Button("Voltar ao clube");
-        back.CustomMinimumSize = new Vector2(166, 44);
-        back.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        back.Pressed += () => GetTree().ChangeSceneToFile("res://hub/scenes/HubMain.tscn");
-        header.AddChild(back);
+        // Transparent HUD Overlay layer
+        var hud = new Control { Name = "HudOverlay", MouseFilter = MouseFilterEnum.Ignore };
+        hud.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(hud);
 
-        var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        body.AddThemeConstantOverride("separation", 18);
-        main.AddChild(body);
+        // ==================== TOP LEFT: COMPACT SCOREBOARD ====================
+        var topLeft = new MarginContainer();
+        topLeft.SetAnchorsAndOffsetsPreset(LayoutPreset.TopLeft);
+        topLeft.OffsetLeft = 18; topLeft.OffsetTop = 16;
+        hud.AddChild(topLeft);
 
-        var scoreboard = NewPanel(PanelBg, ClubTheme.Border, 20);
-        scoreboard.CustomMinimumSize = new Vector2(226, 0);
-        body.AddChild(scoreboard);
-        var scoreBox = Column(12);
-        scoreboard.AddChild(scoreBox);
-        scoreBox.AddChild(ClubTheme.Label("PLACAR DA PARTIDA", 12, Gold));
-        var teamNames = new HBoxContainer();
-        teamNames.AddChild(ClubTheme.Label("NÓS", 14, SuccessGreen));
-        teamNames.AddChild(CreateExpandSpacer());
-        teamNames.AddChild(ClubTheme.Label("ELES", 14, Accent));
-        scoreBox.AddChild(teamNames);
-        _scoreLabel = ClubTheme.Label("00 : 00", 40, TextPrimary);
-        _scoreLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        var scorePanel = NewPanel(new Color(0.03f, 0.07f, 0.055f, 0.90f), ClubTheme.Border, 12);
+        scorePanel.CustomMinimumSize = new Vector2(230, 0);
+        topLeft.AddChild(scorePanel);
+        var scoreBox = Column(5);
+        scorePanel.AddChild(scoreBox);
+
+        var headerRow = new HBoxContainer();
+        headerRow.AddChild(ClubTheme.Label($"MESA {_game.TeamSize} × {_game.TeamSize}", 11, Gold));
+        headerRow.AddChild(CreateExpandSpacer());
+        headerRow.AddChild(ClubTheme.Label("META 12", 11, TextSecondary));
+        scoreBox.AddChild(headerRow);
+
+        var scoreRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        scoreRow.AddThemeConstantOverride("separation", 10);
+        scoreRow.AddChild(ClubTheme.Label("NÓS", 13, SuccessGreen));
+        _scoreLabel = ClubTheme.Label("00 : 00", 26, TextPrimary);
         _scoreLabel.AddThemeFontOverride("font", ClubTheme.MonoFont);
-        scoreBox.AddChild(_scoreLabel);
-        scoreBox.AddChild(ClubTheme.Label("META  /  12 PONTOS", 12, TextSecondary));
-        scoreBox.AddChild(new HSeparator());
-        scoreBox.AddChild(ClubTheme.Label("TOMBOS DA MÃO", 12, Gold));
-        _tombosContainer = new HBoxContainer();
-        _tombosContainer.AddThemeConstantOverride("separation", 12);
+        scoreRow.AddChild(_scoreLabel);
+        scoreRow.AddChild(ClubTheme.Label("ELES", 13, Accent));
+        scoreBox.AddChild(scoreRow);
+
+        var stakesRow = new HBoxContainer();
+        _stakesLabel = ClubTheme.Label("VALE 1 PONTO", 12, Gold);
+        stakesRow.AddChild(_stakesLabel);
+        stakesRow.AddChild(CreateExpandSpacer());
+        _roundLabel = ClubTheme.Label("TOMBO 01 / 03", 11, TextSecondary);
+        stakesRow.AddChild(_roundLabel);
+        scoreBox.AddChild(stakesRow);
+
+        _tombosContainer = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        _tombosContainer.AddThemeConstantOverride("separation", 8);
         for (int i = 0; i < 3; i++)
         {
-            var dot = ClubTheme.Label($"{i + 1} ○", 20, TextSecondary);
+            var dot = ClubTheme.Label($"{i + 1} ○", 15, TextSecondary);
             dot.Name = $"Tombo{i}";
             dot.MouseFilter = MouseFilterEnum.Pass;
             _tombosContainer.AddChild(dot);
         }
         scoreBox.AddChild(_tombosContainer);
-        _roundLabel = ClubTheme.Label("TOMBO 01 / 03", 12, Gold);
-        scoreBox.AddChild(_roundLabel);
-        _statusLabel = ClubTheme.Label("Preparando o baralho...", 15, TextPrimary);
-        _statusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        scoreBox.AddChild(_statusLabel);
-        scoreBox.AddChild(CreateExpandSpacer());
-        _dealerLabel = ClubTheme.Label("DISTRIBUIDOR\nVocê", 14, TextSecondary);
+
+        _dealerLabel = ClubTheme.Label("DISTRIBUI: Você · CORTA: Adv 2", 11, TextSecondary);
         _dealerLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         scoreBox.AddChild(_dealerLabel);
 
-        var tableSurface = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        tableSurface.AddThemeStyleboxOverride("panel", ClubTheme.Box(Colors.Transparent, ClubTheme.Border, 18, 12));
-        _stage = new TableStage { SeatCount = _game.TeamSize * 2, RivalIndex = 1 };
-        tableSurface.AddChild(_stage);
+        // ==================== TOP RIGHT: COMPACT VIRA & MENU ====================
+        var topRight = new MarginContainer();
+        topRight.SetAnchorsAndOffsetsPreset(LayoutPreset.TopRight);
+        topRight.OffsetRight = -18; topRight.OffsetTop = 16;
+        topRight.GrowHorizontal = GrowDirection.Begin;
+        hud.AddChild(topRight);
 
-        // Status lives beside the table so the northern player's face stays visible.
-        body.AddChild(tableSurface);
+        var viraPanel = NewPanel(new Color(0.03f, 0.07f, 0.055f, 0.90f), ClubTheme.Border, 10);
+        topRight.AddChild(viraPanel);
+        var viraRow = new HBoxContainer();
+        viraRow.AddThemeConstantOverride("separation", 12);
+        viraPanel.AddChild(viraRow);
 
+        _viraCardContainer = new CenterContainer { CustomMinimumSize = new Vector2(64, 92) };
+        viraRow.AddChild(_viraCardContainer);
 
-        var viraPanel = NewPanel(PanelBg, ClubTheme.Border, 18);
-        viraPanel.CustomMinimumSize = new Vector2(210, 0);
-        body.AddChild(viraPanel);
-        var viraBox = Column(10);
-        viraPanel.AddChild(viraBox);
-        viraBox.AddChild(ClubTheme.Label("A CARTA DO TOMBO", 12, Gold));
-        _viraCardContainer = new CenterContainer();
-        _viraCardContainer.CustomMinimumSize = new Vector2(0, 144);
-        viraBox.AddChild(_viraCardContainer);
-        _viraLabel = ClubTheme.Label("Vira ainda fechada", 16, TextPrimary);
-        _viraLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        var viraInfo = Column(4);
+        viraInfo.Alignment = BoxContainer.AlignmentMode.Center;
+        viraRow.AddChild(viraInfo);
+
+        _viraLabel = ClubTheme.Label("Vira ainda fechada", 12, TextPrimary);
         _viraLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _viraLabel.CustomMinimumSize = new Vector2(0, 50);
-        viraBox.AddChild(_viraLabel);
-        viraBox.AddChild(CreateExpandSpacer());
-        viraBox.AddChild(new HSeparator());
-        viraBox.AddChild(ClubTheme.Label("FORÇA DAS MANILHAS", 11, TextSecondary));
-        var order = ClubTheme.Label("♦  <  ♠  <  ♥  <  ♣", 21, Gold);
-        order.HorizontalAlignment = HorizontalAlignment.Center;
-        viraBox.AddChild(order);
-        var orderHint = ClubTheme.Label("Do ouros ao zap", 12, TextSecondary);
-        orderHint.HorizontalAlignment = HorizontalAlignment.Center;
-        viraBox.AddChild(orderHint);
+        _viraLabel.CustomMinimumSize = new Vector2(150, 0);
+        viraInfo.AddChild(_viraLabel);
 
-        var handPanel = NewPanel(PanelBg, ClubTheme.Border, 14);
-        handPanel.CustomMinimumSize = new Vector2(0, 184);
-        main.AddChild(handPanel);
-        var handRow = new HBoxContainer();
-        handRow.AddThemeConstantOverride("separation", 24);
-        handPanel.AddChild(handRow);
-        var handInfo = Column(8);
-        handInfo.CustomMinimumSize = new Vector2(206, 0);
-        handInfo.Alignment = BoxContainer.AlignmentMode.Center;
-        handRow.AddChild(handInfo);
-        handInfo.AddChild(ClubTheme.Label("SUA MÃO", 12, Gold));
-        _handCountLabel = ClubTheme.Label("O corte abre a mesa.", 17, TextPrimary);
-        handInfo.AddChild(_handCountLabel);
-        var handHint = ClubTheme.Label("Na sua vez, clique em uma carta para jogar.", 13, TextSecondary);
-        handHint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        handInfo.AddChild(handHint);
+        var order = ClubTheme.Label("♦  <  ♠  <  ♥  <  ♣", 13, Gold);
+        viraInfo.AddChild(order);
+        var orderHint = ClubTheme.Label("Do ouros ao zap", 10, TextSecondary);
+        viraInfo.AddChild(orderHint);
+
+        var back = ClubTheme.Button("Voltar ao clube");
+        back.CustomMinimumSize = new Vector2(140, 30);
+        back.Pressed += () => GetTree().ChangeSceneToFile("res://hub/scenes/HubMain.tscn");
+        viraInfo.AddChild(back);
+
+        // ==================== BOTTOM: POV HAND & STATUS MESSAGE ====================
+        var bottomMargin = new MarginContainer();
+        bottomMargin.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
+        bottomMargin.OffsetLeft = 20; bottomMargin.OffsetRight = -20; bottomMargin.OffsetBottom = -14;
+        bottomMargin.GrowVertical = GrowDirection.Begin;
+        hud.AddChild(bottomMargin);
+
+        var bottomRow = new HBoxContainer();
+        bottomRow.AddThemeConstantOverride("separation", 16);
+        bottomRow.Alignment = BoxContainer.AlignmentMode.Center;
+        bottomMargin.AddChild(bottomRow);
+
+        var dummyLeft = new Control { CustomMinimumSize = new Vector2(170, 0) };
+        bottomRow.AddChild(dummyLeft);
+
+        var handCol = Column(6);
+        handCol.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        handCol.Alignment = BoxContainer.AlignmentMode.Center;
+        bottomRow.AddChild(handCol);
+
         var handCenter = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        handRow.AddChild(handCenter);
-        _playerHandContainer = new HBoxContainer();
+        handCol.AddChild(handCenter);
+
+        _povHandsOverlay = new TextureRect
+        {
+            Name = "PovHandsOverlay",
+            Texture = GD.Load<Texture2D>("res://assets/sprites/ui/pov_hands.png"),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = MouseFilterEnum.Ignore,
+            Modulate = new Color(1, 1, 1, 0.88f),
+            CustomMinimumSize = new Vector2(580, 150)
+        };
+        handCenter.AddChild(_povHandsOverlay);
+
+        _playerHandContainer = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         _playerHandContainer.AddThemeConstantOverride("separation", 14);
         handCenter.AddChild(_playerHandContainer);
-        var actions = Column(10);
-        actions.CustomMinimumSize = new Vector2(220, 0);
+
+        // Message directly below cards in the POV perspective
+        var statusBadge = new PanelContainer();
+        statusBadge.AddThemeStyleboxOverride("panel", ClubTheme.Box(new Color(0.02f, 0.06f, 0.045f, 0.90f), ClubTheme.Border, 10, 5));
+        var statusHBox = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        statusHBox.AddThemeConstantOverride("separation", 14);
+        statusBadge.AddChild(statusHBox);
+
+        _statusLabel = ClubTheme.Label("Preparando o baralho...", 14, Gold);
+        _statusLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        statusHBox.AddChild(_statusLabel);
+
+        _handCountLabel = ClubTheme.Label("3 cartas", 12, TextSecondary);
+        statusHBox.AddChild(_handCountLabel);
+        handCol.AddChild(statusBadge);
+
+        // Action controls (TRUCO / CORTAR)
+        var actions = Column(6);
+        actions.CustomMinimumSize = new Vector2(170, 0);
         actions.Alignment = BoxContainer.AlignmentMode.Center;
-        handRow.AddChild(actions);
+        bottomRow.AddChild(actions);
+
         _trucoBtn = ClubTheme.Button("TRUCO!", true);
-        _trucoBtn.CustomMinimumSize = new Vector2(220, 48);
+        _trucoBtn.CustomMinimumSize = new Vector2(170, 44);
         _trucoBtn.Pressed += () => _game.RequestTruco();
         actions.AddChild(_trucoBtn);
+
         _cutDeckBtn = ClubTheme.Button("Cortar o baralho", true);
-        _cutDeckBtn.CustomMinimumSize = new Vector2(220, 48);
+        _cutDeckBtn.CustomMinimumSize = new Vector2(170, 44);
         _cutDeckBtn.Pressed += () => _game.CutDeck();
         _cutDeckBtn.Visible = false;
         actions.AddChild(_cutDeckBtn);
-        var raiseHint = ClubTheme.Label("1 → 3 → 6 → 9 → 12", 13, TextSecondary);
+
+        var raiseHint = ClubTheme.Label("1 → 3 → 6 → 9 → 12", 11, TextSecondary);
         raiseHint.HorizontalAlignment = HorizontalAlignment.Center;
         actions.AddChild(raiseHint);
 
@@ -450,13 +492,13 @@ public partial class TrucoUI : Control
     {
         ClearContainer(_viraCardContainer);
         var back = CreateAnimatedCardBack();
-        back.CustomMinimumSize = new Vector2(92, 132);
+        back.CustomMinimumSize = new Vector2(64, 92);
         _viraCardContainer.AddChild(back);
     }
 
     // ===== REFRESH =====
 
-    private void RefreshPlayerHand()
+    private void RefreshPlayerHand(bool animateDeal = false)
     {
         while (_playerHandContainer.GetChildCount() > 0)
         {
@@ -466,14 +508,30 @@ public partial class TrucoUI : Control
         }
         _cardPanels.Clear();
 
+        bool shouldAnimate = animateDeal && (Core.Systems.SettingsManager.Instance?.ReduceMotion != true);
         for (int i = 0; i < _game.PlayerHand.Count; i++)
         {
             var card = _game.PlayerHand[i];
             var panel = CreateCardPanel(card, i);
             _playerHandContainer.AddChild(panel);
             _cardPanels.Add(panel);
+
+            if (shouldAnimate)
+            {
+                panel.Modulate = new Color(1, 1, 1, 0);
+                panel.Scale = new Vector2(0.82f, 0.82f);
+                panel.PivotOffset = panel.CustomMinimumSize / 2f;
+                int cardOrder = i;
+                var tween = CreateTween();
+                tween.TweenInterval(cardOrder * 0.06f);
+                tween.TweenProperty(panel, "modulate:a", 1f, 0.20f);
+                tween.Parallel().TweenProperty(panel, "scale", Vector2.One, 0.24f)
+                    .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            }
         }
         _handCountLabel.Text = _game.PlayerHand.Count == 1 ? "1 carta na mão" : $"{_game.PlayerHand.Count} cartas na mão";
+        if (_povHandsOverlay != null)
+            _povHandsOverlay.Visible = (_stage?.CurrentCameraMode == TableStage.CameraPerspectiveMode.FirstPersonPov) && _game.PlayerHand.Count > 0;
     }
 
     private void RefreshTableCards()
@@ -502,7 +560,7 @@ public partial class TrucoUI : Control
     {
         ClearDealAnimationLayer();
         _stakesLabel.Text = _game.CurrentStakes == 1 ? "VALE 1 PONTO" : $"VALE {_game.CurrentStakes} PONTOS";
-        RefreshPlayerHand();
+        RefreshPlayerHand(true);
         RefreshTableCards();
         RefreshTombos();
         _trucoOverlay.Visible = false;
@@ -671,7 +729,8 @@ public partial class TrucoUI : Control
         ClearContainer(_viraCardContainer);
         if (_game.ViraCard != null)
         {
-            var panel = CreateCardPanel(_game.ViraCard, -1);
+            var panel = CreateSmallCard(_game.ViraCard, false);
+            panel.CustomMinimumSize = new Vector2(64, 92);
             panel.MouseFilter = MouseFilterEnum.Ignore; // Vira card is not clickable
             _viraCardContainer.AddChild(panel);
         }
@@ -679,7 +738,7 @@ public partial class TrucoUI : Control
 
     private void OnTrucoCalled(int stakes, bool byPlayer)
     {
-        _stage.React(byPlayer ? 0 : 1);
+        _stage.PlayGesture(byPlayer ? 0 : 1, "truco");
         Core.Systems.AudioManager.Instance?.PlaySound("truco");
         _stakesLabel.Text = $"VALE {stakes} PONTOS";
         _trucoCallDescription.Text = byPlayer
@@ -747,11 +806,16 @@ public partial class TrucoUI : Control
         };
         _statusLabel.Text = msg;
         _statusLabel.AddThemeColorOverride("font_color", winner == 0 ? SuccessGreen : (winner == 1 ? Accent : Gold));
+        if (winner == 0 || winner == 1)
+        {
+            _stage?.PlayGesture(winner, "victory");
+        }
     }
 
     private void OnHandEnded(bool playerWon, int pointsGained)
     {
         if (playerWon) Core.Systems.AudioManager.Instance?.PlaySound("win");
+        _stage?.PlayGesture(playerWon ? 0 : 1, "victory");
         _handOverlayEyebrow.Text = "FIM DA MÃO";
         _handOverlayTitle.Text = playerWon ? "Você ganhou!" : "Oponente ganhou!";
         _handOverlayTitle.AddThemeColorOverride("font_color", playerWon ? SuccessGreen : Accent);

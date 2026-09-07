@@ -59,6 +59,7 @@ public partial class PokerGameManager : Node
     public int BaseMultiplierBonus { get; private set; } = 0;
     public int ExtraHands { get; private set; } = 0;
     public int ExtraDiscards { get; private set; } = 0;
+    public int DeckCount => _deck?.Count ?? 52;
 
     // ===== CONSTANTS =====
 
@@ -258,14 +259,23 @@ public partial class PokerGameManager : Node
         }
         _selectedIndices.Clear();
 
+        // Allow cards to fly and land on the felt before showing score calculations
+        if (Core.Systems.SettingsManager.Instance?.ReduceMotion != true)
+        {
+            await ToSignal(GetTree().CreateTimer(0.85f), SceneTreeTimer.SignalName.Timeout);
+            if (!IsInsideTree()) return;
+        }
+
         // Emit scoring signals
         EmitSignal(SignalName.HandScored, result.HandName, result.TotalScore, result.GetScoreBreakdown());
         EmitSignal(SignalName.ScoreUpdated, RoundScore, RoundTarget);
 
         _boss?.ReactToPlayerHand(RoundScore, RoundTarget);
 
-        // Wait to show the result
-        await ToSignal(GetTree().CreateTimer(1.5f), SceneTreeTimer.SignalName.Timeout);
+        // Wait to show the result and score breakdown
+        float waitResult = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.3f : 2.2f;
+        await ToSignal(GetTree().CreateTimer(waitResult), SceneTreeTimer.SignalName.Timeout);
+        if (!IsInsideTree()) return;
 
         _playerAvatar?.SetState(
             RoundScore >= RoundTarget
@@ -345,6 +355,21 @@ public partial class PokerGameManager : Node
                 return false;
         }
         
+        Gold -= cost;
+        return true;
+    }
+
+    public bool BuyRelic(RelicManager.RelicId relic, int cost)
+    {
+        if (Gold < cost || _relics == null || !_relics.CanAddRelic) return false;
+        if (!_relics.AddRelic(relic)) return false;
+        Gold -= cost;
+        return true;
+    }
+
+    public bool RerollShop(int cost)
+    {
+        if (Gold < cost) return false;
         Gold -= cost;
         return true;
     }

@@ -33,7 +33,148 @@ MultiGame (conhecido internamente como `GameHub`) é um ecossistema de jogos de 
   * Tonemapping ACES com exposição calibrada e Bloom/Glow suave.
 * **Rede Híbrida (`core/networking/NetworkManager.cs` e `hub/scripts/LobbyUI.cs`):**
   * Suporte híbrido arquitetado para LAN via ENet (`ENetMultiplayerPeer`) e WAN/Online via WebSockets (`WebSocketMultiplayerPeer`).
-  * Descoberta local por broadcast UDP na porta `42424`.
+  * Descoberta local por broadcast UDP na porta `42429`.
+
+### Patch 18: Cadência Natural e Deliberada da IA, Tensão nas Chamadas de Truco, Ocultação da Malha em POV e Enquadramento dos Modelos 3D Detalhados — 07/09/2026
+
+1. **Cadência Natural da Partida e IA Deliberada (`games/truco/scripts/TrucoGameManager.cs`, `games/poker_roguelike/scripts/PokerGameManager.cs`):**
+   * **IA pensando em ritmo humano:** o timer de reflexão no Truco foi calibrado de `0.8s–1.4s` para `1.8s–2.8s` (`_rng.RandiRange(18, 28) / 10f`), eliminando a sensação de jogadas "na velocidade da luz".
+   * **Tensão ao pedir Truco:** ao solicitar Truco, a IA executa o gesto de desafio corporal (`truco`), com uma pausa dramática de antecipação (`0.65s`) antes do aviso e efeito sonoro na tela.
+   * **Pausa de resposta ao Truco:** o oponente agora pondera por `2.2s` (`RespondAIToTrucoDelayed`) antes de responder ao grito de Truco do jogador.
+   * **Ritmo de Tombos e Corte:** intervalo entre cartas jogadas estendido para `1.30s`, pausa após o tombo aumentada para `1.85s` e tempo de corte de baralho ajustado para `1.15s`.
+   * **Ritmo no Pôquer:** em `PokerGameManager.PlayHand()`, adicionado delay de `0.85s` para que todas as cartas cheguem fisicamente à mesa antes de iniciar a contagem e efeitos de pontuação, seguido de pausa de contemplação de `2.2s` da mão vencida.
+
+2. **Destaque Visual aos Modelos 3D Detalhados à Mesa (`games/truco/scripts/TrucoUI.cs`, `core/systems/SettingsManager.cs`):**
+   * **Oponente 3D Detalhado:** o rival padrão no Truco 1v1 foi alterado de Bento (procedural antigo) para Barão da Meia-Noite / Seu Corvo (modelos com Armature, texturas ricas e animações completas).
+   * **Perfil Padrão:** `CharacterId` padrão atualizado de `"nina"` para `"corvo"`.
+   * **Animações Reativas:** ao pedir/aumentar truco é acionado o gesto `truco`, e ao vencer uma vaza/mão é acionado o gesto `victory`.
+
+3. **Correção de Visão em Primeira Pessoa (POV) e Mesa 3D (`core/visuals/TableStage.cs`):**
+   * **Ocultação do Jogador Local:** no assento local (`Seat 0`), a malha do personagem é ocultada (`_actors[i].Visible = !isLocal`), eliminando qualquer torso, pescoço ou cabelo bloqueando a visão das cartas e da mesa em POV e Table view.
+   * **Proximidade e Enquadramento:** assento do oponente em 1v1 aproximado de $Z = -3.10\text{m}$ para $Z = -2.50\text{m}$, com câmera POV em $FOV = 48^\circ$ e mira centralizada em `Vector3(0, 0.72f, -0.35f)`, enquadrando o rival à altura dos olhos, sob a iluminação direta do lustre da mesa.
+   * **Física de Impacto e Sombra:** a sombra de contato permanece colada ao feltro verde durante o arco do voo da carta, e ao aterrissar ocorre um micro-amortecimento físico elástico (*settling bounce*) de 15mm.
+   * **Modo Padrão POV:** `DefaultCameraMode` padrão atualizado para `"pov"`.
+
+4. **Validação de QA e Executável:**
+   * `GameplayChecks.cs`: 171 asserções aprovadas com êxito.
+   * `visual_smoke.ps1`: 27 capturas de tela e 25 ações interativas aprovadas com 0 falhas e 0 problemas de layout.
+   * `Game Hub.exe` e `Game Hub.pck` re-exportados para Windows Desktop x86_64.
+
+### Patch 17: Ajuste de Cadência das Cartas Jogadas, Pausa de Tombos no Truco e Animações Orgânicas Fluidas — 07/09/2026
+
+1. **Cadência e Velocidade das Cartas Jogadas (`core/visuals/TableStage.cs`, `games/truco/scripts/TrucoGameManager.cs`, `games/poker_roguelike/scripts/PokerUI.cs`):**
+   * **Problema Original:** As cartas viajavam em apenas `0.36s` a `0.42s`, parecendo teletransportar-se sem peso ou tato. No Truco, ao finalizar um tombo, a rodada seguinte iniciava imediatamente (0s de intervalo), impedindo a leitura das cartas na mesa e do placar. No Pôquer, as cartas eram disparadas com intervalo de apenas `60ms`.
+   * **Nova Física e Duração de Lançamento (`TableStage.PlayCard`):**
+     * Duração de voo estendida de `0.42s` para `0.82s` (jogada normal) e de `0.36s` para `0.65s` (batida de manilha especial), com interpolação `Cubic.EaseOut`.
+     * O arco parabólico (`peakArc = 0.48m / 0.70m`) agora permite que o olho humano acompanhe com clareza a carta saindo da mão, girando suavemente no ar e estalando com precisão contra o feltro da mesa no exato momento do impacto sonoro.
+   * **Pausa e Contemplação de Tombos no Truco (`TrucoGameManager.ResolveCurrentRound`):**
+     * Inserida uma pausa de `1.35s` (`await WaitForAnimation(1.35f)`) após a resolução de cada tombo e `1.05s` após cada carta jogada (`PlaySeatCard`).
+     * As cartas permanecem visíveis lado a lado na mesa enquanto o status da rodada é exibido ("Você ganhou o tombo!", "Oponente ganhou o tombo!", "Empate!"), garantindo clareza tática antes do início da próxima vaza.
+   * **Ritmo de Lançamento no Pôquer (`PokerUI.cs`):**
+     * Cartas jogadas da mão escalonadas com intervalo de `150ms` (`i * 0.15f`) e do dealer com `160ms` (`0.20f + i * 0.16f`), criando um efeito cascata ritmado e agradável.
+
+2. **Descongelamento e Fluidez Expressiva dos Modelos 3D (`tools/build_rigged_detailed_cast.py`, `core/visuals/CharacterViewer3D.cs`):**
+   * **Problema Original:** As rotações de repouso (`idle`) tinham amplitude diminuta ($\sim 1^\circ$ a $2^\circ$, 8mm), fazendo os personagens parecerem estátuas congeladas ("quase travadas"). Além disso, no visualizador da Coleção, o Godot importava as faixas com `LoopMode = None`, congelando a animação após 2,6 segundos.
+   * **Novas Amplo-Curvas Bezier nos 5 Personagens Detalhados:**
+     * `idle`: Respiração viva do tórax ($+5\text{cm}$ de elevação, $8^\circ$ de expansão), arco de coluna, balanceamento do quadril ($3.5\text{cm}$), micro-movimentos dos ombros, punhos segurando cartas, olhar vivo com inclinação de cabeça e pestanejo natural, fanning elegante de asas para Seu Corvo e Barão ($\sim 18^\circ$), balanço rítmico da cauda felpuda do Zeca ($\sim 25^\circ$) e ondulação sinuosa em onda S da Dama de Copas.
+     * Gestos de ação (`truco`, `victory`, `boss_intro`, `flourish`, `play_card` e `entrance`) reescritos com arcos de antecipação dinâmicos, movimentos de torso e finalizações expressivas.
+   * **Loop Infinito e Transições Suaves na Coleção (`CharacterViewer3D.PlayAnimation`):**
+     * Ação `idle` configurada com `LoopMode = Animation.LoopModeEnum.Linear` tanto na inicialização quanto ao selecionar o botão de repouso.
+     * Ao acionar gestos ("Desafio", "Vitória", "Jogar", "Floreio"), o modelo executa a ação dramática completa com transição de 0,2s e, ao terminar, retorna automaticamente ao ciclo de respiração contínua sem travar.
+
+3. **Validação de QA e Build:**
+   * **Gameplay QA C# (`GameplayChecks.cs`):** 171 asserções aprovadas com êxito (`GAMEPLAY_QA PASS`).
+   * **Fumaça Visual (`tools/visual_smoke.gd`):** 27 capturas de tela e 25 ações com 0 falhas e 0 avisos de layout (`layout_issues=0, failures=0`).
+   * **Visualizador 3D:** Screenshots da Coleção atualizados com enquadramento integral e iluminação de estúdio.
+   * **Executável Windows:** `Game Hub.exe` e `Game Hub.pck` re-exportados com sucesso.
+
+---
+
+### Patch 16: Esqueleto Articulado (Armature Rigging), Deformação Orgânica e Animações Bezier nos Personagens 3D Detalhados — 07/09/2026
+
+1. **Modelos 3D Detalhados e Rigging com Pesos Automáticos (Automatic Skinning Weights):**
+   * **Problema com Modelos Rígidos Fatiados:** Fatiar modelos complexos gerados por IA em peças sólidas cria aberturas ocas nas juntas (cotovelos, joelhos, ombros) e fendas visíveis.
+   * **Solução com Armature Completo no Blender:** Script automatizado (`tools/build_rigged_detailed_cast.py`) cria esqueletos proporcionais e vincula malhas contínuas usando `ARMATURE_AUTO` (pesos de vértices suaves):
+     * Hierarquia óssea: `Root` -> `Pelvis` -> `Spine` -> `Chest` -> `Neck` -> `Head`, com cadeias completas de membros `Shoulder.L/R`, `UpperArm.L/R`, `Forearm.L/R`, `Hand.L/R`, `Thigh.L/R`, `Shin.L/R`, `Foot.L/R`.
+     * Apêndices anatômicos especializados: `Wing.L/R` (Corvo e Barão), `Tail.01/02` (Zeca) e cauda sinuosa de 5 segmentos `Tail.01..Tail.05` (Dama).
+     * Normalização: Modelos escalados para altura humana de 1.85m e aterrados na base $Z=0$.
+     * Marcador `Head` (Node3D empty) em $Y=1.58\text{m}$ parentado ao esqueleto para suporte nativo ao clipping de cabeça em POV do Godot.
+     * Preservação integral das texturas PBR 2K (albedo atlas, normal e roughness).
+
+2. **7 Clipes de Animação Bezier Fluídos por Personagem:**
+   * Curvas de animação com interpolação `BEZIER` geradas proceduralmente para 7 ações de cada personagem:
+     * `idle`: ciclo de respiração sutil (peito, coluna, asas/cauda e cabeça).
+     * `entrance`: reverência aristocrática clássica, passos e saudação com as mãos/asas abertas.
+     * `truco`: avanço vigoroso à frente com impacto dramático e inclinação sobre a mesa.
+     * `victory`: celebração triunfante com braços erguidos e postura orgulhosa.
+     * `boss_intro`: postura intimidadora de mestre do salão com braços cruzados e peso firme.
+     * `flourish`: exibição elegante em giro gracioso com asas/mãos abertas.
+     * `play_card`: movimento natural estendendo o braço para lançar a carta na mesa.
+   * Faixas NLA dedicadas configuradas para exportação compatível com Godot glTF.
+
+3. **Integração no Clube, Visualizador 3D e Retratos de Estúdio:**
+   * Exportação dos arquivos `.glb` otimizados para `assets/models/club/{corvo, barao, dama, zeca, iara}.glb`.
+   * Geração de retratos 3D de alta fidelidade com iluminação de estúdio para `assets/models/club/{ident}_3d.png`.
+   * Enquadramento no visualizador 3D (`CharacterViewer3D.cs`): distância da câmera calibrada para `2.85f` e escala `0.95f`, exibindo o corpo inteiro dos personagens sobre o plinto dourado sem cortes.
+   * Coexistência harmoniosa: Nina, Bento e Dona Onça permanecem operacionais com seus modelos procedurais até a geração de seus assets detalhados.
+
+4. **Validação de QA e Build:**
+   * **Bateria C# (`GameplayChecks.cs`):** 172 asserções aprovadas com êxito (`GAMEPLAY_QA PASS`).
+   * **Fumaça Visual (`tools/visual_smoke.gd`):** 27 capturas de tela e 25 ações com 0 falhas e 0 avisos de layout (`layout_issues=0, failures=0`).
+   * **Executável Windows:** `Game Hub.exe` e `Game Hub.pck` re-exportados com sucesso.
+
+---
+
+### Patch 15: Proporção Real das Cartas na Mesa 3D, Cenário Imersivo em Tela Aberta no Truco e Loja Balatro Roguelike — 06/09/2026
+
+1. **Proporção e Dimensões das Cartas na Mesa 3D (`core/visuals/TableStage.cs`):**
+   * **Problema Original:** As cartas jogadas na mesa eram instanciadas com `Size = (1.25f, 0.032f, 1.76f)`, mais que o dobro do baralho físico na mesa (`0.58f × 0.82f`), parecendo gigantes e exigindo um truque de encolhimento artificial (`Scale = 0.464f`) ao serem guardadas.
+   * **Nova Geometria Proporcional:** As cartas agora nascem e permanecem com `Size = (0.58f, 0.018f, 0.82f)` com escala uniforme `1.0`. Todos os componentes associados foram refinados:
+     * Sombra de contato: `0.64f × 0.88f`.
+     * Moldura de ouro traseira: `0.62f × 0.014f × 0.86f`.
+     * Face da carta: `0.56f × 0.80f`.
+     * Placa de identificação/manilha: `Position = (0, 0.06f, -0.52f)`, com `FontSize = 22, PixelSize = 0.0028f`.
+     * Bandeja de feltro de descarte: redimensionada de `1.35f × 1.85f` para `0.66f × 0.90f`.
+   * **Animação de Recolha e Retorno ao Baralho (`CollectRoundCardsToDiscard`):**
+     * As cartas jogadas da mão/tombo reúnem-se ordenadamente no centro da mesa em uma pilha única `(0, 0.16f, 0.10f)`.
+     * Em seguida, deslizam em bloco suavemente direto para cima do baralho físico em `(-1.85f, 0.082f, 0.20f)`, mantendo suas proporções naturais e eliminando artefatos de escala.
+
+2. **Cenário Imersivo em Tela Aberta e HUD Discreto no Truco (`games/truco/scripts/TrucoUI.cs`):**
+   * **Eliminação de Molduras Estreitas:** O viewport 3D da mesa (`_stage`) agora ocupa 100% da tela em tela cheia aberta (`LayoutPreset.FullRect`), permitindo contemplar todo o salão clássico, iluminação e oponentes.
+   * **Placar Discreto no Canto Superior Esquerdo:** Cartão translúcido e compacto contendo o placar `NÓS : ELES`, meta de 12 pontos, valor da aposta atual (`VALE X PONTOS`), indicador de tombos (`TOMBO 01 / 03`) e menção sutil a quem distribui e quem corta o baralho.
+   * **Vira Compacta no Canto Superior Direito:** Carta do tombo em formato compacto (64×92 px) com ordem de manilhas e botão `"Voltar ao clube"`.
+   * **Mão em Primeira Pessoa (POV):** Cartas do jogador flutuam na base da tela com o status da vez (`_statusLabel`, ex.: *"Sua vez! Escolha uma carta."*) posicionado diretamente abaixo das cartas da mão.
+   * **Atalhos Rápidos e Menu [Esc]:** Os botões que poluíam a tela (cenário, câmera e ajustes) foram ocultados por padrão. Pressionar `Esc` abre o painel de ajustes in-game, `M` alterna o cenário da sala, e `C` cicla as câmeras.
+
+3. **Loja de Pôquer Roguelike Estilo Balatro (`games/poker_roguelike/scripts/`):**
+   * **Referência Visual e Funcional do Balatro:** Recriação completa da tela de loja entre rodadas inspirada na referência oficial:
+     * **Sidebar Esquerda:**
+       * Letreiro neon clássico `SHOP ("Improve your run!")` com bordas vermelhas iluminadas.
+       * Pontuação da rodada com ícone de chip azul.
+       * Fórmula matemática `[Fichas Azuis] × [Mult Vermelho]`.
+       * Pílulas de recursos: `Mãos: X` (azul) e `Descartes: X` (vermelho).
+       * Saldo em fichas/dinheiro `FICHAS: $ X`.
+       * Marcador de progressão `Ante: X / 8` e `Rodada: X`.
+       * Botões de suporte: `Info da Corrida` e `Ajustes [Esc]`.
+     * **Inventário Superior:**
+       * Barra de 5 slots de Coringas (`CORINGAS (X / 5)`) com miniaturas dos itens adquiridos e slots vazios demarcados.
+       * 2 slots de Consumíveis (`CONSUMÍVEIS (0 / 2)`).
+     * **Painel Central de Compras:**
+       * Coluna de ações com botões verticais `Próxima rodada →` (dourado/vermelho) e `Reroll $ 5` (verde escuro).
+       * Vitrine de Coringas com tags de preço destacadas (`$ 4`, `$ 5`, `$ 6`), ícone, nome e descrição de efeito.
+       * Fileira inferior de consumíveis: `CUPOM DO ANTE · $ 10` (efeitos permanentes de +1 Mão, +1 Descarte ou +1 Mult) e Pacotes Booster (`PACOTE BUFFOON 🎁 $ 4` e `PACOTE CELESTIAL ✨ $ 4`).
+     * **Baralho Físico:** Pilha de cartas no canto inferior direito com contador dinâmico (ex.: `🎴 Baralho: 37 / 52`).
+   * **Novos Coringas no `RelicManager.cs`:**
+     * `JokerClassic` (+4 Mult para toda combinação).
+     * `FlushBoost` (+30 Fichas para mãos de Flush).
+     * `PairMaster` (+20 Fichas e +1 Mult para Pares e Dois Pares).
+     * `GoldenTicket` (+3 Fichas de bônus ganhas no fim da rodada).
+     * `ChaosDice` (+1 a +6 Mult aleatório a cada mão jogada).
+
+4. **Validação de QA e Build:**
+   * **Bateria C# (`GameplayChecks.cs`):** **171 asserções aprovadas com êxito** (`GAMEPLAY_QA PASS`).
+   * **Fumaça Visual (`tools/visual_smoke.gd`):** **25 capturas de tela e 21 ações com 0 falhas e 0 avisos de layout** (`layout_issues=0, failures=0`, incluindo `poker-loja.png`).
+   * **Executável Windows Atualizado:** `Game Hub.exe` e `Game Hub.pck` gerados com sucesso.
 
 ---
 
@@ -311,8 +452,166 @@ O modo inclui entrada dos quatro personagens, leques dos adversários, cartas f�
    * Executável e pacote de assets (`Game Hub.exe` e `Game Hub.pck`) atualizados e prontos para distribuição.
 
 ---
-314: 
-315: ## 3. Guia de Operações e Comandos Essenciais
+
+### Patch 12: Cenários 3D Ricos, Seletor Dinâmico de Mapas, Animações de Colocar Cartas na Mão e Fase 2 — 06/09/2026
+
+**Base preservada:** Snapshot de segurança preservado na branch **review** com total fidelidade anatômica e arquitetônica, mantendo os 8 personagens e os 4 salões do clube.
+
+1. **Cenários 3D Ricos Gerados no Blender 5.2 (`tools/build_club_rooms.py`):**
+   * **Teto com Vigas e Caixotões (*Coffered Ceiling*):**
+     * Teto em madeira nobre a $Z = 7.35\text{m}$ decorado com vigas longitudinais e transversais, molduras douradas e medalhões roseta nas interseções, proporcionando um teto luxuoso visível ao olhar para cima em Primeira Pessoa (POV).
+   * **Lustre Candelabro Suspenso (*Grand Chandelier*):**
+     * Haste central de latão e canopla suspensa no teto a $Z = 5.25\text{m}$, com corpo esférico central, finial inferior, 8 braços curvos radiais, pratos de latão com velas brilhantes e pingentes de cristal lapidado.
+   * **Aparador / Bar Aristocrático (*Credenza / Drinks Bar*):**
+     * Móvel de mogno polido com tampo de mármore branco encostado à parede de fundo ($Y = 6.0\text{m}$), equipado com puxadores de latão, 2 decantadores de cristal lapidado com licores âmbar e rubi, 3 garrafas clássicas de destilados, balde de gelo em latão e taças de cristal.
+   * **Pedestal Cabideiro com Chapéu Fedora (*Brass Coat & Hat Stand*):**
+     * Coluna torneada de latão com ganchos superiores e chapéu Fedora clássico em feltro escuro repousado sobre um dos ganchos.
+   * **Paredes Laterais Ornamentadas:**
+     * Flancos esquerdo e direito ($X = \pm 13.5\text{m}$) agora contam com painéis em relevo *boiserie*, molduras douradas e arandelas com iluminação pontual quente.
+   * Reconstrução e reexportação dos 4 modelos: `room_classic_club.glb`, `room_barao_lounge.glb`, `room_dama_salon.glb`, `room_cyber_casino.glb`.
+
+2. **Seletor de Mapas / Cenários em Tempo Real (`TableStage.cs`, `SettingsManager.cs`, `HubMain.cs`):**
+   * **Alternância Dinâmica na Mesa:** Botão integrado ao HUD da mesa (`cameraTools`) `"Cenário: [Salão Clássico] [M]"` e atalho de teclado `M`, permitindo que o jogador mude instantaneamente entre os 4 temas (`classic_club`, `barao_lounge`, `dama_salon`, `cyber_casino`) durante partidas de Truco, Pôquer ou Fodinha, sem reiniciar o jogo.
+   * **Luzes Dinâmicas de Ambiente:** Ao alternar de cenário, o lustre central, as arandelas laterais e o rim light adaptam suas cores e intensidades dinamicamente (dourado clássico, púrpura imperial, âmbar escarlate ou neon ciano).
+   * **Persistência de Preferência:** Propriedade `RoomTheme` adicionada a `SettingsManager.cs`, gravada na seção `[Visuals]` do `settings.cfg`.
+   * **Menu de Ajustes do Hub:** Seletor de cenário adicionado na aba de vídeo do menu principal do Hub para escolha prévia da sala padrão.
+
+3. **Animações de Colocar Cartas na Mão (`TableStage.cs`, `TrucoUI.cs`, `FodinhaUI.cs`):**
+   * **Distribuição 3D Parabólica:** Em `TableStage.AnimateDeal`, as cartas viajam com arco suave e rotação dinâmica saindo do baralho até o leque físico do assento (`_hands[seat]`). Ao chegarem, emitem som de contato (`"deal"`) e ativam sutil reação corporal do personagem receptor (`PlayTableAction(seat)`).
+   * **Entrada Escalonada na Mão 2D:** No Truco (`TrucoUI.cs`) e no Fodinha (`FodinhaUI.cs`), as cartas entram na mão com um leve atraso sequencial (*stagger* de 0.05s a 0.06s), deslizando suavemente de baixo para cima com escala expansiva amortecida (`Back.Out`). Totalmente compatível com o modo `ReduceMotion`.
+
+4. **Validação de QA e Executável:**
+   * **Bateria C# (`GameplayChecks.cs`):** **172 asserções aprovadas com êxito** (+17 novas asserções cobrindo integridade dos novos nós de cenário, presença do lustre, caixotões, credenza e persistência do tema).
+   * **Fumaça Visual:** **24 capturas de tela e 20 ações com 0 falhas de layout**.
+   * **Executável Exportado:** `Game Hub.exe` e `Game Hub.pck` gerados com sucesso para Windows x86_64.
+
+---
+
+### Patch 13: Menu em Etapas, Cenários 3D Únicos, Visualizador Arkham City, Trajes, Balões de Reação e Tipografia Dinâmica — 06/09/2026
+
+1. **Menu Principal em Etapas & Criação de Partida (`hub/scripts/HubClub.cs`):**
+   * Fluxo progressivo (*bottom-up*) de 3 etapas para criar e iniciar partidas:
+     * **Etapa 1:** Seleção do Jogo (`Pôquer Roguelike`, `Truco Paulista`, `Fodinha`).
+     * **Etapa 2:** Configuração de Parâmetros (Modo de jogo, Oponentes / Bots, Dificuldade, Equipes 1v1 / 2v2 / 3v3).
+     * **Etapa 3:** Escolha do Cenário / Salão 3D com cartões interativos dos 4 salões (`classic_club`, `barao_lounge`, `dama_salon`, `cyber_casino`), exibindo miniatura, descrição arquitetônica e botão dourado "Sentar à Mesa →".
+
+2. **Configuração de Câmera POV vs Mesa e Menu de Ajustes In-Game (`SettingsManager.cs`, `TableStage.cs`, `HubMain.cs`):**
+   * Configuração `DefaultCameraMode` ("table" ou "pov") salva em `settings.cfg` e ajustável na aba Vídeo.
+   * Modal de ajustes in-game em tempo real (`_inGameSettingsModal`) acionado por `Key.Escape` ou botão `"⚙ Ajustes [Esc]"` no HUD da mesa durante partidas de Truco, Pôquer e Fodinha (permite alternar câmera, trocar de salão 3D, regular volumes e ativar redução de movimento sem interromper a partida).
+
+3. **Cenários 3D Arquitetonicamente Únicos (`tools/build_club_rooms.py`):**
+   * Cada um dos 4 salões agora possui geometria, iluminação e adereços 3D totalmente exclusivos:
+     * `classic_club`: Lareira monumental em tijolo e alvenaria com chamas crepitantes e brasas, estantes de livros arqueadas com volumes coloridos, relógio de carrilhão com pêndulo de latão.
+     * `barao_lounge`: Vitrais ogivais góticos azuis com vista para céu noturno e lua cheia, lareira gótica em pedra esculpida com brasão de coruja, pedestais com corujas em pedra, candelabros de ferro forjado e velas púrpuras.
+     * `dama_salon`: Estilo Belle Époque, espelhos de chão ovais com molduras em volutas douradas, carrinho móvel de champanhe (*chariot à champagne*) com balde de gelo, taças de cristal e garrafas, pedestais de mármore branco com rosas escarlates.
+     * `cyber_casino`: Janela panorâmica futurista com skyline 3D de arranha-céus iluminados e faixas de neon, painéis de fibra de carbono com trilhas em LED ciano/magenta, anel holográfico de cartas pairando no teto.
+   * No Pôquer Roguelike, o cenário da mesa agora acompanha a progressão temática do chefe enfrentado (Barão -> `barao_lounge`, Dama -> `dama_salon`, rodadas finais -> `cyber_casino`).
+
+4. **Visualizador 3D de Personagens Estilo *Batman: Arkham City* (`CharacterViewer3D.cs`):**
+   * SubViewport 3D interativo com pedestal de exposição circular (*trophy plinth*) com anel emissivo dourado e iluminação cinematográfica de 3 pontos (Key, Fill, Rim Light).
+   * Rotação orbital 360° suave por clique e arrasto, zoom suave por scroll do mouse, e gatilhos interativos de animações (`Repouso`, `Desafio & Blefe`, `Comemoração`, `Jogada de Carta`, `Floreio`).
+   * Integrado na tela de **Coleção** (Galeria 3D dos 8 personagens e chefes) e na tela de **Ajustes** (aba de Perfil).
+
+5. **Novos Trajes, Reações Emocionais e Batida de Carta Física (`CharacterViewer3D.cs`, `TableStage.cs`, `SettingsManager.cs`):**
+   * Seletor de trajes (*Traje Nobre Clássico*, *Alta Noite*, *Clube Vintage Dourado*) com aplicação dinâmica de tinting nos tecidos dos modelos 3D e persistência em `CharacterOutfit`.
+   * Balões de reação emocional flutuantes (`ShowReactionBubble`) sobre os assentos dos personagens (Truco, Blefe, Tensão, Vitória) com animação suave de fade e elevação.
+   * Batida de manilha e jogadas de peso em `PlayCard` com arco balístico mais alto, velocidade dinâmica e micro-tremor de mesa (*camera shake*) no impacto.
+
+6. **Pôquer Roguelike: Tipografia e Animações Dinâmicas de Cartas / Mãos (`PokerUI.cs`):**
+   * Banner comemorativo tipográfico animado (`_handCelebrationBanner`) exibido no centro da tela com *punch-scale* elástico (`0.15 -> 1.35 -> 1.0`), inclinação angular e paletas de cores dinâmicas conforme a raridade da mão (`★ POW! FULL HOUSE! ★`, `⚡ ROYAL FLUSH! ⚡`, `💥 QUADRA! 💥`, etc.).
+
+7. **Validação de QA e Build:**
+   * **Bateria C# (`GameplayChecks.cs`):** **171 asserções aprovadas com êxito** (validação dos 4 salões arquitetônicos, do visualizador 3D Arkham City, trajes, câmera padrão e cenários).
+   * **Fumaça Visual:** **24 capturas de tela e 20 ações com 0 falhas de layout**.
+
+---
+
+### Patch 14: Correção Anatômica dos Braços 3D, Animação de Jogar Cartas na Mesa, Responsividade Total de Ajustes e Novo Menu Vertical — 06/09/2026
+
+1. **Correção Anatômica das Articulações dos Braços no Blender (`tools/build_blender_cast.py`):**
+   * **Causa Raiz Identificada:** No sistema de eixos do Blender, a frente do peito e a mesa apontam para $-Y$, enquanto as costas do personagem apontam para $+Y$. Rotações de ombro/cotovelo positivas em $X$ dobravam os membros em direção às costas (para trás).
+   * **Correção:** Conversão de todas as rotações de flexão de braço para valores negativos em $X$ em todos os 7 clipes de animação (`idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish`, `play_card`), garantindo articulação natural para a frente em direção à mesa.
+   * Todos os 8 modelos `.glb` (`corvo`, `onca`, `dama`, `barao`, `zeca`, `iara`, `bento`, `nina`) e seus portraits foram regerados e reimportados com sucesso.
+
+2. **Reanimação da Jogada de Carta (`play_card`):**
+   * Redesenhada a animação de colocar a carta na mesa:
+     * **Fase 1 (Frames 1-12):** Elevação da carta e foco visual com rotação sutil de pulso.
+     * **Fase 2 (Frames 13-26):** Alcance profundo à frente de 22 cm ($Y = -0.22$, rot $X = -1.15$) estendendo o cotovelo e antebraço rente ao feltro da mesa com batida plana da carta.
+     * **Fase 3 (Frames 27-36):** Fixação tátil firme da carta sobre a mesa.
+     * **Fase 4 (Frames 37-48):** Retorno fluido do braço à pose de repouso.
+
+3. **Responsividade Total da Tela de Ajustes/Configurações (`hub/scripts/HubMain.cs`):**
+   * **Problema Original:** O visualizador 3D e a lista de ajustes empurravam o rodapé com os botões "Voltar" e "Salvar alterações" para fora da viewport em monitores 720p ($Y > 720\text{px}$).
+   * **Solução:**
+     * O corpo das opções foi encapsulado em um `ScrollContainer` com `SizeFlagsVertical = SizeFlags.ExpandFill`.
+     * O container de botões de ação (`actions`) foi movido para um rodapé *sticky* fixo, garantindo que os botões "Voltar" e "Salvar alterações" estejam permanentemente visíveis e clicáveis em qualquer resolução.
+     * Otimizada a altura mínima do visualizador 3D na aba de ajustes (190px) e os espaçamentos gerais.
+
+4. **Novo Menu Principal Vertical & Fluxo de Criação (`hub/scripts/HubClub.cs`):**
+   * **Lista Vertical Inicial:** A tela inicial do Hub agora apresenta os botões organizados em uma linha vertical clássica e elegante:
+     * `Jogar` (botão primário em destaque dourado)
+     * `Entrar em sala` (lobby LAN / multiplayer)
+     * `Ajustes & Configurações`
+     * `Acessibilidade`
+     * `Coleção` (Galeria 3D dos personagens)
+     * `Créditos`
+     * `Sair`
+   * **Entrada Direta no Pôquer Roguelike:** Ao selecionar o modo Pôquer Roguelike, o botão de ação dispara imediatamente o início da partida ("Iniciar Pôquer Roguelike →"), sem exigir seleção manual de mapa (já que o mapa do salão 3D se adapta automaticamente a cada chefe).
+   * **Partidas de Truco e Fodinha:** Continuam dispondo do fluxo de configuração de bots, regras, equipes (1v1, 2v2, 3v3) e escolha do salão 3D.
+   * Adicionado botão `"← Voltar ao Menu"` no topo da tela de criação para retorno imediato ao menu inicial.
+
+5. **Tela de Créditos Integrada (`hub/scripts/HubMain.cs`):**
+   * Implementado o painel modal `_creditsPanel` com ficha técnica completa do projeto, direção de arte, engenharia e botão "Voltar".
+
+6. **Validação de QA e Build:**
+   * **Bateria C# (`GameplayChecks.cs`):** **171 asserções aprovadas com êxito**.
+   * **Fumaça Visual (`tools/visual_smoke.gd`):** **24 capturas de tela e 20 ações com 0 falhas e 0 avisos de layout** (`layout_issues=0, failures=0`).
+   * **Executável Atualizado:** `Game Hub.exe` e `Game Hub.pck` exportados com êxito para Windows Desktop.
+
+---
+
+### Patch 15: Menu de Ajustes [Esc] Global, Encaixe Anatômico das Cartas 3D, Mãos na POV e Galeria de Artes Conceituais 360° — 07/09/2026
+
+1. **Menu de Ajustes [Esc] em Camada Global Dedicada (`TableStage.cs`, `PokerUI.cs`):**
+   * **Causa Raiz do Bug:** No Pôquer Roguelike, o `TableStage` ficava confinado dentro do container `_tableArea`. Consequentemente, o modal de ajustes `_inGameSettingsModal` era renderizado na camada visual do container da mesa, sendo sobreposto pelas cartas 2D da mão do jogador e rótulos do HUD. Além disso, na loja Balatro e em telas modais, o evento de tecla `Esc` não era repassado ao `TableStage`.
+   * **Solução Implementada:**
+     * Em `TableStage.cs`, o `_inGameSettingsModal` foi migrado para um `CanvasLayer` independente (`_inGameSettingsCanvas`) com `Layer = 120`. Isso garante que o modal de ajustes fique garantidamente sobreposto a todos os elementos visuais do jogo (HUD, lojas, cartas, avisos e rodapés).
+     * Em `PokerUI.cs`, foi implementado `_UnhandledInput` capturando a tecla `Key.Escape`, permitindo abrir e fechar as configurações tanto durante a rodada quanto durante a fase de compras na Loja do Balatro.
+     * Captura offscreen `poker-loja-ajustes.png` validou o escurecimento total de fundo e sobreposição completa da interface da loja com botões 100% interativos.
+
+2. **Personagens 3D Segurando Fisicamente as Cartas na Mesa (`build_blender_cast.py`, `TableStage.cs`):**
+   * **Problema:** Os braços dos modelos 3D dos oponentes ficavam esticados para cima ou abertos em ângulo obtuso, com as cartas flutuando no ar a uma distância considerável das mãos.
+   * **Solução:**
+     * Em `tools/build_blender_cast.py`, a pose do ciclo `idle` foi ajustada anatomicamente: ombros posicionados para a frente ($X = -0.42$, $Z = \pm 0.15$), antebraços inclinados em direção ao centro ($X = -0.88$, $Z = \mp 0.12$) e mãos com pulsos flexionados para dentro ($X = -0.18$, $Y = \pm 0.25$, $Z = \mp 0.18$), posicionando os dedos e garras ao redor do leque de cartas.
+     * Todos os 8 modelos `.glb` (`nina`, `bento`, `corvo`, `onca`, `iara`, `zeca`, `barao`, `dama`) foram reconstruídos via Blender 5.2.
+     * Em `TableStage.cs`, a ancoragem do leque de cartas de cada assento (`_hands[seat]`) foi reposicionada de `0.72m` à frente para `0.44m` à frente e `0.88m` de altura (`pos + toCenter * 0.44f + Vector3(0, 0.88f, 0)`), encaixando o leque diretamente entre as mãos esquerda e direita do personagem.
+
+3. **Ilustração Estilizada de Mãos na Câmera em Primeira Pessoa (POV) (`TrucoUI.cs`, `PokerUI.cs`):**
+   * Criada a textura transparente `assets/sprites/ui/pov_hands.png` retratando as mãos do jogador em ilustração *vintage sketch*, posicionadas por baixo das cartas da mão no HUD local.
+   * No Truco (`TrucoUI.cs`), a ilustração é ativada dinamicamente quando a perspectiva está em Primeira Pessoa (`TableStage.CameraPerspectiveMode.FirstPersonPov`) e ocultada na visão panorâmica clássica.
+   * No Pôquer (`PokerUI.cs`), a ilustração acompanha a área inferior da mão com opacidade sutil de 35%, criando profundidade sem poluir a leitura dos valores das cartas.
+   * Para os oponentes e visões externas da mesa, o modelo 3D físico do personagem continua realizando todas as animações normalmente.
+
+4. **Artes Conceituais e Pranchas 360° de Corpo Inteiro (`assets/sprites/concept/`, `HubMain.cs`):**
+   * **Geração e Processamento:**
+     * Geradas ilustrações conceituais de corpo inteiro de alta fidelidade para todos os 8 personagens (`nina`, `bento`, `corvo`, `onca`, `iara`, `zeca`, `barao`, `dama`), expandindo a arte dos bustos originais com vestimentas vitorianas completas, pernas, calças sob medida, botas, caudas, garras e detalhes anatômicos.
+     * Script `tools/process_concept_assets.py` estruturou as pranchas completas (`{name}_sheet.png`) e fatiou os 4 ângulos ortogonais/perspectivos (`0_front.png`, `1_three_quarter.png`, `2_side.png`, `3_back.png`) na pasta `assets/sprites/concept/`.
+   * **Galeria Dual na Tela de Coleção:**
+     * A tela de **Coleção** do Hub agora apresenta um seletor superior de modos:
+       * `🎮 Modelos 3D (Troféus)`: Visualizador 3D com órbita, zoom e animações.
+       * `🎨 Artes Conceituais 360°`: Galeria de pranchas conceituais dos personagens em corpo inteiro.
+     * Seletor de ângulos interativo: `Frente (0°)`, `3/4 Frontal (45°)`, `Perfil (90°)`, `Costas (180°)`, `Prancha 360°`.
+     * Fichas detalhadas de figurino sob medida, tecidos e *lore* para cada personagem.
+
+5. **Validação de QA e Executável:**
+   * **Compilação C# (.NET 8):** 0 erros, 0 avisos.
+   * **Bateria Automatizada (`GameplayChecks.cs`):** **171 asserções aprovadas com êxito**.
+   * **Fumaça Visual (`visual_smoke.gd`):** **27 capturas de tela e 25 ações interativas** com **0 falhas e 0 problemas de layout**.
+   * **Executável Atualizado:** `Game Hub.exe` e `Game Hub.pck` gerados com sucesso para Windows Desktop x86_64.
+
+---
+
+## 3. Guia de Operações e Comandos Essenciais
 
 Para qualquer IA ou desenvolvedor executando tarefas neste projeto, utilize sempre os comandos abaixo:
 

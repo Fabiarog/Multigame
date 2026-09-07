@@ -101,6 +101,18 @@ public partial class FodinhaUI : Control
                 MouseFilter = MouseFilterEnum.Ignore, TextureFilter = TextureFilterEnum.Linear };
             button.AddChild(face); face.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.Minsize, 5);
             button.Pressed += () => Play(0, index); _hand.AddChild(button);
+
+            if (GameHub.Core.Systems.SettingsManager.Instance?.ReduceMotion != true)
+            {
+                button.Modulate = new Color(1, 1, 1, 0);
+                button.Scale = new Vector2(0.82f, 0.82f);
+                button.PivotOffset = button.CustomMinimumSize / 2f;
+                var tween = CreateTween();
+                tween.TweenInterval(i * 0.05f);
+                tween.TweenProperty(button, "modulate:a", 1f, 0.18f);
+                tween.Parallel().TweenProperty(button, "scale", Vector2.One, 0.22f)
+                    .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            }
         }
         if (_dealing) { _status.Text = $"{SeatName(_match.DealerSeat)} distribuindo as cartas…"; return; }
         switch (_match.State)

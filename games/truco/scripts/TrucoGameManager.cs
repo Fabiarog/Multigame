@@ -173,7 +173,7 @@ public partial class TrucoGameManager : Node
             {
                 CurrentPhase = TrucoPhase.Cutting;
                 _aiCutting = !CutterIsPlayer;
-                _aiCutTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? .15f : .65f;
+                _aiCutTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? .15f : 1.15f;
                 EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
             }
             return;
@@ -442,7 +442,7 @@ public partial class TrucoGameManager : Node
             bestCards[CurrentRound] = card;
         EmitSignal(SignalName.CardPlayed, seat % 2, card.ToString(), CurrentRound);
         GD.Print($"[Truco] Seat {seat} ({GetSeatName(seat)}) plays: {card}");
-        await WaitForAnimation(.65f);
+        await WaitForAnimation(1.30f);
         if (!IsInsideTree()) return;
         if (_playedSeats.Count == TeamSize * 2) ResolveCurrentRound();
         else BeginSeatTurn((seat + 1) % (TeamSize * 2));
@@ -547,7 +547,7 @@ public partial class TrucoGameManager : Node
 
     // ===== ROUND RESOLUTION =====
 
-    private void ResolveCurrentRound()
+    private async void ResolveCurrentRound()
     {
         var pCard = PlayerPlayed[CurrentRound];
         var oCard = OpponentPlayed[CurrentRound];
@@ -640,6 +640,8 @@ public partial class TrucoGameManager : Node
 
         if (handDecided)
         {
+            await WaitForAnimation(1.60f);
+            if (!IsInsideTree()) return;
             if (playerWonHand) PlayerScore += CurrentStakes;
             else OpponentScore += CurrentStakes;
 
@@ -648,6 +650,8 @@ public partial class TrucoGameManager : Node
         }
         else
         {
+            await WaitForAnimation(1.85f);
+            if (!IsInsideTree()) return;
             // All seats participate; the seat with the winning card leads next.
             if (winner != 2)
                 _roundLeaderSeat = _playedSeats.Where(entry => entry.Key % 2 == winner)
@@ -724,7 +728,7 @@ public partial class TrucoGameManager : Node
     private void StartAIThinking()
     {
         _aiThinking = true;
-        _aiThinkTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? .12f : _rng.RandiRange(8, 14) / 10f;
+        _aiThinkTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? .12f : _rng.RandiRange(18, 28) / 10f;
     }
 
     private void ExecuteAITurn()
@@ -748,7 +752,7 @@ public partial class TrucoGameManager : Node
         PlaySeatCard(ActiveSeatIndex, hand.IndexOf(chosen));
     }
 
-    private void AICallTruco()
+    private async void AICallTruco()
     {
         int newStakes = CurrentStakes switch
         {
@@ -756,13 +760,19 @@ public partial class TrucoGameManager : Node
         };
         if (newStakes > 12) { ExecuteAITurn(); return; }
 
+        _opponentAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Truco);
+        if (Core.Systems.SettingsManager.Instance?.ReduceMotion != true)
+        {
+            await ToSignal(GetTree().CreateTimer(0.65f), SceneTreeTimer.SignalName.Timeout);
+            if (!IsInsideTree()) return;
+        }
+
         CurrentStakes = newStakes;
         _trucoPendingByPlayer = false;
         _waitingTrucoResponse = true;
         // The AI calls before it places its pending card, so it must keep the
         // turn after the player accepts regardless of who started the tombo.
         _phaseAfterTrucoResponse = CurrentPhase;
-        _opponentAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Truco);
 
         CurrentPhase = TrucoPhase.TrucoRequested;
         EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
@@ -772,7 +782,8 @@ public partial class TrucoGameManager : Node
 
     private async void RespondAIToTrucoDelayed()
     {
-        await ToSignal(GetTree().CreateTimer(0.8f), SceneTreeTimer.SignalName.Timeout);
+        float delay = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.2f : 2.2f;
+        await ToSignal(GetTree().CreateTimer(delay), SceneTreeTimer.SignalName.Timeout);
         if (!IsInsideTree()) return;
         if (_waitingTrucoResponse && _trucoPendingByPlayer)
             AIRespondToTruco();

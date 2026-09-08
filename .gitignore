@@ -18,3 +18,7 @@ bin/
 obj/
 __pycache__/
 *.pyc
+
+# Heavy packages and export files
+*.pck
+*.mhpkg

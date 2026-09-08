@@ -474,8 +474,11 @@ public partial class HubMain : Control
         "Veterana lendária das mesas altas. Traje sob medida: jaqueta em veludo rubi com arabescos dourados nas costas e mangas, espartilho estruturado, joias barrocas de rubi e ouro, calças de corte fino e cauda majestosa malhada em padrão de rosetas.",
         "A dama da serenidade e blefes cirúrgicos. Traje sob medida: colete de seda verde-água sobre camisa de cetim marfim com gola alta, colar duplo de pérolas naturais, saia plissada em verde-oliva e a clássica flor de lótus rosa sobre a orelha.",
         "A raposa malandra das jogadas audaciosas. Traje sob medida: chapéu fedora cinza clássico com fita de seda, colete azul-marinho com corrente dourada de relógio de bolso, calças risca de giz, sapatos bicolores wingtip e cauda felpuda com ponta branca.",
+        "A estrategista silenciosa das sombras. Traje sob medida: sobretudo tático em couro negro com acabamentos metálicos refinados, adagas de precisão ocultas sob a capa, colete reforçado e luvas de toque sensível para manipulação de cartas.",
         "O magnata da noite e senhor das apostas máximas. Traje sob medida: smoking completo em veludo púrpura imperial, lapelas em cetim preto brilhante, colete violeta com botões de ouro, monóculo dourado com corrente, gravata borboleta e asas imponentes.",
-        "Rainha cobra e soberana dos blefes letais. Traje sob medida: coroa real cravejada de rubis e ouro, vestido vitoriano escarlate bordado a ouro que desce e se funde à majestosa cauda serpentina em escamas douradas, colar de rubi imperial e postura hipnótica."
+        "Rainha cobra e soberana dos blefes letais. Traje sob medida: coroa real cravejada de rubis e ouro, vestido vitoriano escarlate bordado a ouro que desce e se funde à majestosa cauda serpentina em escamas douradas, colar de rubi imperial e postura hipnótica.",
+        "A bruxa alquimista dos blefes arcanos. Traje sob medida: vestes cerimoniais em veludo sombrio com runas bordadas a fio de prata, chapéu pontiagudo com véu diáfano, orbes de clarividência e anéis mágicos encantados para ler o destino das cartas.",
+        "O temido devorador de fichas das profundezas. Traje sob medida: armadura grotesca forjada em ferro antigo com ossos entalhados, manto carcomido pelo tempo, correntes espectrais e olhos brilhantes que fitam a alma dos oponentes."
     };
 
     private Control BuildCollectiblesPanel()
@@ -568,9 +571,18 @@ public partial class HubMain : Control
         detailsPanel.AddThemeStyleboxOverride("panel", ClubTheme.Box(ClubTheme.Panel, ClubTheme.Border, 16, 10));
         body.AddChild(detailsPanel);
 
-        var detailsBox = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        var detailsScroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        detailsPanel.AddChild(detailsScroll);
+
+        var detailsBox = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         detailsBox.AddThemeConstantOverride("separation", 8);
-        detailsPanel.AddChild(detailsBox);
+        detailsScroll.AddChild(detailsBox);
 
         detailsBox.AddChild(ClubTheme.Label("SELECIONE O PERSONAGEM", 11, ClubTheme.Gold));
 
@@ -601,7 +613,9 @@ public partial class HubMain : Control
             bool isBoss = CharacterCatalog.IsBoss(idx);
             string tag = isBoss ? "👑 " : "♠ ";
             var btn = ClubTheme.Button(tag + CharacterCatalog.Names[idx]);
-            btn.CustomMinimumSize = new Vector2(190, 34);
+            btn.CustomMinimumSize = new Vector2(180, 32);
+            btn.ClipText = true;
+            btn.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             btn.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             btn.Pressed += () => {
                 selectedChar = idx;

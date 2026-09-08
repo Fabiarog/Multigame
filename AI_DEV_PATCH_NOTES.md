@@ -813,3 +813,43 @@ $env:GODOT_BIN = "C:\Users\Lucas\AppData\Local\Temp\multigame-tools\godot\Godot_
 * `GameplayChecks.cs`: **235 asserções aprovadas com êxito** (PASS).
 * `visual_smoke.ps1`: **27 capturas visuais, 25 ações, 0 falhas, 0 problemas de layout** (PASS).
 * Binários finais reexportados: `Game Hub.exe` (103 MB) e `Game Hub.pck` (300 MB).
+
+---
+
+## 22. Patch 24 — Redesign Panorâmico de Pôquer, Postura Sentada, Novos Modelos 3D (Aki, Morgana, Carniçal), Mascote Corvo e Upgrade Visual — 07/09/2026
+
+### 1. Redesign Panorâmico do Pôquer Roguelike (`games/poker_roguelike/scripts/PokerUI.cs`)
+* **Eliminação de Letterbox Escuro e Bandeja Pesada:** O palco 3D (`TableStage`) agora preenche 100% da tela em modo panorâmico (`FullRect`).
+* **Mão Flutuante e Limpa:** As cartas do jogador flutuam na parte inferior da tela sem bandejas ou placas escuras sobrepostas, valorizando o feltro verde da mesa e a atmosfera do clube.
+* **Painel Unificado Lateral à Direita ("Quadradão pro Lado"):** Status consolidado da corrida (rodada atual, pontos conquistados, meta da mesa, barra de progresso dourada, mãos e descartes restantes, fichas acumuladas, relíquias ativas), avaliação de combinações em tempo real e botões de ação ("Jogar mão", "Descartar", "Voltar ao clube").
+* **Painel do Chefe no Topo Esquerdo:** Cartela compacta com nome do boss, retrato 3D de estúdio e cartas da banca.
+* **Resolução de Bounds e Âncoras:** Âncoras e margens calibradas milimetricamente para que nenhum elemento ultrapasse os limites da tela (0 layout issues).
+
+### 2. Postura Sentada Relaxada de Todo o Elenco (`TableStage.cs`, `tools/build_rigged_detailed_cast.py` & `tools/build_blender_cast.py`)
+* **Anatomia Sentada na Poltrona:** Pélvis rebaixada para 0.52m (altura da almofada da poltrona), coxas a -88° e canelas a +85°. Todos os personagens agora permanecem naturalmente sentados durante o jogo.
+* **Encaixe no Estofado:** Alinhamento fino em `TableStage.cs`: poltrona recuada (`pos - toCenter * 0.12f`) e personagem posicionado no centro do estofado (`pos - toCenter * 0.04f`).
+
+### 3. Integração dos Novos Modelos 3D (`assets/modelos 3d detalhados/`)
+* **Mascote Corvo ("Edgar" / "Corvinho") (`mascot_crow.glb`):** Exportado do arquivo `crowrigconjay.blend` com animação idle de observação e respiração, materiais e texturas vinculadas, empoleirado no topo do relógio de salão do Classic Club.
+* **Nova Personagem Jogável: Aki (`aki.glb`, `aki_3d.png`):** "A estrategista misteriosa · precisão afiada a cada jogada." Rig padrão de 25 ossos, 39 animações completas com postura sentada, materiais PBR. Total de jogáveis elevado para 7.
+* **Nova Boss: Madame Morgana, a Bruxa (`morgana.glb`, `morgana_3d.png`):** "Boss exclusivo · feitiços sombrios e apostas fatais." Rig padrão de 25 ossos e 39 animações completas.
+* **Novo Boss: Lorde Carniçal (`carnical.glb`, `carnical_3d.png`):** "Boss exclusivo · a fome insaciável pelas suas fichas." Rig padrão de 25 ossos e 39 animações completas.
+* **Rodízio de 4 Chefes nas 8 Rodadas do Pôquer:**
+  - Rodadas 1–2: Barão da Meia-Noite (Lounge Gótico, trilha *midnight-baron*)
+  - Rodadas 3–4: Dama de Copas (Salão Belle Époque, trilha *velvet-table*)
+  - Rodadas 5–6: Madame Morgana (Salão Clássico, trilha *saloon-swing*)
+  - Rodadas 7–8: Lorde Carniçal (Cyber Casino, trilha *cyber-tango*)
+
+### 4. Upgrade de Fidelidade: Nina, Bento e Dona Onça
+* Regenerados com geometria de pernas sentadas a 90° e retratos de estúdio em alta definição (`nina_3d.png`, `bento_3d.png`, `onca_3d.png`), equiparando a qualidade com o restante do elenco.
+
+### 5. Coleção do Clube e Histórias Conceituais (`hub/scripts/HubMain.cs`)
+* Painel da Coleção atualizado com suporte aos 11 personagens em grid de 2 colunas com recorte de texto (`ClipText`) e rolagem automática (`ScrollContainer`), evitando qualquer transbordamento de viewport.
+* Adicionadas histórias conceituais de figurino detalhadas para Aki, Madame Morgana e Lorde Carniçal.
+
+### 6. Validação e Binários Finais
+* **Compilação C#:** 0 erros, 0 avisos.
+* **QA de Gameplay (`GameplayChecks.cs`):** **336 asserções aprovadas** (`GAMEPLAY_QA PASS`).
+* **QA Visual (`visual_smoke.ps1`):** **27 screenshots capturadas**, 25 ações, 0 falhas, 0 problemas de layout (`VISUAL_QA PASS`).
+* **QA de Câmera (`visual_smoke.ps1 -CameraOnly`):** **Aprovado com êxito** (`CAMERA_QA PASS []`).
+* **Executável Windows:** `Game Hub.exe` (103 MB) exportado e pronto para execução.

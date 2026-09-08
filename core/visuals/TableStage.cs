@@ -229,6 +229,51 @@ public partial class TableStage : Control
             }
         }
 
+        // Mascot Crow perched on an ornate brass and mahogany stand beside the card table
+        if (ResourceLoader.Exists("res://assets/models/club/mascot_crow.glb"))
+        {
+            try
+            {
+                // Victorian brass & mahogany perch stand beside the table rim
+                var perchStand = new Node3D { Name = "MascotPerchStand", Position = new Vector3(2.55f, -0.72f, 0.35f) };
+                _world.AddChild(perchStand);
+                var pBase = new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.20f, BottomRadius = 0.26f, Height = 0.12f }, Position = new Vector3(0, 0.06f, 0), MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color("#2a150e"), Roughness = 0.35f } };
+                perchStand.AddChild(pBase);
+                var pPole = new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.035f, BottomRadius = 0.04f, Height = 1.62f }, Position = new Vector3(0, 0.88f, 0), MaterialOverride = new StandardMaterial3D { AlbedoColor = ClubTheme.Gold, Metallic = 0.88f, Roughness = 0.25f } };
+                perchStand.AddChild(pPole);
+                var pBar = new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.032f, BottomRadius = 0.032f, Height = 0.60f }, Position = new Vector3(0, 1.68f, 0), RotationDegrees = new Vector3(0, 0, 90), MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color("#1f0f0a"), Roughness = 0.40f } };
+                perchStand.AddChild(pBar);
+
+                var crowScene = GD.Load<PackedScene>("res://assets/models/club/mascot_crow.glb");
+                if (crowScene != null)
+                {
+                    var mascot = crowScene.Instantiate<Node3D>();
+                    mascot.Name = "MascotCrow";
+                    mascot.Position = new Vector3(2.55f, 0.96f, 0.35f);
+                    mascot.RotationDegrees = new Vector3(0, -115f, 0);
+                    mascot.Scale = Vector3.One * 0.58f;
+                    _world.AddChild(mascot);
+                    foreach (var node in mascot.FindChildren("*", "AnimationPlayer", true, false))
+                    {
+                        var anim = (AnimationPlayer)node;
+                        string[] anims = anim.GetAnimationList();
+                        string clipToPlay = anim.HasAnimation("rigAction") ? "rigAction" :
+                                            (anim.HasAnimation("idle") ? "idle" : (anims.Length > 0 ? anims[0] : null));
+                        if (!string.IsNullOrEmpty(clipToPlay))
+                        {
+                            var a = anim.GetAnimation(clipToPlay);
+                            if (a != null) a.LoopMode = Animation.LoopModeEnum.Linear;
+                            anim.Play(clipToPlay);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                GD.PushWarning($"[TableStage] Mascot crow loading: {ex.Message}");
+            }
+        }
+
         // Multi-layered table geometry:
         // 1. Walnut outer rim with beveled upper lip
         Cylinder("WalnutRim", 4.75f, .28f, new Color("#2a150e"), new Vector3(0, -.16f, 0), .62f);
@@ -606,13 +651,13 @@ public partial class TableStage : Control
         bool detailed = enhanced && settings?.RayTracingEnabled == true;
         _viewport.Scaling3DScale = VideoSettingsManager.Instance?.RenderScale ?? 1;
         _viewport.Msaa3D = detailed ? Viewport.Msaa.Msaa4X : Viewport.Msaa.Msaa2X;
-        _viewport.ScreenSpaceAA = Viewport.ScreenSpaceAAEnum.Disabled;
+        _viewport.ScreenSpaceAA = detailed ? Viewport.ScreenSpaceAAEnum.Fxaa : Viewport.ScreenSpaceAAEnum.Disabled;
         _key.ShadowEnabled = enhanced;
         _pendant.ShadowEnabled = detailed && settings.RtaoQuality >= RayTracingSettings.RtQualityLevel.High;
         _key.DirectionalShadowMaxDistance = 24;
-        _key.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal;
-        _key.ShadowBias = .12f;
-        _key.ShadowNormalBias = 1.5f;
+        _key.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits;
+        _key.ShadowBias = .08f;
+        _key.ShadowNormalBias = 1.8f;
         _viewport.PositionalShadowAtlasSize = detailed ? 4096 : 2048;
         if (forward)
         {
@@ -621,7 +666,7 @@ public partial class TableStage : Control
             RenderingServer.PositionalSoftShadowFilterSetQuality(RenderingServer.ShadowQuality.SoftLow);
         }
         _environment.SsaoEnabled = detailed && settings.RtaoEnabled;
-        _environment.SsaoRadius = .85f; _environment.SsaoIntensity = 1.4f;
+        _environment.SsaoRadius = 1.05f; _environment.SsaoIntensity = 1.75f; _environment.SsaoPower = 1.50f;
         _environment.SsrEnabled = detailed && settings.RtReflectionsEnabled;
         _viewport.TransparentBg = false;
         _environment.SsrMaxSteps = settings?.RtReflectionsQuality == RayTracingSettings.RtQualityLevel.Ultra ? 56 : 36;
@@ -914,12 +959,12 @@ public partial class TableStage : Control
             Vector3 toCenter = -new Vector3(pos.X, 0, pos.Z).Normalized();
             float rotY = Mathf.Atan2(toCenter.X, toCenter.Z);
 
-            // 3D Club Armchair placed behind the player (further from the table), facing the table center
+            // 3D Club Armchair placed behind the player, facing the table center
             if (chairScene != null)
             {
                 var chair = chairScene.Instantiate<Node3D>();
                 chair.Name = $"Chair{seat}";
-                chair.Position = pos - toCenter * 0.72f;
+                chair.Position = pos - toCenter * 0.12f;
                 chair.Position = new Vector3(chair.Position.X, -.72f, chair.Position.Z);
                 chair.Rotation = new Vector3(0, rotY, 0);
                 chair.Scale = Vector3.One * 1.28f;
@@ -927,15 +972,15 @@ public partial class TableStage : Control
                 _chairs.Add(chair);
             }
 
-            // Actor character seated at the table edge
-            var actor = new Node3D { Name = $"Seat{seat}", Position = pos, Scale = Vector3.One * 1.23f };
+            // Actor character seated firmly inside the armchair
+            var actor = new Node3D { Name = $"Seat{seat}", Position = pos - toCenter * 0.04f, Scale = Vector3.One * 1.23f };
             actor.Rotation = new Vector3(0, rotY, 0);
             _world.AddChild(actor);
             var model = GD.Load<PackedScene>(CharacterCatalog.ModelPath(character)).Instantiate<Node3D>();
             actor.AddChild(model);
             AnimationPlayer animator = null;
             foreach (var node in model.FindChildren("*", "AnimationPlayer", true, false)) { animator = (AnimationPlayer)node; break; }
-            _actors.Add(actor); _animators.Add(animator); _positions.Add(positions[seat]); _cast.Add(character);
+            _actors.Add(actor); _animators.Add(animator); _positions.Add(actor.Position); _cast.Add(character);
 
             if (animator != null)
             {
@@ -1277,13 +1322,13 @@ public partial class TableStage : Control
         }
         else
         {
-            // Overhead Cinematic View - all seated characters and furniture are visible
-            _camera.Projection = Camera3D.ProjectionType.Orthogonal;
+            // Overhead Cinematic View - all seated characters and furniture are visible with full SSAO & lighting
+            _camera.Projection = Camera3D.ProjectionType.Perspective;
             _camera.KeepAspect = Camera3D.KeepAspectEnum.Width;
             if (_cameraModeButton != null) _cameraModeButton.Text = "Visão: Mesa [C]";
-            _camera.Size = 12.0f;
-            _camera.Position = new Vector3(0, 6.2f, 11);
-            _camera.LookAt(new Vector3(0, 0.7f, 0), Vector3.Up);
+            _camera.Fov = 46.0f;
+            _camera.Position = new Vector3(0, 4.75f, 5.85f);
+            _camera.LookAt(new Vector3(0, 0.62f, -0.25f), Vector3.Up);
 
             for (int i = 0; i < _actors.Count; i++)
             {
@@ -1920,10 +1965,10 @@ public partial class TableStage : Control
 
             // SHOT 1 (Pôquer): Plano médio imersivo da sala com o Chefão à mesa (1.6s)
             _camera.Fov = 42.0f;
-            Vector3 bMidStart = new Vector3(0, 2.75f, 3.2f);
-            Vector3 bMidEnd = new Vector3(0, 2.50f, 2.7f);
+            Vector3 bMidStart = new Vector3(0, 2.30f, 2.9f);
+            Vector3 bMidEnd = new Vector3(0, 2.05f, 2.4f);
             _camera.Position = bMidStart;
-            _camera.LookAt(bPos + Vector3.Up * 1.55f, Vector3.Up);
+            _camera.LookAt(bPos + Vector3.Up * 1.35f, Vector3.Up);
 
             var t1 = CreateTween();
             _motions.Add(t1);
@@ -1937,18 +1982,19 @@ public partial class TableStage : Control
                 _caption.Text = CharacterCatalog.Names[rivalCast].ToUpper();
                 subtitle.Text = CharacterCatalog.Descriptions[rivalCast];
 
-                // Câmera posicionada bem de perto na altura do rosto do boss (Y = 1.62m, nunca abaixo da mesa)
-                Vector3 faceCam = bPos + bFwd * 1.12f + Vector3.Up * 2.30f;
+                // Câmera posicionada de frente na altura exata do rosto do boss sentado (enquadrando face e peito sem mirar no teto)
+                Vector3 headFocus = bPos + Vector3.Up * 1.42f;
+                Vector3 faceCam = bPos + bFwd * 1.40f + Vector3.Up * 1.46f;
                 _camera.Position = faceCam;
-                _camera.LookAt(bPos + Vector3.Up * 2.36f, Vector3.Up);
-                _camera.Fov = 28.0f; // Lente retrato telephoto fechada com foco na face e bokeh
+                _camera.LookAt(headFocus, Vector3.Up);
+                _camera.Fov = 34.0f; // Lente retrato fechada focada na face e olhar do boss
 
                 // O boss executa uma animação de apresentação/desafio
                 PlayGesture(rivalSeat, "boss_intro");
 
                 var t2 = CreateTween();
                 _motions.Add(t2);
-                t2.TweenProperty(_camera, "position", faceCam + bFwd * -0.10f + Vector3.Up * 0.04f, 2.2f).SetTrans(Tween.TransitionType.Linear);
+                t2.TweenProperty(_camera, "position", faceCam + bFwd * -0.08f + Vector3.Up * 0.02f, 2.2f).SetTrans(Tween.TransitionType.Linear);
                 if (!await WaitPresentation(2.15)) return;
             }
 

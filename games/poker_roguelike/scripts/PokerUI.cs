@@ -29,7 +29,7 @@ public partial class PokerUI : Control
     private TableStage _stage;
     private int _presentedRound = -1;
 
-    private Control _overlayPanel, _shopOverlay, _tutorialPanel;
+    private Control _overlayPanel, _shopOverlay, _tutorialPanel, _hud;
     private Label _overlayTitle, _overlaySubtitle, _goldLabel, _shopMessage;
     private Button _nextRoundBtn, _newGameBtn, _backMenuBtn;
     private Button _buyMultBtn, _buyHandBtn, _buyDiscardBtn, _shopNextRoundBtn;
@@ -101,38 +101,32 @@ public partial class PokerUI : Control
 
     private void BuildUI()
     {
-        var backdrop = new ClubBackdrop { ShowTable = false, MouseFilter = MouseFilterEnum.Ignore };
-        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(backdrop);
+        // 100% Fullscreen 3D TableStage for immersive view of the salon, boss, and cutscenes
+        _stage = new TableStage { SeatCount = 2, RivalIndex = 2 };
+        _stage.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _stage.MouseFilter = MouseFilterEnum.Pass;
+        AddChild(_stage);
+        _tableArea = _stage;
 
-        var margin = new MarginContainer();
-        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        foreach (var edge in new[] { "left", "right", "top", "bottom" })
-            margin.AddThemeConstantOverride("margin_" + edge, 24);
-        AddChild(margin);
-        var columns = new HBoxContainer();
-        columns.AddThemeConstantOverride("separation", 24);
-        margin.AddChild(columns);
-        BuildSidebar(columns);
+        // Transparent HUD Overlay layer
+        _hud = new Control { Name = "HudOverlay", MouseFilter = MouseFilterEnum.Ignore };
+        _hud.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(_hud);
 
-        var main = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        main.AddThemeConstantOverride("separation", 12);
-        columns.AddChild(main);
-        var heading = new HBoxContainer();
-        heading.AddChild(DisplayLabel("Pôquer", 40));
-        heading.AddChild(Spacer());
-        var mode = ClubTheme.Label("ROGUELIKE  /  CORRIDA DE PONTOS", 13, ClubTheme.Muted);
-        mode.VerticalAlignment = VerticalAlignment.Center;
-        heading.AddChild(mode);
-        main.AddChild(heading);
+        // TOP-LEFT: Compact Boss Info and Dealer Cards
+        var topLeft = new MarginContainer();
+        topLeft.SetAnchorsAndOffsetsPreset(LayoutPreset.TopLeft);
+        topLeft.OffsetLeft = 24; topLeft.OffsetTop = 20;
+        _hud.AddChild(topLeft);
 
-        var dealerPanel = Panel(new Color("102c26"), ClubTheme.Border, 12);
+        var dealerPanel = Panel(new Color(0.03f, 0.07f, 0.055f, 0.90f), ClubTheme.Border, 12);
         var dealerRow = new HBoxContainer();
         dealerRow.AddThemeConstantOverride("separation", 14);
         dealerPanel.AddChild(dealerRow);
+
         _bossPortrait = new TextureRect
         {
-            CustomMinimumSize = new Vector2(92, 92),
+            CustomMinimumSize = new Vector2(72, 72),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             MouseFilter = MouseFilterEnum.Ignore
@@ -141,79 +135,127 @@ public partial class PokerUI : Control
         if (chroma != null)
             _bossPortrait.Material = new ShaderMaterial { Shader = chroma };
         dealerRow.AddChild(_bossPortrait);
+
         var bossInfo = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        bossInfo.AddThemeConstantOverride("separation", 5);
-        bossInfo.AddChild(ClubTheme.Label("CHEFE DA MESA", 12, ClubTheme.Gold));
-        _bossName = ClubTheme.Label("Tartaruga", 24);
+        bossInfo.AddThemeConstantOverride("separation", 3);
+        bossInfo.AddChild(ClubTheme.Label("CHEFE DA MESA", 11, ClubTheme.Gold));
+        _bossName = ClubTheme.Label("Tartaruga", 20);
         bossInfo.AddChild(_bossName);
-        _opponentsLabel = ClubTheme.Label("1 bot à mesa", 13, ClubTheme.Muted);
+        _opponentsLabel = ClubTheme.Label("1 bot à mesa · vença a meta", 12, ClubTheme.Muted);
         bossInfo.AddChild(_opponentsLabel);
         dealerRow.AddChild(bossInfo);
         dealerRow.AddChild(Spacer());
+
         var rack = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        rack.AddThemeConstantOverride("separation", 5);
+        rack.AddThemeConstantOverride("separation", 4);
         _dealerCardContainer = new HBoxContainer();
         _dealerCardContainer.AddThemeConstantOverride("separation", 6);
         rack.AddChild(_dealerCardContainer);
-        var dealerHint = ClubTheme.Label("CARTAS DO CHEFE", 11, ClubTheme.Muted);
+        var dealerHint = ClubTheme.Label("CARTAS DO CHEFE", 10, ClubTheme.Muted);
         dealerHint.HorizontalAlignment = HorizontalAlignment.Center;
         rack.AddChild(dealerHint);
         dealerRow.AddChild(rack);
-        main.AddChild(dealerPanel);
+        topLeft.AddChild(dealerPanel);
 
-        _tableArea = new PanelContainer
+        // TOP-RIGHT / RIGHT SIDEBAR: Unified Run Status & Action Panel ("quadradão pro lado")
+        var rightMargin = new MarginContainer();
+        rightMargin.AnchorLeft = 1.0f;
+        rightMargin.AnchorRight = 1.0f;
+        rightMargin.AnchorTop = 0.0f;
+        rightMargin.AnchorBottom = 1.0f;
+        rightMargin.OffsetLeft = -310;
+        rightMargin.OffsetRight = -20;
+        rightMargin.OffsetTop = 20;
+        rightMargin.OffsetBottom = -20;
+        _hud.AddChild(rightMargin);
+
+        var side = Panel(new Color(0.03f, 0.07f, 0.055f, 0.92f), ClubTheme.Border, 18);
+        side.CustomMinimumSize = new Vector2(280, 0);
+        rightMargin.AddChild(side);
+
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 10);
+        side.AddChild(box);
+
+        box.AddChild(ClubTheme.Label("A SUA CORRIDA", 11, ClubTheme.Gold));
+        _roundLabel = ClubTheme.Label("Rodada 1 / 8", 22);
+        box.AddChild(_roundLabel);
+        box.AddChild(Rule());
+
+        box.AddChild(ClubTheme.Label("PONTOS NA MESA", 11, ClubTheme.Muted));
+        _scoreLabel = ClubTheme.Label("0", 38, ClubTheme.Paper);
+        _scoreLabel.AddThemeFontOverride("font", ClubTheme.MonoFont);
+        box.AddChild(_scoreLabel);
+        _targetLabel = ClubTheme.Label("META  300", 15, ClubTheme.Gold);
+        box.AddChild(_targetLabel);
+        _scoreBar = new ProgressBar
         {
-            CustomMinimumSize = new Vector2(0, 140),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Ignore
+            CustomMinimumSize = new Vector2(0, 8),
+            MinValue = 0, MaxValue = 300, ShowPercentage = false
         };
-        _tableArea.AddThemeStyleboxOverride("panel", ClubTheme.Box(Colors.Transparent, Colors.Transparent, 0, 0));
-        main.AddChild(_tableArea);
-        _stage = new TableStage { SeatCount = 2, RivalIndex = 2 };
-        _tableArea.AddChild(_stage);
-        var tableHint = ClubTheme.Label("FORME SUA MÃO. SUPERE A META.", 12, new Color("718c77"));
-        tableHint.HorizontalAlignment = HorizontalAlignment.Center;
-        tableHint.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        tableHint.VerticalAlignment = VerticalAlignment.Bottom;
-        tableHint.MouseFilter = MouseFilterEnum.Ignore;
-        _tableArea.AddChild(tableHint);
+        _scoreBar.AddThemeStyleboxOverride("background", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Ink, 0, 3));
+        _scoreBar.AddThemeStyleboxOverride("fill", ClubTheme.Box(ClubTheme.Gold, ClubTheme.Gold, 0, 3));
+        box.AddChild(_scoreBar);
+        box.AddChild(Rule());
 
-        var tray = Panel(ClubTheme.Panel, ClubTheme.Border, 16);
-        var trayBox = new VBoxContainer();
-        trayBox.AddThemeConstantOverride("separation", 10);
-        tray.AddChild(trayBox);
-        var handHeading = new HBoxContainer();
-        handHeading.AddChild(ClubTheme.Label("SUA MÃO", 13, ClubTheme.Gold));
-        handHeading.AddChild(Spacer());
-        _selectionLabel = ClubTheme.Label("0 / 5 selecionadas", 13, ClubTheme.Muted);
-        handHeading.AddChild(_selectionLabel);
-        trayBox.AddChild(handHeading);
-        var cardCenter = new CenterContainer();
+        _handsLabel = ClubTheme.Label("MÃOS  4", 16);
+        _discardsLabel = ClubTheme.Label("DESCARTES  3", 16);
+        _walletLabel = ClubTheme.Label("FICHAS  0", 16, ClubTheme.Gold);
+        box.AddChild(_handsLabel);
+        box.AddChild(_discardsLabel);
+        box.AddChild(_walletLabel);
+        box.AddChild(Rule());
+
+        box.AddChild(ClubTheme.Label("RELÍQUIAS ATIVAS", 11, ClubTheme.Gold));
+        _relicsLabel = ClubTheme.Label("Ás de sorte\n+1 Mult ao jogar um Ás", 12, ClubTheme.Muted);
+        _relicsLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _relicsLabel.CustomMinimumSize = new Vector2(250, 38);
+        box.AddChild(_relicsLabel);
+        box.AddChild(Rule());
+
+        // Combination evaluation and Actions
+        _resultLabel = ClubTheme.Label("Escolha suas cartas", 16);
+        box.AddChild(_resultLabel);
+        _breakdownLabel = ClubTheme.Label("De 1 a 5 cartas para formar uma combinação.", 12, ClubTheme.Muted);
+        _breakdownLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        box.AddChild(_breakdownLabel);
+
+        _selectionLabel = ClubTheme.Label("0 / 5 selecionadas", 12, ClubTheme.Gold);
+        box.AddChild(_selectionLabel);
+
+        _playBtn = ClubTheme.Button("Jogar mão", true);
+        _playBtn.CustomMinimumSize = new Vector2(0, 46);
+        _playBtn.Pressed += OnPlayPressed;
+        box.AddChild(_playBtn);
+
+        _discardBtn = ClubTheme.Button("Descartar");
+        _discardBtn.CustomMinimumSize = new Vector2(0, 40);
+        _discardBtn.Pressed += OnDiscardPressed;
+        box.AddChild(_discardBtn);
+
+        box.AddChild(Spacer());
+        var exit = ClubTheme.Button("Voltar ao clube");
+        exit.Pressed += ReturnToHub;
+        box.AddChild(exit);
+
+        // BOTTOM CENTER: Clean Floating Player Hand (no heavy opaque background tray)
+        var bottomArea = new MarginContainer();
+        bottomArea.AnchorLeft = 0.0f;
+        bottomArea.AnchorRight = 1.0f;
+        bottomArea.AnchorTop = 1.0f;
+        bottomArea.AnchorBottom = 1.0f;
+        bottomArea.OffsetLeft = 24;
+        bottomArea.OffsetRight = -330; // Clear room for right-side action panel
+        bottomArea.OffsetTop = -140;
+        bottomArea.OffsetBottom = -16;
+        bottomArea.MouseFilter = MouseFilterEnum.Ignore;
+        _hud.AddChild(bottomArea);
+
+        var cardCenter = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
         _cardContainer = new HBoxContainer();
         _cardContainer.AddThemeConstantOverride("separation", 10);
         cardCenter.AddChild(_cardContainer);
-        trayBox.AddChild(cardCenter);
-        var actions = new HBoxContainer();
-        actions.AddThemeConstantOverride("separation", 12);
-        var preview = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        preview.AddThemeConstantOverride("separation", 2);
-        _resultLabel = ClubTheme.Label("Escolha suas cartas", 18);
-        _breakdownLabel = ClubTheme.Label("De 1 a 5 cartas para formar uma combinação.", 13, ClubTheme.Muted);
-        _breakdownLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        preview.AddChild(_resultLabel);
-        preview.AddChild(_breakdownLabel);
-        actions.AddChild(preview);
-        _discardBtn = ClubTheme.Button("Descartar");
-        _discardBtn.CustomMinimumSize = new Vector2(132, 46);
-        _discardBtn.Pressed += OnDiscardPressed;
-        actions.AddChild(_discardBtn);
-        _playBtn = ClubTheme.Button("Jogar mão", true);
-        _playBtn.CustomMinimumSize = new Vector2(156, 46);
-        _playBtn.Pressed += OnPlayPressed;
-        actions.AddChild(_playBtn);
-        trayBox.AddChild(actions);
-        main.AddChild(tray);
+        bottomArea.AddChild(cardCenter);
 
         // Overlay cards use global coordinates; layout controls remain in their containers.
         _tableCardLayer = new Control { MouseFilter = MouseFilterEnum.Ignore };
@@ -247,52 +289,6 @@ public partial class PokerUI : Control
         AccessibilityVisuals.AddGlobalFilter(this);
     }
 
-    private void BuildSidebar(HBoxContainer columns)
-    {
-        var side = Panel(ClubTheme.Panel, ClubTheme.Border, 20);
-        side.CustomMinimumSize = new Vector2(260, 0);
-        columns.AddChild(side);
-        var box = new VBoxContainer();
-        box.AddThemeConstantOverride("separation", 12);
-        side.AddChild(box);
-        box.AddChild(ClubTheme.Label("A SUA CORRIDA", 12, ClubTheme.Gold));
-        _roundLabel = ClubTheme.Label("Rodada 1 / 8", 24);
-        box.AddChild(_roundLabel);
-        box.AddChild(ClubTheme.Label("Alcance a meta antes\nde acabar suas mãos.", 14, ClubTheme.Muted));
-        box.AddChild(Rule());
-        box.AddChild(ClubTheme.Label("PONTOS NA MESA", 12, ClubTheme.Muted));
-        _scoreLabel = ClubTheme.Label("0", 44, ClubTheme.Paper);
-        _scoreLabel.AddThemeFontOverride("font", ClubTheme.MonoFont);
-        box.AddChild(_scoreLabel);
-        _targetLabel = ClubTheme.Label("META  300", 17, ClubTheme.Gold);
-        box.AddChild(_targetLabel);
-        _scoreBar = new ProgressBar
-        {
-            CustomMinimumSize = new Vector2(0, 8),
-            MinValue = 0, MaxValue = 300, ShowPercentage = false
-        };
-        _scoreBar.AddThemeStyleboxOverride("background", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Ink, 0, 3));
-        _scoreBar.AddThemeStyleboxOverride("fill", ClubTheme.Box(ClubTheme.Gold, ClubTheme.Gold, 0, 3));
-        box.AddChild(_scoreBar);
-        box.AddChild(Rule());
-        _handsLabel = ClubTheme.Label("MÃOS  4", 19);
-        _discardsLabel = ClubTheme.Label("DESCARTES  3", 19);
-        _walletLabel = ClubTheme.Label("FICHAS  0", 19, ClubTheme.Gold);
-        box.AddChild(_handsLabel);
-        box.AddChild(_discardsLabel);
-        box.AddChild(_walletLabel);
-        box.AddChild(Rule());
-        box.AddChild(ClubTheme.Label("RELÍQUIAS ATIVAS", 12, ClubTheme.Gold));
-        _relicsLabel = ClubTheme.Label("Ás de sorte\n+1 Mult ao jogar um Ás", 14, ClubTheme.Muted);
-        _relicsLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _relicsLabel.CustomMinimumSize = new Vector2(210, 54);
-        box.AddChild(_relicsLabel);
-        box.AddChild(Spacer());
-        var exit = ClubTheme.Button("Voltar ao clube");
-        exit.Pressed += ReturnToHub;
-        box.AddChild(exit);
-    }
-
     private void BuildResultOverlay()
     {
         var box = CreateModal(out _overlayPanel, new Vector2(580, 0));
@@ -307,6 +303,7 @@ public partial class PokerUI : Control
         _nextRoundBtn.Pressed += () =>
         {
             _overlayPanel.Visible = false;
+            if (_hud != null) _hud.Visible = false;
             RefreshShopUI();
             _shopOverlay.Visible = true;
             _shopNextRoundBtn.GrabFocus();
@@ -317,6 +314,7 @@ public partial class PokerUI : Control
         {
             _overlayPanel.Visible = false;
             _shopOverlay.Visible = false;
+            if (_hud != null) _hud.Visible = true;
             _game.StartNewGame();
         };
         box.AddChild(_newGameBtn);
@@ -533,6 +531,7 @@ public partial class PokerUI : Control
         _shopNextRoundBtn.Pressed += () =>
         {
             _shopOverlay.Visible = false;
+            if (_hud != null) _hud.Visible = true;
             _game.StartNextRound();
         };
         shopActionsCol.AddChild(_shopNextRoundBtn);
@@ -870,6 +869,7 @@ public partial class PokerUI : Control
     private async void OnHandDealt()
     {
         if (!IsInsideTree()) return;
+        if (_hud != null) _hud.Visible = true;
         _stage.ClearPlayedCards();
         bool animateDeal = Core.Systems.SettingsManager.Instance?.ReduceMotion != true;
         _ignoreInput = _game.CurrentPhase != PokerGameManager.GamePhase.PlayerTurn || animateDeal;
@@ -989,7 +989,14 @@ public partial class PokerUI : Control
         {
             _presentedRound = _game.CurrentRound;
             _stage.SetCast(rival, Mathf.Clamp(_game.OpponentCount + 1, 2, 4));
-            string theme = rival == 6 ? "barao_lounge" : "dama_salon";
+            string theme = rival switch
+            {
+                7 => "barao_lounge",
+                8 => "dama_salon",
+                9 => "classic_club",
+                10 => "cyber_casino",
+                _ => "classic_club"
+            };
             _stage.SetRoomTheme(theme);
         }
         _stage.SetCardCount(0, _game.GetPlayerHand().Count);
@@ -1000,7 +1007,15 @@ public partial class PokerUI : Control
         _opponentsLabel.Text = $"{_game.OpponentCount} bot{(_game.OpponentCount == 1 ? "" : "s")} à mesa · vença a meta";
         if (introduce)
         {
-            Core.Systems.AudioManager.Instance?.PlayMusic(rival == 6 ? "midnight-baron" : "velvet-table");
+            string music = rival switch
+            {
+                7 => "midnight-baron",
+                8 => "velvet-table",
+                9 => "saloon-swing",
+                10 => "cyber-tango",
+                _ => "midnight-baron"
+            };
+            Core.Systems.AudioManager.Instance?.PlayMusic(music);
             await _stage.PlayEntrance(true);
             if (IsInsideTree()) UpdateActionButtons();
         }
@@ -1099,6 +1114,7 @@ public partial class PokerUI : Control
             : $"{_game.RoundScore:N0} de {_game.RoundTarget:N0} pontos. Tente uma nova combinação de estratégias.";
         _nextRoundBtn.Visible = passed;
         _newGameBtn.Visible = !passed;
+        if (_hud != null) _hud.Visible = false;
         _overlayPanel.Visible = true;
         if (passed) _nextRoundBtn.GrabFocus(); else _newGameBtn.GrabFocus();
     }
@@ -1118,6 +1134,7 @@ public partial class PokerUI : Control
         }
         _shopOverlay.Visible = false;
         _tutorialPanel.Visible = false;
+        if (_hud != null) _hud.Visible = false;
         _overlayTitle.Text = won ? "O clube é seu." : "Fim da corrida";
         _overlayTitle.AddThemeColorOverride("font_color", won ? ClubTheme.Gold : new Color("#e29a86"));
         _overlaySubtitle.Text = won
@@ -1281,6 +1298,7 @@ public partial class PokerUI : Control
     public void OpenShop()
     {
         if (_overlayPanel != null) _overlayPanel.Visible = false;
+        if (_hud != null) _hud.Visible = false;
         RefreshShopUI();
         if (_shopOverlay != null) _shopOverlay.Visible = true;
     }

@@ -4,6 +4,20 @@
 
 ## Pedido vigente do usuário
 
+### Atualização de continuidade — Patch 24 Concluído com Sucesso
+
+- **Redesign Panorâmico de Pôquer Balatro:** Removido o letterbox escuro e o fundo opaco com bandeja pesada. O cenário 3D (`TableStage`) opera em tela cheia (`FullRect`). A mão do jogador agora flutua elegantemente na parte inferior da tela. O painel lateral direito ("quadradão pro lado") unifica corrida, pontos, meta, recursos, relíquias ativas, combinação de mão e botões de ação com âncoras calibradas milimetricamente (0 avisos de layout).
+- **Postura Sentada Realista:** Pélvis rebaixada para 0.52m (altura da almofada) com pernas flexionadas a 90° (coxas -88°, canelas +85°). Os personagens agora jogam confortavelmente sentados em suas poltronas.
+- **Novos Modelos 3D Integrados:**
+  - **Mascote Corvo ("Edgar" / "Corvinho") (`mascot_crow.glb`):** Empoleirado como sentinela no topo do relógio de salão do Classic Club com animação idle de observação.
+  - **Aki (`aki.glb`, `aki_3d.png`):** Nova personagem jogável (total de jogáveis elevado para 7).
+  - **Madame Morgana (`morgana.glb`, `morgana_3d.png`):** Nova boss exclusiva (rodadas 5–6 no Classic Club).
+  - **Lorde Carniçal (`carnical.glb`, `carnical_3d.png`):** Novo boss exclusivo (rodadas 7–8 no Cyber Casino).
+  - Rodízio de 4 chefes nas 8 rodadas com suas respectivas salas e trilhas temáticas.
+- **Upgrade de Nina, Bento e Dona Onça:** Modelos regenerados com pernas sentadas a 90° e retratos de estúdio em alta definição.
+- **Coleção Expandida:** Suporte aos 11 personagens com rolagem suave (`ScrollContainer`) e lore conceitual detalhado para cada um.
+- **Validação:** `GameplayChecks.cs` (336 asserções PASS), `visual_smoke.ps1` (27 screenshots, 0 layout issues PASS), `visual_smoke.ps1 -CameraOnly` (PASS), executável Windows `Game Hub.exe` (103 MB) exportado.
+
 ### Atualização de continuidade — Patch 23 Concluído com Sucesso
 
 - **Direção Cinematográfica & Fim da Tela Preta:** Corrigido o vetor de interpolação da cutscene de entrada em `TableStage.cs`, onde a descida afundava a lente para `Y = -0.30m` no interior da mesa de madeira sólida (`Y = 0.08m` topo, `-0.15m` base), gerando tela preta. Todas as câmeras foram fixadas em `Y >= 1.58m`, garantindo visão limpa.

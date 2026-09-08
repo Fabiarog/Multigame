@@ -198,6 +198,7 @@ def build_character(ident, blend_name, skin_hex, char_type):
         pb = arm_obj.pose.bones.get(bone_name)
         if not pb:
             return
+        pb.rotation_mode = 'XYZ'
         for frame, rot_tuple in keys:
             pb.rotation_euler = rot_tuple
             pb.keyframe_insert(data_path="rotation_euler", frame=frame)
@@ -213,7 +214,22 @@ def build_character(ident, blend_name, skin_hex, char_type):
     def add_action(name, total_frames, curves):
         act = bpy.data.actions.new(name=name)
         arm_obj.animation_data.action = act
-        for bone_name, (loc_keys, rot_keys) in curves.items():
+
+        c = dict(curves)
+        # Postura sentada na cadeira: coxas para frente (-88°), canelas para baixo (+85°), pélvis no assento (-0.36m)
+        if char_type != "snake":
+            c["Thigh.L"] = (None, [(1, (-1.536, 0, 0)), (total_frames, (-1.536, 0, 0))])
+            c["Thigh.R"] = (None, [(1, (-1.536, 0, 0)), (total_frames, (-1.536, 0, 0))])
+            c["Shin.L"] = (None, [(1, (1.484, 0, 0)), (total_frames, (1.484, 0, 0))])
+            c["Shin.R"] = (None, [(1, (1.484, 0, 0)), (total_frames, (1.484, 0, 0))])
+
+        if "Pelvis" in c and c["Pelvis"][0]:
+            p_locs = [(f, (l[0], l[1] - 0.36, l[2])) for f, l in c["Pelvis"][0]]
+            c["Pelvis"] = (p_locs, c["Pelvis"][1])
+        else:
+            c["Pelvis"] = ([(1, (0, -0.36, 0)), (total_frames, (0, -0.36, 0))], None)
+
+        for bone_name, (loc_keys, rot_keys) in c.items():
             if loc_keys:
                 key_loc(bone_name, act, loc_keys)
             if rot_keys:

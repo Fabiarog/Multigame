@@ -190,10 +190,14 @@ def build(index, ident, species, skinhex, coathex, accenthex, sechex):
     # Natural neck bridging torso to head
     shape('Neck', (0, -0.01, 1.28), (0.13, 0.13, 0.14), skin_mat, body, 'cylinder', subsurf=1)
 
-    # Tailored Trousers and Polished Leather Shoes (Pelvis / Lower Body seated in chair)
+    # Tailored Trousers and Polished Leather Shoes in realistic Seated Pose (bent 90° forward & down)
     for side in [-1, 1]:
-        shape('Trouser', (side * 0.19, 0.02, 0.26), (0.15, 0.16, 0.24), coat_mat, pelvis, 'cylinder', subsurf=1)
-        shape('Shoe', (side * 0.19, -0.05, 0.07), (0.14, 0.22, 0.07), leather_mat, pelvis, 'ico', subsurf=1)
+        # Thigh extending horizontally forward from pelvis towards table
+        shape('Thigh', (side * 0.19, -0.20, 0.46), (0.14, 0.22, 0.13), coat_mat, pelvis, 'cylinder', rot=(math.pi / 2, 0, 0), subsurf=1)
+        # Shin dropping down from knee to floor
+        shape('Shin', (side * 0.19, -0.40, 0.24), (0.12, 0.12, 0.20), coat_mat, pelvis, 'cylinder', subsurf=1)
+        # Polished shoe resting flat
+        shape('Shoe', (side * 0.19, -0.42, 0.06), (0.13, 0.20, 0.06), leather_mat, pelvis, 'ico', subsurf=1)
 
     # Crisp Linen Shirt Bib recessed into the V-opening (NOT a box)
     shape('ShirtBib', (0, -0.20, 1.04), (0.13, 0.035, 0.24), linen_mat, body, 'cylinder', rot=(0.06, 0, 0), subsurf=1)
@@ -876,7 +880,8 @@ def build(index, ident, species, skinhex, coathex, accenthex, sechex):
 
 def main():
     for i, row in enumerate(CAST):
-        build(i, *row)
+        if row[0] in ('nina', 'bento', 'onca'):
+            build(i, *row)
 
     manifest = {
         'generator': 'Blender 5.2.1 Stylized AAA Pipeline',

@@ -177,8 +177,8 @@ public partial class GameplayChecks : Node
             charViewer.LoadCharacter(0);
             charViewer.SetOutfit(1);
             Assert(charViewer.CharacterIndex == 0 && charViewer.OutfitIndex == 1, "CharacterViewer3D loads character and outfit correctly");
-            charViewer.LoadCharacter(6);
-            Assert(charViewer.CharacterIndex == 6, "CharacterViewer3D loads boss models correctly");
+            charViewer.LoadCharacter(7);
+            Assert(charViewer.CharacterIndex == 7, "CharacterViewer3D loads boss models correctly");
             charViewer.Free();
 
             // Validate DefaultCameraMode and RoomTheme persistence
@@ -190,7 +190,7 @@ public partial class GameplayChecks : Node
             SettingsManager.Instance.DefaultCameraMode = "table";
             SettingsManager.Instance.RoomTheme = "classic_club";
             SettingsManager.Instance.SaveSettings();
-            Assert(CharacterCatalog.PlayableCount == 6 && CharacterCatalog.IsBoss(6) && CharacterCatalog.IsBoss(7), "Bosses are separated from playable characters");
+            Assert(CharacterCatalog.PlayableCount == 7 && CharacterCatalog.IsBoss(7) && CharacterCatalog.IsBoss(8) && CharacterCatalog.IsBoss(9) && CharacterCatalog.IsBoss(10), "Bosses are separated from playable characters");
 
             // Validate Truco Call sprites for all 8 characters across stakes 3, 6, 9, 12
             for (int c = 0; c < CharacterCatalog.Ids.Length; c++)

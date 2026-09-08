@@ -21,6 +21,60 @@ MultiGame (conhecido internamente como `GameHub`) é um ecossistema de jogos de 
 
 ## 2. Changelog Cumulativo de Patches Implementados
 
+### Patch 23: Direção Cinematográfica de Câmeras, Close-Up no Chefe, Tomada do Canto do Salão e Baralho Físico — 07/09/2026
+
+1. **Revisão Cinematográfica de Câmeras e Cutscene (`core/visuals/TableStage.cs`):**
+   * **Eliminação de Penetração na Geometria da Mesa (Fim da Tela Preta):** Corrigido o cálculo de altura da câmera durante as transições de corte e entrada. Anteriormente, na interpolação do Shot 2 para o Shot 3, o vetor de descida afundava a lente para `Y = -0.30m` (abaixo da superfície do feltro que fica em `Y = 0.08m`), penetrando na malha de madeira sólida da mesa e bloqueando a visão com tela preta. Todas as trajetórias de câmera agora impõem estritamente `Y >= 1.58m`, garantindo visão limpa sem atravessar a mesa.
+   * **Cinemática de Chefe no Pôquer (`boss == true`):**
+     * Disparo da trilha sonora temática dramática (`midnight-baron`) e efeito sonoro de chegada (`boss-arrival`).
+     * Tomada inicial do salão em plano alto (`Y = 2.75m`).
+     * Corte direto para close-up fechado e detalhado na face do chefe (`Fov = 28.0f`, câmera a 1.12m dos olhos, `Y = 1.62m`), com execução da animação temática do boss (`boss_intro` ou `flourish`).
+     * Varredura aérea cinematográfica sobre a mesa (`Y = 2.45m`) descendo com elegância até o ponto de vista em primeira pessoa (`POV`, `Y = 1.63m`).
+   * **Cinemática de Canto de Sala e Personagens Sentando no Truco e Fodinha (`boss == false`):**
+     * Shot 1 posicionado estrategicamente no canto superior do salão (`Vector3(-4.9f, 3.45f, 4.6f)`, `Fov = 52.0f`), enquadrando a sala completa do Classic Club (lareira cintilante, relógio de pêndulo, carrinho de bar vintage, poltronas estofadas e lustre).
+     * Os personagens entram em cena e sentam em suas respectivas poltronas simultaneamente (`PlayGesture(i, "entrance")`).
+     * Shot 2 executa um arco orbital elevado sobre o perímetro da mesa (`Y = 2.40m -> 2.25m`).
+     * Shot 3 desce suavemente pelo topo do feltro até a perspectiva em primeira pessoa do jogador local.
+
+2. **Recolhimento Realista de Cartas e Encaixe Perfeito do Baralho (`core/visuals/TableStage.cs`):**
+   * **Eliminação de Rótulos Flutuantes:** Todos os nós `Label3D` associados às cartas jogadas são imediatamente ocultados e descartados (`QueueFree()`), eliminando o artefato de textos flutuantes como `☆ Adversário 2 ☆ MANILHA` sobre o baralho.
+   * **Elevação do Baralho e Inserção por Baixo:** Conforme o desenho e referência de corte solicitados, ao recolher a rodada, as cartas jogadas são unidas com a face para baixo no centro da mesa. O maço principal do baralho se ergue verticalmente (`liftHeight = 0.16m + n * 0.018m`), enquanto as cartas recolhidas deslizam para baixo dele até a base do feltro (`Y = 0.082m`).
+   * **Fechamento e Alinhamento do Montinho:** O maço suspenso desce e repousa sobre as novas cartas com amortecimento elástico (`Back.Out`), produzindo o efeito sonoro de corte (`"cut"`) e formando um bloco compacto, alinhado e esteticamente correto com o verso dourado no topo.
+
+3. **Validação de QA e Build:**
+   * **Gameplay QA (`tools/gameplay_smoke.gd`):** 287 asserções aprovadas com êxito (`GAMEPLAY_QA PASS`).
+   * **Visual QA (`tools/visual_smoke.ps1`):** 27 capturas de tela e 25 ações interativas aprovadas com 0 falhas e 0 avisos de layout (`layout_issues=0, failures=0`).
+   * **Camera QA (`tools/visual_smoke.ps1 -CameraOnly`):** Suíte de câmera 100% aprovada (`CAMERA_QA PASS []`).
+   * **Exportação Desktop:** Executável `Game Hub.exe` e arquivo de recursos `Game Hub.pck` atualizados para Windows Desktop x86_64.
+
+---
+
+### Patch 22: Correção Definitiva de Animações, Ritmo Natural do Truco e Cenário Classic Club HD — 07/09/2026
+
+1. **Correção dos Bugs de Animação e Câmera POV (`core/visuals/TableStage.cs`):**
+   * **Ocultação do Jogador Local em POV:** Inversão da lógica de visibilidade corrigida em `UpdateCameraPosition`. Em primeira pessoa (POV), a malha do personagem local (`_actors[seat]`), sua cadeira (`_chairs[seat]`) e o leque 3D estático (`_hands[seat]`) são ocultados (`!isLocal`), impedindo que a respiração e os gestos do modelo atravessem a câmera do jogador. No modo Mesa (Overhead), todos os participantes e mobiliário voltam a ser totalmente visíveis.
+   * **Ponto de Origem da Carta em POV:** No método `PlayCard`, quando a jogada é realizada pelo jogador local em POV, a posição inicial da carta é computada à frente do cone de visão da câmera (`_camera.GlobalPosition + Down * 0.28f + Forward * 0.48f`), eliminando o artefato de cartas surgindo por trás da cabeça e atravessando o crânio do avatar.
+   * **Harmonização de Animação Esquelética e Rígida:** `PlayTableAction` agora inspeciona se o ator possui um `AnimationPlayer` com clipe ativo. Caso haja animação esquelética em curso, o solavanco da raiz é suprimido; caso contrário, o impulso é aplicado no eixo local frontal do ator em vez de inclinar no eixo X global da sala.
+   * **Padronização do Botão de Pular Entrada:** O botão da cutscene cinematográfica foi nomeado como `SkipButton` e definido com texto `"Pular entrada"`, garantindo conformidade com a automação de QA e com o atalho `ESC`.
+
+2. **Calibração do Ritmo e Velocidade do Truco (`games/truco/scripts/TrucoGameManager.cs`, `user://settings.cfg`):**
+   * **Causa Raiz Resolvida:** O arquivo de configuração do usuário (`settings.cfg`) continha `ReduceMotion=true`, o que ativava o modo de acessibilidade extrema em que `WaitForAnimation` retornava imediatamente (`0.0s`), fazendo turnos, cartas e rodadas voarem instantaneamente. O arquivo foi ajustado para `ReduceMotion=false`.
+   * **Prevenção de Condições de Corrida Assíncronas (`_handId`):** Implementado contador incremental `_handId` no ciclo de vida de cada mão. Todas as rotinas assíncronas com espera (`CutDeckForSeat`, `DeliverPena`, `ResolvePenaInternal`, `DealAfterCut`, `PlaySeatCard`, `ResolveCurrentRound`, `RespondToTruco`, `AIRespondToTruco` e `FinishHandSequence`) verificam `_handId == thisHand` após cada `await`, impedindo que callbacks atrasados sobrescrevam o estado de mãos subsequentes.
+   * **Tensão e Suspense nas Chamadas de Truco:** Adicionada pausa dramática de reflexão e reação em `RespondToTruco` (`0.65s`) e `AIRespondToTruco` (`0.85s`), com avisos nítidos em tela ("TRUCO ACEITO!", "TRUCO RECUSADO!").
+
+3. **Cenário Classic Club Aprimorado e Polimento Visual:**
+   * **Carrinho de Bar de Luxo (`res://assets/models/club/club_bar_cart.glb`):** Instanciado no salão ao lado da lareira em `(4.8f, -0.72f, -3.8f)`, enriquecendo o ambiente aristocrático vintage com garrafas e taças 3D.
+   * **Iluminação Quente da Lareira (`_fireplaceLight`):** Luz pontual omnidirecional adicionada na coordenada da lareira (`0, 0.85f, -5.75f`) com cor âmbar (#ff6a18), raio de alcance de 7.8m e efeito de cintilação suave (*flicker*) dinâmico no `_Process`.
+   * **Fallback no `AvatarComposite.cs`:** Suprimidos avisos de textura ausente (`default_base`, `default_shirt`) com rotas de salvaguarda silenciosas.
+
+4. **Validação de QA e Build:**
+   * **Gameplay QA (`tools/gameplay_smoke.gd`):** 287 asserções aprovadas com êxito (`GAMEPLAY_QA PASS`).
+   * **Visual QA (`tools/visual_smoke.ps1`):** 27 capturas de tela e 25 ações interativas aprovadas com 0 falhas e 0 avisos de layout (`layout_issues=0, failures=0`).
+   * **Camera QA (`tools/visual_smoke.ps1 -CameraOnly`):** 100% de aprovação nos testes de visão POV, limites de rotação cervical e alternância Overhead (`CAMERA_QA PASS`).
+   * **Exportação Desktop:** `Game Hub.exe` e `Game Hub.pck` re-exportados com sucesso para Windows Desktop x86_64.
+
+---
+
 ### Patch 1: Pipeline de Resoluções, Gráficos e Rede Híbrida
 * **Arquitetura de Vídeo (`core/systems/VideoSettingsManager.cs`):**
   * Detecção e aplicação nativa de 720p (HD), 1080p (Full HD), 1440p (2K/Quad HD) e 2160p (4K Ultra HD).
@@ -664,3 +718,98 @@ $env:GODOT_BIN = "C:\Users\Lucas\AppData\Local\Temp\multigame-tools\godot\Godot_
    * Todas as telas e janelas de jogo devem respeitar as preferências do `SettingsManager` (como `ReduceMotion`) e se ajustar perfeitamente de 720p até 4K.
 5. **Atualização Contínua deste Documento:**
    * Sempre que você (IA ou desenvolvedor) implementar novas funcionalidades (por exemplo, a lógica de rede multiplayer, novo modo Fodinha, ou habilidades exclusivas de bosses), **adicione uma nova seção de Patch neste arquivo** para manter o histórico unificado.
+
+---
+
+## 19. Patch 19 — Calibração de Ritmo em 2v2/3v3 e Rigging/Animações Anatômicas Fluidas (Sem Deformações)
+
+### Problemas Solucionados
+1. **Ritmo Acelerado nos Modos Dupla (2v2) e Trio (3v3):**
+   - No Truco, a distribuição de 12 e 18 cartas ocorria em intervalo de 45ms, parecendo uma metralhadora.
+   - Após a distribuição e revelação do Vira, o primeiro assento jogava instantaneamente sem qualquer pausa de leitura.
+   - A decisão de oferecer e aceitar a pena durava menos de 2 segundos no total (`_aiPenaTimer` de 0.75s, decisão em 0.9s e resolução em 0.45s).
+   - Entre os tombos (vazas), as cartas jogadas permaneciam na mesa e o próximo tombo jogava cartas exatamente por cima das anteriores, causando sobreposição visual e sensação caótica.
+2. **Animações "Meio Bugadas" com Deformações na Malha:**
+   - Em `tools/build_rigged_detailed_cast.py`, o osso filho `Chest` estava sofrendo translação relativa de até `-38cm` em `truco` e `-28cm` em `play_card`, rasgando os polígonos entre o abdômen e as costelas.
+   - O osso `Root` estava com `use_deform = True`, prendendo vértices do chão e esticando os pés quando o quadril se movia.
+   - As clavículas (`Shoulder.L` e `Shoulder.R`) não possuíam rotação nos movimentos de braço levantado (`victory`, `truco`), provocando colapso das axilas ("candy-wrapper").
+   - Em `boss_intro`, rotações extremas dos antebraços faziam as mãos penetrarem o tórax.
+
+### Modificações Técnicas
+1. **Ritmo e Cadência (`TrucoGameManager.cs`, `TableStage.cs`, `TrucoUI.cs`):**
+   - `TableStage.cs`: Intervalo de distribuição ajustado de `emitted++ * .045f` para `emitted++ * .13f`, gerando distribuição rítmica, realista e audível.
+   - `TrucoGameManager.cs`:
+     - Pausa de corte: `0.90f` (era 0.45f).
+     - Reflexão da IA para oferecer pena: `1.80f` (era 0.75f).
+     - Reflexão do bot para decidir ficar com a pena: `1.80f` (era 0.90f).
+     - Exibição do resultado da pena: `1.30f` (era 0.45f).
+     - Pausa de observação pós-distribuição: `1.50f` após revelar o Vira e definir a Manilha antes do início das jogadas.
+     - Observação da carta descida: `1.50f` (era 1.30f).
+     - Intervalo entre tombos: `2.10f` (era 1.85f).
+   - `TrucoUI.cs`: Em `OnRoundResolved`, acionado `_ = _stage?.CollectRoundCardsToDiscard();`, reunindo suavemente as cartas da vaza no centro da mesa e deslizando-as para a pilha de descarte antes do início do próximo tombo.
+2. **Rigging e Animações Anatômicas (`tools/build_rigged_detailed_cast.py`):**
+   - `add_bone`: Adicionado parâmetro `deform = True`, com `root = add_bone("Root", ..., deform=False)` garantindo que o osso raiz não capture pesos de vértices da malha.
+   - Eliminadas 100% das translações do osso filho `Chest` (`key_loc("Chest")`) em todos os 7 clipes (`idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish`, `play_card`). A inclinação e projeção do tronco agora é puramente angular via flexão coordenada de `Spine` e `Chest`.
+   - Adicionadas rotações naturais de clavícula (`Shoulder.L` e `Shoulder.R`) para sustentar braços levantados em `victory`, batida na mesa em `truco`, extensão ao feltro em `play_card` e postura aristocrática em `boss_intro`.
+   - Regenerados todos os 5 modelos GLB (`corvo.glb`, `barao.glb`, `dama.glb`, `zeca.glb`, `iara.glb`) e seus retratos de estúdio em Blender 5.2.
+3. **Validação e Export:**
+   - `dotnet build GameHub.csproj`: Compilado com êxito (0 erros, 0 avisos).
+   - `GameplayChecks.cs`: 171 asserções válidas (PASS).
+   - `visual_smoke.ps1`: 27 capturas realizadas, 25 ações, 0 falhas, 0 avisos de layout (PASS).
+   - Binário final reexportado: `Game Hub.exe` (103 MB) e `Game Hub.pck` (319 MB).
+
+---
+
+## 20. Patch 20 — Sincronização de ritmo entre cartas, regras e entrada — 07/09/2026
+
+### Correções
+
+- A mesa passou a concentrar a cadência de distribuição em um único contrato: cada carta sai a cada 180 ms, leva 420 ms no voo e recebe tempo de assentamento. Truco e Fodinha consultam essa duração, portanto não iniciam a vira, palpite ou próxima ação com cartas ainda no ar.
+- No Fodinha, a distribuição de mãos grandes agora espera o último voo terminar. Palpites das IAs, corte, avanço de vaza e jogadas receberam pausas de leitura; isso elimina a sequência acelerada e as cartas se sobrepondo visualmente.
+- No pôquer, oito cartas entram em cadência de 120 ms e 420 ms de voo. Os botões de selecionar, descartar e jogar ficam indisponíveis até a última carta chegar à mão.
+- A opção de acessibilidade foi renomeada para esclarecer seu efeito: reduzir animações também encurta esperas. Com ela desligada, o ritmo normal permanece ativo.
+
+### Modelos e testes
+
+- O passe anatômico dos cinco modelos detalhados foi preservado: raiz sem deformação, tronco sem translações agressivas, clavículas ativas e sete clipes Bezier. Nina, Bento e Onça continuam com seus modelos preservados para um passe dedicado posterior.
+- `GameplayChecks.cs` agora verifica que todos os oito personagens mantêm os sete clipes, duração de leitura entre 0,5 e 5 segundos e velocidade de reprodução normal.
+- Compilação .NET: 0 erros e 0 avisos. QA de regras e contratos: 235 asserções aprovadas, incluindo rodízio, distribuição, Pena, integridade de baralho e duração dos clipes.
+- `tools/visual_smoke.gd` passou a aguardar o fim real de distribuições e o desbloqueio da mão, evitando que a automação de QA esconda erros de ritmo.
+
+---
+
+## 21. Patch 21 — Braços da Vitória Anatômicos, Marcenaria da Estante Aberta, Ritmo Deliberado das IAs e Cutscenes Cinemáticas 3D — 07/09/2026
+
+### 1. Correção Anatômica da Vitória (`tools/build_rigged_detailed_cast.py` & Modelos GLB)
+* **Causa Raiz:** No sistema local dos ossos `UpperArm.L` e `UpperArm.R` (cabeça no ombro e cauda apontando para o cotovelo), rotação positiva em X projetava o antebraço e a mão para trás no espaço de mundo (+Y), gerando o efeito invertido onde o personagem jogava os braços para trás das costas em vez de comemorar.
+* **Correção:**
+  * Rotação invertida para X negativo (`-1.85 rad`) em coordenação com elevação das clavículas (`Shoulder.L/R`), curvatura suave dos antebraços (`Forearm.L/R`), elevação do queixo (`Head` +0.24 rad) e peito estufado triunfante (`Chest` -0.18 rad).
+  * O personagem agora ergue os dois braços em "V" vitorioso para o alto e para a frente com punhos/palmas estendidas.
+  * Regenerados todos os 5 modelos rigged (`corvo.glb`, `barao.glb`, `dama.glb`, `zeca.glb`, `iara.glb`) e seus retratos de estúdio em Blender 5.2.
+
+### 2. Marcenaria da Estante de Livros do Salão Clássico (`tools/build_club_rooms.py` & `room_classic_club.glb`)
+* **Causa Raiz do Z-Fighting:** No Salão Clássico, `Bookcase_{-4.8}` e `Bookcase_{4.8}` haviam sido gerados como cubos sólidos maciços de madeira de 0.55m de profundidade. As prateleiras e as capas dos 56 livros coloridos ocupavam exatamente o mesmo plano de profundidade (`wall_y - 0.425`), causando cintilação e conflito poligonal na face frontal.
+* **Solução:** Reconstruída como marcenaria de luxo aberta:
+  * Painel traseiro fino (`bs_back`) encostado na parede.
+  * Colunas laterais estruturais (`bs_left`, `bs_right`) de 12cm de espessura.
+  * Rodapé esculpido e frontão superior arqueado clássico.
+  * Frente 100% aberta com prateleiras e livros em recesso e sombras profundas, eliminando 100% do z-fighting.
+
+### 3. Calibração do Ritmo e Pensamento das IAs (`TrucoGameManager.cs` e `FodinhaUI.cs`)
+* **Eliminação do Truco Robótico na Rodada 0:** A IA agora só pede Truco se já houver disputa real na mesa (cartas já jogadas) ou a partir da Rodada 1. O Truco às cegas na primeira fração de segundo da mão foi 100% extinto.
+* **Intervalo de Reflexão Realista no Truco:** `_aiThinkTimer` ajustado para `2.2s a 3.6s` com status visível no HUD (`"{Nome} pensando..."`). Adicionada pausa de `1.85s` após abrir o Vira para o jogador poder contemplar a mão e a manilha. Batida de Truco na mesa agora conta com antecipação dramática de `1.35s` antes do banner surgir.
+* **Cadência Humana no Fodinha:** Cada bot agora possui um estado deliberado de reflexão: `1.90s` antes de declarar palpite (com status `"{Nome} analisando as cartas para o palpite…"`) e `2.20s` antes de escolher a jogada (com status `"{Nome} calculando a jogada…"`). Pausa pós-distribuição ajustada para `2.00s`.
+
+### 4. Cutscenes Cinemáticas 3D com Múltiplos Ângulos (`core/visuals/TableStage.cs`)
+* **Direção de Cena:** Criada sequência cinemática em 3 tomadas integradas ao `TableStage`:
+  1. **Plano 1 (Grua Ampla):** Câmera sobrevoa o lustre do salão em perspectiva suave (50° FOV) descendo de `(0, 6.4, 4.4)` para `(0, 3.8, 3.2)` em 1.7s, apresentando a mesa e o relógio de pêndulo com cartela dourada de apresentação.
+  2. **Plano 2 (Contra-plongée do Rival / Chefe):** Câmera foca em ângulo baixo dramático (`Fov = 42°`) no adversário principal (Seu Corvo / Barão), que executa `boss_intro` ou `entrance` enquanto uma cartela com moldura dourada estampa seu nome e descrição aristocrática.
+  3. **Plano 3 (Travelling para o Assento 0):** Câmera desliza suavemente em arco até a posição exata dos olhos do jogador (`eyePos`), entregando o controle suavemente para a distribuição de cartas.
+* **Letterbox Anamórfico 2.35:1:** Barras pretas cinematográficas com transição suave.
+* **Botão [Pular - ESC]:** Botão no canto superior direito e manipulador de teclado (`ESC` / `Espaço`) permitindo cancelar a cutscene instantaneamente a qualquer momento sem travar o jogo.
+* **Respeito a `ReduceMotion`:** Pula instantaneamente as cutscenes para jogadores com sensibilidade a movimento ou testes unitários automatizados.
+
+### 5. Validação e Binários
+* `GameplayChecks.cs`: **235 asserções aprovadas com êxito** (PASS).
+* `visual_smoke.ps1`: **27 capturas visuais, 25 ações, 0 falhas, 0 problemas de layout** (PASS).
+* Binários finais reexportados: `Game Hub.exe` (103 MB) e `Game Hub.pck` (300 MB).

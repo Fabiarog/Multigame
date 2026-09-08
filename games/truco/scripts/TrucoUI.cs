@@ -31,7 +31,6 @@ public partial class TrucoUI : Control
     private Button _tomboPenaBtn;
     private Control _dealAnimationLayer;
     private PanelContainer _deckStackVisual;
-    private TextureRect _povHandsOverlay;
 
     // Overlay
     private Control _trucoOverlay;
@@ -65,17 +64,22 @@ public partial class TrucoUI : Control
 
     // ===== LIFECYCLE =====
 
-    public override void _Ready()
+    public override async void _Ready()
     {
         _game = GetNode<TrucoGameManager>("../../GameManager");
         Core.Systems.AudioManager.Instance?.PlayMusic("last-manilha");
         BuildUI();
         ConnectSignals();
-        _game.StartMatch();
+        if (_stage != null)
+        {
+            await _stage.PlayEntrance(false);
+        }
+        if (IsInsideTree()) _game.StartMatch();
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        if (_stage != null && _stage.IsPresenting) return;
         if (@event is InputEventKey key && key.Pressed && !key.Echo)
         {
             if (key.Keycode == Key.Escape)
@@ -94,8 +98,6 @@ public partial class TrucoUI : Control
             {
                 GetViewport().SetInputAsHandled();
                 _stage?.ToggleCameraMode();
-                if (_povHandsOverlay != null)
-                    _povHandsOverlay.Visible = (_stage?.CurrentCameraMode == TableStage.CameraPerspectiveMode.FirstPersonPov) && _game.PlayerHand.Count > 0;
                 return;
             }
             if ((key.Keycode == Key.Space || key.Keycode == Key.Enter) && _cutDeckBtn != null && _cutDeckBtn.Visible && !_cutDeckBtn.Disabled)
@@ -120,6 +122,7 @@ public partial class TrucoUI : Control
         _game.ScoreUpdated += OnScoreUpdated;
         _game.ViraRevealed += OnViraRevealed;
         _game.TrucoCalled += OnTrucoCalled;
+        _game.TrucoResponded += OnTrucoResponded;
         _game.CardPlayed += OnCardPlayed;
         _game.RoundResolved += OnRoundResolved;
         _game.HandEnded += OnHandEnded;
@@ -142,6 +145,7 @@ public partial class TrucoUI : Control
             _game.ScoreUpdated -= OnScoreUpdated;
             _game.ViraRevealed -= OnViraRevealed;
             _game.TrucoCalled -= OnTrucoCalled;
+            _game.TrucoResponded -= OnTrucoResponded;
             _game.CardPlayed -= OnCardPlayed;
             _game.RoundResolved -= OnRoundResolved;
             _game.HandEnded -= OnHandEnded;
@@ -277,18 +281,6 @@ public partial class TrucoUI : Control
         var handCenter = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         handCol.AddChild(handCenter);
 
-        _povHandsOverlay = new TextureRect
-        {
-            Name = "PovHandsOverlay",
-            Texture = GD.Load<Texture2D>("res://assets/sprites/ui/pov_hands.png"),
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            MouseFilter = MouseFilterEnum.Ignore,
-            Modulate = new Color(1, 1, 1, 0.88f),
-            CustomMinimumSize = new Vector2(580, 150)
-        };
-        handCenter.AddChild(_povHandsOverlay);
-
         _playerHandContainer = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         _playerHandContainer.AddThemeConstantOverride("separation", 14);
         handCenter.AddChild(_playerHandContainer);
@@ -383,10 +375,10 @@ public partial class TrucoUI : Control
         content.AddChild(portraitFrame);
         _trucoPortrait = new TextureRect
         {
-            CustomMinimumSize = new Vector2(148, 148),
+            CustomMinimumSize = new Vector2(168, 168),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            Texture = ResourceLoader.Load<Texture2D>("res://assets/sprites/portraits/truco_player.jpg"),
+            Texture = CharacterCatalog.TrucoCallSprite(0, 3),
             MouseFilter = MouseFilterEnum.Ignore
         };
         portraitFrame.AddChild(_trucoPortrait);
@@ -530,8 +522,6 @@ public partial class TrucoUI : Control
             }
         }
         _handCountLabel.Text = _game.PlayerHand.Count == 1 ? "1 carta na mão" : $"{_game.PlayerHand.Count} cartas na mão";
-        if (_povHandsOverlay != null)
-            _povHandsOverlay.Visible = (_stage?.CurrentCameraMode == TableStage.CameraPerspectiveMode.FirstPersonPov) && _game.PlayerHand.Count > 0;
     }
 
     private void RefreshTableCards()
@@ -587,6 +577,7 @@ public partial class TrucoUI : Control
         _statusLabel.Text = $"{_game.GetSeatName(_game.DealerSeatIndex)} embaralhando…";
         _statusLabel.AddThemeColorOverride("font_color", Gold);
         _cutDeckBtn.Visible = false;
+        _stage?.PlayGesture(_game.DealerSeatIndex, "shuffle");
         AnimateShuffle();
     }
 
@@ -597,6 +588,7 @@ public partial class TrucoUI : Control
         _cutDeckBtn.Visible = false;
         _stage?.AnimateDeck(true);
         _stage?.PlayTableAction(_game.CutterSeatIndex);
+        _stage?.PlayGesture(_game.CutterSeatIndex, "cut_deck");
     }
 
     private void OnPenaAvailable(string recipient)
@@ -638,6 +630,7 @@ public partial class TrucoUI : Control
             ? "Pena guardada: o aliado receberá só mais 2 cartas."
             : $"{_game.GetSeatName(_game.DealerSeatIndex)} distribuindo 3 cartas para cada jogador…";
         _stage?.PlayTableAction(_game.DealerSeatIndex);
+        _stage?.PlayGesture(_game.DealerSeatIndex, "deal");
         AnimateDistribution(cardCount, penaRecipientSeat, penaKept);
     }
 
@@ -738,7 +731,10 @@ public partial class TrucoUI : Control
 
     private void OnTrucoCalled(int stakes, bool byPlayer)
     {
-        _stage.PlayGesture(byPlayer ? 0 : 1, "truco");
+        int callingSeat = byPlayer ? 0 : 1;
+        int callingChar = _stage != null ? _stage.CharacterAt(callingSeat) : 0;
+        string trucoClip = CharacterProgress.TrucoClip(callingChar);
+        _stage?.PlayGesture(callingSeat, trucoClip);
         Core.Systems.AudioManager.Instance?.PlaySound("truco");
         _stakesLabel.Text = $"VALE {stakes} PONTOS";
         _trucoCallDescription.Text = byPlayer
@@ -754,6 +750,20 @@ public partial class TrucoUI : Control
             _ => "TRUCO!"
         };
         _trucoOverlayLabel.Text = label;
+
+        Color stakesColor = stakes switch
+        {
+            6 => new Color("#e67e22"),
+            9 => new Color("#e12d41"),
+            12 => new Color("#a550f0"),
+            _ => Gold
+        };
+        _trucoOverlayLabel.AddThemeColorOverride("font_color", stakesColor);
+
+        if (_trucoPortrait != null)
+        {
+            _trucoPortrait.Texture = CharacterCatalog.TrucoCallSprite(callingChar, stakes);
+        }
 
         if (!byPlayer)
         {
@@ -773,6 +783,17 @@ public partial class TrucoUI : Control
         _declineBtn.Visible = !byPlayer;
         _raiseBtn.Visible = !byPlayer && stakes < 12;
         _trucoOverlay.Visible = true;
+    }
+
+    private void OnTrucoResponded(bool accepted, bool byPlayer)
+    {
+        int respondingSeat = byPlayer ? 0 : 1;
+        _stage?.PlayGesture(respondingSeat, accepted ? "accept_truco" : "decline_truco");
+        string responderName = byPlayer ? "Você" : "O adversário";
+        _statusLabel.Text = accepted
+            ? $"{responderName} aceitou o truco! A aposta subiu para {_game.CurrentStakes} pontos."
+            : $"{responderName} correu do truco.";
+        _statusLabel.AddThemeColorOverride("font_color", accepted ? Gold : Accent);
     }
 
     private void OnCardPlayed(int who, string cardDisplay, int roundIdx)
@@ -800,22 +821,26 @@ public partial class TrucoUI : Control
         RefreshTombos();
         string msg = winner switch
         {
-            0 => "Você ganhou o tombo!",
-            1 => "Oponente ganhou o tombo!",
-            _ => "Empate!"
+            0 => "Você fez o tombo! Ponto para a nossa equipe.",
+            1 => "Oponente fez o tombo!",
+            _ => "Tombo empatado!"
         };
         _statusLabel.Text = msg;
         _statusLabel.AddThemeColorOverride("font_color", winner == 0 ? SuccessGreen : (winner == 1 ? Accent : Gold));
         if (winner == 0 || winner == 1)
         {
-            _stage?.PlayGesture(winner, "victory");
+            _stage?.PlayGesture(winner, "trick_win");
+            int loser = winner == 0 ? 1 : 0;
+            _stage?.PlayGesture(loser, "trick_lose");
         }
+        _ = _stage?.CollectRoundCardsToDiscard();
     }
 
     private void OnHandEnded(bool playerWon, int pointsGained)
     {
         if (playerWon) Core.Systems.AudioManager.Instance?.PlaySound("win");
-        _stage?.PlayGesture(playerWon ? 0 : 1, "victory");
+        _stage?.PlayGesture(playerWon ? 0 : 1, "big_win");
+        _stage?.PlayGesture(playerWon ? 1 : 0, "lose");
         _handOverlayEyebrow.Text = "FIM DA MÃO";
         _handOverlayTitle.Text = playerWon ? "Você ganhou!" : "Oponente ganhou!";
         _handOverlayTitle.AddThemeColorOverride("font_color", playerWon ? SuccessGreen : Accent);
@@ -856,6 +881,7 @@ public partial class TrucoUI : Control
         {
             _statusLabel.Text = $"{_game.GetSeatName(_game.ActiveSeatIndex)} pensando...";
             _statusLabel.AddThemeColorOverride("font_color", TextSecondary);
+            _stage?.PlayGesture(_game.ActiveSeatIndex, "think");
         }
 
         if (p != TrucoGameManager.TrucoPhase.TrucoRequested)

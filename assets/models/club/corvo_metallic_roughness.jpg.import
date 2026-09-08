@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b0dw0ulvttpyc"
-path="res://.godot/imported/corvo_metallic_roughness.jpg-d9d3ec65f872ed50a970608760a5cc0b.ctex"
+path.s3tc="res://.godot/imported/corvo_metallic_roughness.jpg-d9d3ec65f872ed50a970608760a5cc0b.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "a0cd1d39b56a44f90ecd757a89732cc1"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/models/club/corvo_metallic_roughness.jpg"
-dest_files=["res://.godot/imported/corvo_metallic_roughness.jpg-d9d3ec65f872ed50a970608760a5cc0b.ctex"]
+dest_files=["res://.godot/imported/corvo_metallic_roughness.jpg-d9d3ec65f872ed50a970608760a5cc0b.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

@@ -4,6 +4,29 @@
 
 ## Pedido vigente do usuário
 
+### Atualização de continuidade — Patch 23 Concluído com Sucesso
+
+- **Direção Cinematográfica & Fim da Tela Preta:** Corrigido o vetor de interpolação da cutscene de entrada em `TableStage.cs`, onde a descida afundava a lente para `Y = -0.30m` no interior da mesa de madeira sólida (`Y = 0.08m` topo, `-0.15m` base), gerando tela preta. Todas as câmeras foram fixadas em `Y >= 1.58m`, garantindo visão limpa.
+- **Close-Up e Pôquer com Chefe:** No Pôquer (`boss == true`), adicionado plano geral do salão (`Y = 2.75m`), corte direto para close-up fechado no rosto e olhos do chefe (`Fov = 28.0f`, distância 1.12m), disparo de animação temática do boss (`boss_intro`/`flourish`), música misteriosa (`midnight-baron`) e som de chegada (`boss-arrival`), seguido de varredura superior suave até o POV do jogador (`Y = 1.63m`).
+- **Tomada do Canto do Salão e Personagens Sentando (Truco & Fodinha):** Em mesas sem chefe (`boss == false`), o primeiro plano agora posiciona a câmera estrategicamente no canto alto do salão (`Vector3(-4.9f, 3.45f, 4.6f)`, `Fov = 52.0f`) enquadrando o salão aristocrático completo (lareira com iluminação trêmula, relógio de pêndulo, carrinho de bar clássico e poltronas); todos os personagens sentam simultaneamente em suas poltronas (`PlayGesture(i, "entrance")`), com transição orbital panorâmica elevada antes do POV.
+- **Recolhimento Realista de Cartas e Encaixe Físico do Baralho:** Eliminados todos os `Label3D` flutuantes das cartas descartadas (`lbl.QueueFree()`). As cartas jogadas da rodada são unidas viradas para baixo no centro; o maço do baralho se eleva no ar (`liftHeight = 0.16m + n * 0.018m`); as cartas da mesa deslizam diretamente para baixo do baralho; o maço suspenso desce com efeito elástico amortecido e som táctil de corte (`"cut"`), formando um bloco perfeitamente alinhado e homogêneo com a capa dourada no topo.
+- **QA e Automação 100% Aprovados:**
+  - `gameplay_smoke.gd`: **287 asserções aprovadas** (`GAMEPLAY_QA PASS`).
+  - `visual_smoke.ps1`: **27 screenshots geradas**, 25 ações, 0 falhas e 0 avisos de layout (`VISUAL_QA PASS`).
+  - `visual_smoke.ps1 -CameraOnly`: **100% aprovado** sem desvios (`CAMERA_QA PASS []`).
+  - Executáveis `Game Hub.exe` e `Game Hub.pck` re-exportados e prontos para jogar.
+
+### Atualização de continuidade — Patch 22 Concluído com Sucesso
+
+- **Bugs de Animação e POV:** Corrigida a lógica de visibilidade no POV (`!isLocal`), eliminando qualquer torso/cabeça clipando na câmera do jogador local. Em modo Mesa (Overhead), todos os ocupantes são visíveis. A carta jogada agora nasce à frente da lente em POV, e animações esqueléticas suprimem o solavanco rígido em `PlayTableAction`.
+- **Ritmo do Truco:** Identificado que `settings.cfg` estava com `ReduceMotion=true` (acessibilidade extrema que zerava os tempos de espera), corrigido para `false`. No `TrucoGameManager`, foi inserido o token `_handId` para prevenir sobreposição assíncrona entre mãos, além de pausas dramáticas de suspense no grito e resposta de Truco.
+- **Cenário Classic Club HD:** Integrado o carrinho de bar vintage (`club_bar_cart.glb`) e iluminação dinâmica com cintilação suave na lareira (`_fireplaceLight`).
+- **QA e Automação 100% Aprovados:**
+  - `gameplay_smoke.gd`: **287 asserções aprovadas** (`GAMEPLAY_QA PASS`).
+  - `visual_smoke.ps1`: **27 screenshots geradas**, 25 ações, 0 falhas e 0 avisos de layout.
+  - `visual_smoke.ps1 -CameraOnly`: **100% aprovado** (`CAMERA_QA PASS []`).
+  - Executáveis `Game Hub.exe` e `Game Hub.pck` re-exportados e prontos para jogar.
+
 - **Status Atual — ETAPAS CONCLUÍDAS E VALIDADAS (Patch 10, 11 & 12):**
   - **Mãos Articuladas em 5 Falanges e Acessórios Exclusivos (Patch 12):** Cada um dos 8 personagens (`nina`, `bento`, `corvo`, `onca`, `iara`, `zeca`, `barao`, `dama`) possui mãos com 5 dígitos individuais e falanges anatômicas (`ThumbProximal/Distal`, `IndexProximal/Distal`, `MiddleProximal/Distal`, `RingProximal/Distal`, `PinkyProximal/Distal`), além de garras em queratina e esporão no Seu Corvo. Cada personagem recebeu acabamento exclusivo nos pulsos e mãos (luvas sem dedos com rebites na Nina, relógio clássico e anel no Bento, anel de sinete de rubi no Corvo, garras douradas na Onça, bracelete de lótus na Iara, luvas de croupier peroladas no Zeca, anel de safira no Barão e bracelete de serpente na Dama).
   - **Carta 3D Física na Mão:** Carta com espessura e acabamento fino mantida entre o polegar e o indicador na mão ativa durante a animação `play_card`. O jogador e adversários transportam fisicamente a carta até o feltro no frame 26.

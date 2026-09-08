@@ -1,6 +1,7 @@
 """Blender 5.2: Rigged and Animated High-Fidelity Character Cast Generator.
-Builds skeletal armatures, applies automatic weight skinning, animates 7 fluid Bezier
-action clips per character, and exports to assets/models/club/{ident}.glb and portraits.
+Builds skeletal armatures with articulated ears (Zeca), wings (Corvo, Barão), and tail,
+applies automatic weight skinning, animates 39 rich Bezier action clips per character,
+and exports to assets/models/club/{ident}.glb and portraits.
 """
 import bpy
 import os
@@ -106,18 +107,19 @@ def build_character(ident, blend_name, skin_hex, char_type):
 
     eb = arm_data.edit_bones
 
-    def add_bone(name, head, tail, parent=None):
+    def add_bone(name, head, tail, parent=None, deform=True):
         b = eb.new(name)
         b.head = Vector(head)
         b.tail = Vector(tail)
+        b.use_deform = deform
         if parent:
             b.parent = parent
             b.use_connect = False
         return b
 
     # Core Spine Chain
-    root = add_bone("Root", (0, 0, 0), (0, 0, 0.15))
-    pelvis = add_bone("Pelvis", (0, 0, 0.88), (0, 0, 1.02), root)
+    root = add_bone("Root", (0, 0, 0), (0, 0, 0.15), deform=False)
+    pelvis = add_bone("Pelvis", (0, 0, 0.88), (0, 0, 1.02), root, deform=True)
     spine = add_bone("Spine", (0, 0, 1.02), (0, 0, 1.22), pelvis)
     chest = add_bone("Chest", (0, 0, 1.22), (0, 0, 1.42), spine)
     neck = add_bone("Neck", (0, 0, 1.42), (0, -0.02, 1.54), chest)
@@ -133,6 +135,9 @@ def build_character(ident, blend_name, skin_hex, char_type):
     ua_r = add_bone("UpperArm.R", (-0.22, 0.01, 1.38), (-0.33, 0.04, 1.08), sh_r)
     fa_r = add_bone("Forearm.R", (-0.33, 0.04, 1.08), (-0.26, -0.15, 0.84), ua_r)
     h_r = add_bone("Hand.R", (-0.26, -0.15, 0.84), (-0.18, -0.26, 0.80), fa_r)
+
+    # Card socket marker bone on dominant right hand (non-deforming)
+    card_sock = add_bone("CardSocket.R", (-0.18, -0.26, 0.80), (-0.18, -0.32, 0.80), h_r, deform=False)
 
     # Lower Body
     if char_type == "snake":
@@ -161,6 +166,9 @@ def build_character(ident, blend_name, skin_hex, char_type):
         # Bushy fox tail
         tail1 = add_bone("Tail.01", (0, 0.16, 0.80), (0, 0.38, 0.60), pelvis)
         tail2 = add_bone("Tail.02", (0, 0.38, 0.60), (0, 0.48, 0.30), tail1)
+        # Articulated fox ears parented to Head
+        ear_l = add_bone("Ear.L", (0.10, -0.04, 1.78), (0.16, -0.02, 2.00), head, deform=True)
+        ear_r = add_bone("Ear.R", (-0.10, -0.04, 1.78), (-0.16, -0.02, 2.00), head, deform=True)
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -186,7 +194,6 @@ def build_character(ident, blend_name, skin_hex, char_type):
 
     arm_obj.animation_data_create()
 
-    # Helper function to keyframe a bone with Bezier curves
     def key_rot(bone_name, action, keys):
         pb = arm_obj.pose.bones.get(bone_name)
         if not pb:
@@ -203,473 +210,549 @@ def build_character(ident, blend_name, skin_hex, char_type):
             pb.location = loc_tuple
             pb.keyframe_insert(data_path="location", frame=frame)
 
-    # -------------------------------------------------------------
-    # 1. IDLE CLIP (64 frames, smooth looping breathing & alertness)
-    # -------------------------------------------------------------
-    act_idle = bpy.data.actions.new(name="idle")
-    arm_obj.animation_data.action = act_idle
+    def add_action(name, total_frames, curves):
+        act = bpy.data.actions.new(name=name)
+        arm_obj.animation_data.action = act
+        for bone_name, (loc_keys, rot_keys) in curves.items():
+            if loc_keys:
+                key_loc(bone_name, act, loc_keys)
+            if rot_keys:
+                key_rot(bone_name, act, rot_keys)
+        smooth_fcurves(act)
+        track = arm_obj.animation_data.nla_tracks.new()
+        track.name = name
+        strip = track.strips.new(name, 1, act)
+        if name in ("idle", "idle_table_01", "idle_table_02"):
+            strip.extrapolation = 'HOLD'
+        return act
 
-    # Pelvis gentle vertical breathing bounce
-    key_loc("Pelvis", act_idle, [
-        (1,  (0, 0, 0)),
-        (32, (0, 0, 0.035)),
-        (64, (0, 0, 0))
-    ])
-    # Spine breathing arch
-    key_rot("Spine", act_idle, [
-        (1,  (0, 0, 0)),
-        (32, (-0.08, 0, 0)),
-        (64, (0, 0, 0))
-    ])
-    # Chest full respiration swell
-    key_loc("Chest", act_idle, [
-        (1,  (0, 0, 0)),
-        (32, (0, 0.025, 0.05)),
-        (64, (0, 0, 0))
-    ])
-    key_rot("Chest", act_idle, [
-        (1,  (0, 0, 0)),
-        (32, (-0.14, 0, 0)),
-        (64, (0, 0, 0))
-    ])
-    # Neck micro-movement
-    key_rot("Neck", act_idle, [
-        (1,  (0, 0, 0)),
-        (20, (0.04, 0.04, 0)),
-        (44, (-0.04, -0.04, 0)),
-        (64, (0, 0, 0))
-    ])
-    # Head alert living gaze (subtle nod, glances left/right)
-    key_rot("Head", act_idle, [
-        (1,  (0, 0, 0)),
-        (18, (-0.08, 0.12, 0.06)),
-        (36, (0.10, 0, 0)),
-        (50, (-0.06, -0.12, -0.06)),
-        (64, (0, 0, 0))
-    ])
-    # Shoulders gentle breathing lift
-    key_rot("Shoulder.L", act_idle, [
-        (1,  (0, 0, 0)),
-        (32, (-0.05, 0.08, 0.06)),
-        (64, (0, 0, 0))
-    ])
-    key_rot("Shoulder.R", act_idle, [
-        (1,  (0, 0, 0)),
-        (32, (-0.05, -0.08, -0.06)),
-        (64, (0, 0, 0))
-    ])
-    # Arms holding cards with natural organic breathing motion
-    key_rot("UpperArm.L", act_idle, [
-        (1,  (0.10, 0.06, 0.04)),
-        (32, (-0.12, 0.02, 0.01)),
-        (64, (0.10, 0.06, 0.04))
-    ])
-    key_rot("UpperArm.R", act_idle, [
-        (1,  (0.10, -0.06, -0.04)),
-        (32, (-0.12, -0.02, -0.01)),
-        (64, (0.10, -0.06, -0.04))
-    ])
-    key_rot("Forearm.L", act_idle, [
-        (1,  (-0.14, 0.05, 0)),
-        (32, (0.10, 0.02, 0)),
-        (64, (-0.14, 0.05, 0))
-    ])
-    key_rot("Forearm.R", act_idle, [
-        (1,  (-0.14, -0.05, 0)),
-        (32, (0.10, -0.02, 0)),
-        (64, (-0.14, -0.05, 0))
-    ])
-    key_rot("Hand.L", act_idle, [
-        (1,  (0, 0, 0)),
-        (32, (-0.12, 0.06, 0)),
-        (64, (0, 0, 0))
-    ])
-    key_rot("Hand.R", act_idle, [
-        (1,  (0, 0, 0)),
-        (32, (-0.12, -0.06, 0)),
-        (64, (0, 0, 0))
-    ])
-    if char_type == "wings":
-        key_rot("Wing.L", act_idle, [
-            (1,  (0, 0, 0)),
-            (32, (-0.18, 0.32, 0.20)),
-            (64, (0, 0, 0))
-        ])
-        key_rot("Wing.R", act_idle, [
-            (1,  (0, 0, 0)),
-            (32, (-0.18, -0.32, -0.20)),
-            (64, (0, 0, 0))
-        ])
-    if char_type == "tail":
-        key_rot("Tail.01", act_idle, [
-            (1,  (0, 0, 0)),
-            (18, (0.10, 0.38, 0.15)),
-            (48, (-0.08, -0.38, -0.15)),
-            (64, (0, 0, 0))
-        ])
-        key_rot("Tail.02", act_idle, [
-            (1,  (0, 0, 0)),
-            (24, (0.15, 0.55, 0.22)),
-            (54, (-0.12, -0.55, -0.22)),
-            (64, (0, 0, 0))
-        ])
-    if char_type == "snake":
-        key_rot("Tail.01", act_idle, [(1, (0, 0, 0)), (20, (0.06, 0.25, 0)), (44, (-0.06, -0.25, 0)), (64, (0, 0, 0))])
-        key_rot("Tail.02", act_idle, [(1, (0, 0, 0)), (28, (-0.08, -0.30, 0)), (52, (0.08, 0.30, 0)), (64, (0, 0, 0))])
-        key_rot("Tail.03", act_idle, [(1, (0, 0, 0)), (36, (0.08, 0.35, 0)), (58, (-0.08, -0.35, 0)), (64, (0, 0, 0))])
-        key_rot("Tail.04", act_idle, [(1, (0, 0, 0)), (24, (-0.10, -0.38, 0)), (48, (0.10, 0.38, 0)), (64, (0, 0, 0))])
-        key_rot("Tail.05", act_idle, [(1, (0, 0, 0)), (32, (0.12, 0.42, 0)), (56, (-0.12, -0.42, 0)), (64, (0, 0, 0))])
+    # Secondary acting generators for Corvo (wings), Zeca (tail + ears), and Dama (snake coils)
+    def sec_curves(clip_type, total_f):
+        res = {}
+        if char_type == "wings":
+            if clip_type in ("big_win", "victory"):
+                res["Wing.L"] = (None, [(1, (0, 0, 0)), (int(total_f*0.5), (0.20, 0.95, 0.60)), (total_f, (0, 0, 0))])
+                res["Wing.R"] = (None, [(1, (0, 0, 0)), (int(total_f*0.5), (0.20, -0.95, -0.60)), (total_f, (0, 0, 0))])
+            elif clip_type in ("truco", "all_in", "flourish"):
+                res["Wing.L"] = (None, [(1, (0, 0, 0)), (int(total_f*0.45), (-0.35, 0.85, 0.45)), (total_f, (0, 0, 0))])
+                res["Wing.R"] = (None, [(1, (0, 0, 0)), (int(total_f*0.45), (-0.35, -0.85, -0.45)), (total_f, (0, 0, 0))])
+            elif clip_type in ("boss_intro", "entrance"):
+                res["Wing.L"] = (None, [(1, (0, 0, 0)), (int(total_f*0.4), (-0.25, 0.60, 0.35)), (total_f, (0, 0, 0))])
+                res["Wing.R"] = (None, [(1, (0, 0, 0)), (int(total_f*0.4), (-0.25, -0.60, -0.35)), (total_f, (0, 0, 0))])
+            elif clip_type in ("bid_confident", "play_card_dramatic"):
+                res["Wing.L"] = (None, [(1, (0, 0, 0)), (int(total_f*0.5), (-0.15, 0.35, 0.15)), (total_f, (0, 0, 0))])
+                res["Wing.R"] = (None, [(1, (0, 0, 0)), (int(total_f*0.5), (-0.15, -0.35, -0.15)), (total_f, (0, 0, 0))])
+            else:
+                # Idle subtle breathing flutter
+                res["Wing.L"] = (None, [(1, (0, 0, 0)), (int(total_f*0.5), (-0.08, 0.12, 0.08)), (total_f, (0, 0, 0))])
+                res["Wing.R"] = (None, [(1, (0, 0, 0)), (int(total_f*0.5), (-0.08, -0.12, -0.08)), (total_f, (0, 0, 0))])
 
-    smooth_fcurves(act_idle)
-    track = arm_obj.animation_data.nla_tracks.new()
-    track.name = "idle"
-    strip = track.strips.new("idle", 1, act_idle)
-    strip.extrapolation = 'HOLD'
+        if char_type == "tail":
+            # Continuous expressive tail acting in every single clip
+            if clip_type in ("big_win", "victory", "trick_win"):
+                res["Tail.01"] = (None, [(1, (0, 0, 0)), (int(total_f*0.3), (0.22, 0.50, 0.20)), (int(total_f*0.7), (0.18, -0.50, -0.20)), (total_f, (0, 0, 0))])
+                res["Tail.02"] = (None, [(1, (0, 0, 0)), (int(total_f*0.35), (0.28, 0.65, 0.25)), (int(total_f*0.75), (0.24, -0.65, -0.25)), (total_f, (0, 0, 0))])
+                res["Ear.L"] = (None, [(1, (0, 0, 0)), (int(total_f*0.5), (0.18, 0.12, 0.10)), (total_f, (0, 0, 0))])
+                res["Ear.R"] = (None, [(1, (0, 0, 0)), (int(total_f*0.5), (0.18, -0.12, -0.10)), (total_f, (0, 0, 0))])
+            elif clip_type in ("truco", "all_in", "taunt"):
+                # Tail coils back in anticipation then snaps forward
+                res["Tail.01"] = (None, [(1, (0, 0, 0)), (int(total_f*0.25), (-0.18, 0.35, 0.12)), (int(total_f*0.55), (0.35, -0.55, -0.20)), (total_f, (0, 0, 0))])
+                res["Tail.02"] = (None, [(1, (0, 0, 0)), (int(total_f*0.28), (-0.22, 0.45, 0.15)), (int(total_f*0.6), (0.42, -0.70, -0.25)), (total_f, (0, 0, 0))])
+                res["Ear.L"] = (None, [(1, (0, 0, 0)), (int(total_f*0.45), (0.25, 0.08, 0.15)), (total_f, (0, 0, 0))])
+                res["Ear.R"] = (None, [(1, (0, 0, 0)), (int(total_f*0.45), (0.25, -0.08, -0.15)), (total_f, (0, 0, 0))])
+            elif clip_type in ("lose", "trick_lose", "life_lost", "bad_beat", "decline_truco"):
+                # Tail tucked low between legs in dejection
+                res["Tail.01"] = (None, [(1, (0, 0, 0)), (int(total_f*0.4), (-0.32, 0.08, 0)), (total_f, (0, 0, 0))])
+                res["Tail.02"] = (None, [(1, (0, 0, 0)), (int(total_f*0.45), (-0.38, 0.10, 0)), (total_f, (0, 0, 0))])
+                res["Ear.L"] = (None, [(1, (0, 0, 0)), (int(total_f*0.45), (-0.22, 0.18, -0.12)), (total_f, (0, 0, 0))])
+                res["Ear.R"] = (None, [(1, (0, 0, 0)), (int(total_f*0.45), (-0.22, -0.18, 0.12)), (total_f, (0, 0, 0))])
+            elif clip_type in ("think", "inspect_hand", "suspicious"):
+                # Curious, inquisitive upward curve with subtle ear twitches
+                res["Tail.01"] = (None, [(1, (0, 0, 0)), (int(total_f*0.4), (0.16, 0.28, 0.15)), (int(total_f*0.75), (0.08, -0.22, -0.10)), (total_f, (0, 0, 0))])
+                res["Tail.02"] = (None, [(1, (0, 0, 0)), (int(total_f*0.45), (0.24, 0.40, 0.22)), (int(total_f*0.8), (0.12, -0.32, -0.15)), (total_f, (0, 0, 0))])
+                res["Ear.L"] = (None, [(1, (0, 0, 0)), (int(total_f*0.3), (0.20, 0.14, 0.10)), (int(total_f*0.65), (-0.08, 0.05, 0)), (total_f, (0, 0, 0))])
+                res["Ear.R"] = (None, [(1, (0, 0, 0)), (int(total_f*0.35), (-0.08, -0.10, -0.05)), (int(total_f*0.7), (0.22, -0.16, -0.12)), (total_f, (0, 0, 0))])
+            else:
+                # Default smooth living tail wag
+                res["Tail.01"] = (None, [(1, (0, 0, 0)), (int(total_f*0.3), (0.12, 0.35, 0.14)), (int(total_f*0.75), (-0.10, -0.35, -0.14)), (total_f, (0, 0, 0))])
+                res["Tail.02"] = (None, [(1, (0, 0, 0)), (int(total_f*0.35), (0.16, 0.50, 0.20)), (int(total_f*0.8), (-0.12, -0.50, -0.20)), (total_f, (0, 0, 0))])
+                res["Ear.L"] = (None, [(1, (0, 0, 0)), (int(total_f*0.5), (0.08, 0.05, 0.04)), (total_f, (0, 0, 0))])
+                res["Ear.R"] = (None, [(1, (0, 0, 0)), (int(total_f*0.5), (0.08, -0.05, -0.04)), (total_f, (0, 0, 0))])
 
-    # -------------------------------------------------------------
-    # 2. ENTRANCE CLIP (48 frames, refined courtly arrival and bow)
-    # -------------------------------------------------------------
-    act_ent = bpy.data.actions.new(name="entrance")
-    arm_obj.animation_data.action = act_ent
+        if char_type == "snake":
+            for i, bn in enumerate(["Tail.01", "Tail.02", "Tail.03", "Tail.04", "Tail.05"]):
+                phase = i * 0.12
+                res[bn] = (None, [
+                    (1, (0, 0, 0)),
+                    (int(total_f * (0.3 + phase*0.5)), (0.08, 0.30, 0)),
+                    (int(total_f * (0.7 + phase*0.2)), (-0.08, -0.30, 0)),
+                    (total_f, (0, 0, 0))
+                ])
+        return res
 
-    key_loc("Pelvis", act_ent, [
-        (1,  (0, 0.38, 0.14)),
-        (24, (0, -0.10, -0.06)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Spine", act_ent, [
-        (1,  (0.25, 0, 0)),
-        (20, (-0.52, 0, 0)),
-        (36, (-0.20, 0, 0)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Head", act_ent, [
-        (1,  (-0.18, 0, 0)),
-        (20, (0.42, 0, 0)),
-        (36, (0.14, 0, 0)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("UpperArm.R", act_ent, [
-        (1,  (0, 0, 0)),
-        (20, (-0.95, -0.40, -0.45)),
-        (36, (-0.45, -0.15, -0.15)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Forearm.R", act_ent, [
-        (1,  (0, 0, 0)),
-        (20, (-0.65, 0.25, 0.15)),
-        (36, (-0.30, 0, 0)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("UpperArm.L", act_ent, [
-        (1,  (0, 0, 0)),
-        (20, (-0.35, 0.25, 0.20)),
-        (48, (0, 0, 0))
-    ])
-    if char_type == "wings":
-        key_rot("Wing.L", act_ent, [(1, (0, 0, 0)), (20, (-0.25, 0.55, 0.30)), (48, (0, 0, 0))])
-        key_rot("Wing.R", act_ent, [(1, (0, 0, 0)), (20, (-0.25, -0.55, -0.30)), (48, (0, 0, 0))])
-    if char_type == "tail":
-        key_rot("Tail.01", act_ent, [(1, (0, 0, 0)), (20, (0.15, 0.40, 0)), (48, (0, 0, 0))])
+    # =========================================================================
+    # 1. CORE PRESERVED & ENHANCED CLIPS (Contracts strictly preserved)
+    # =========================================================================
 
-    smooth_fcurves(act_ent)
-    track = arm_obj.animation_data.nla_tracks.new()
-    track.name = "entrance"
-    strip = track.strips.new("entrance", 1, act_ent)
+    # --- IDLE (64 frames, loop) ---
+    c_idle = {
+        "Pelvis": ([(1, (0, 0, 0)), (32, (0, 0, 0.015)), (64, (0, 0, 0))], None),
+        "Spine": (None, [(1, (0, 0, 0)), (32, (-0.05, 0, 0)), (64, (0, 0, 0))]),
+        "Chest": (None, [(1, (0, 0, 0)), (32, (-0.08, 0, 0)), (64, (0, 0, 0))]),
+        "Neck": (None, [(1, (0, 0, 0)), (20, (0.03, 0.03, 0)), (44, (-0.03, -0.03, 0)), (64, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (18, (-0.06, 0.08, 0.04)), (36, (0.08, 0, 0)), (50, (-0.05, -0.08, -0.04)), (64, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0.10, 0.06, 0.04)), (32, (-0.12, 0.02, 0.01)), (64, (0.10, 0.06, 0.04))]),
+        "UpperArm.R": (None, [(1, (0.10, -0.06, -0.04)), (32, (-0.12, -0.02, -0.01)), (64, (0.10, -0.06, -0.04))]),
+        "Forearm.L": (None, [(1, (-0.14, 0.05, 0)), (32, (0.10, 0.02, 0)), (64, (-0.14, 0.05, 0))]),
+        "Forearm.R": (None, [(1, (-0.14, -0.05, 0)), (32, (0.10, -0.02, 0)), (64, (-0.14, -0.05, 0))]),
+        "Hand.L": (None, [(1, (0, 0, 0)), (32, (-0.12, 0.06, 0)), (64, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (32, (-0.12, -0.06, 0)), (64, (0, 0, 0))]),
+    }
+    c_idle.update(sec_curves("idle", 64))
+    add_action("idle", 64, c_idle)
 
-    # -------------------------------------------------------------
-    # 3. TRUCO CLIP (48 frames, explosive high-stakes table challenge)
-    # -------------------------------------------------------------
-    act_truco = bpy.data.actions.new(name="truco")
-    arm_obj.animation_data.action = act_truco
+    # --- ENTRANCE (48 frames) ---
+    c_ent = {
+        "Pelvis": ([(1, (0, 0.18, 0.05)), (20, (0, -0.04, -0.02)), (48, (0, 0, 0))], None),
+        "Spine": (None, [(1, (0.15, 0, 0)), (20, (-0.32, 0, 0)), (36, (-0.12, 0, 0)), (48, (0, 0, 0))]),
+        "Chest": (None, [(1, (0.12, 0, 0)), (20, (-0.26, 0, 0)), (36, (-0.10, 0, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (-0.12, 0, 0)), (20, (0.30, 0, 0)), (36, (0.10, 0, 0)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (20, (-0.65, -0.25, -0.28)), (36, (-0.30, -0.10, -0.10)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (20, (-0.45, 0.15, 0.10)), (36, (-0.20, 0, 0)), (48, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (20, (-0.25, 0.15, 0.12)), (48, (0, 0, 0))]),
+    }
+    c_ent.update(sec_curves("entrance", 48))
+    add_action("entrance", 48, c_ent)
 
-    key_loc("Chest", act_truco, [
-        (1,  (0, 0, 0)),
-        (10, (0, 0.18, 0.12)),
-        (22, (0, -0.38, -0.06)),
-        (36, (0, -0.24, -0.03)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Chest", act_truco, [
-        (1,  (0, 0, 0)),
-        (10, (0.24, 0, 0)),
-        (22, (-0.58, 0, 0)),
-        (36, (-0.38, 0, 0)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Head", act_truco, [
-        (1,  (0, 0, 0)),
-        (10, (-0.22, 0, 0)),
-        (22, (0.48, 0, 0)),
-        (36, (0.28, 0, 0)),
-        (48, (0, 0, 0))
-    ])
-    # Dominant arm challenge slam
-    key_rot("UpperArm.R", act_truco, [
-        (1,  (0, 0, 0)),
-        (10, (0.75, 0.25, 0.35)),
-        (22, (-1.45, -0.25, -0.35)),
-        (36, (-1.10, -0.18, -0.25)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Forearm.R", act_truco, [
-        (1,  (0, 0, 0)),
-        (10, (-0.85, 0, 0)),
-        (22, (-0.65, 0, -0.30)),
-        (36, (-0.45, 0, -0.20)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("UpperArm.L", act_truco, [
-        (1,  (0, 0, 0)),
-        (22, (-0.45, 0.25, 0.25)),
-        (48, (0, 0, 0))
-    ])
-    if char_type == "wings":
-        key_rot("Wing.L", act_truco, [(1, (0, 0, 0)), (22, (-0.35, 0.85, 0.45)), (48, (0, 0, 0))])
-        key_rot("Wing.R", act_truco, [(1, (0, 0, 0)), (22, (-0.35, -0.85, -0.45)), (48, (0, 0, 0))])
-    if char_type == "tail":
-        key_rot("Tail.01", act_truco, [(1, (0, 0, 0)), (22, (0.25, 0.50, 0)), (48, (0, 0, 0))])
+    # --- TRUCO (48 frames) ---
+    c_truco = {
+        "Pelvis": ([(1, (0, 0, 0)), (10, (0, 0.04, 0.02)), (22, (0, -0.06, -0.03)), (36, (0, -0.03, -0.01)), (48, (0, 0, 0))], None),
+        "Spine": (None, [(1, (0, 0, 0)), (10, (0.16, 0, 0)), (22, (-0.32, 0, 0)), (36, (-0.18, 0, 0)), (48, (0, 0, 0))]),
+        "Chest": (None, [(1, (0, 0, 0)), (10, (0.18, 0, 0)), (22, (-0.36, 0, 0)), (36, (-0.20, 0, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (10, (-0.18, 0.08, 0)), (22, (0.35, 0, 0)), (36, (0.20, 0, 0)), (48, (0, 0, 0))]),
+        "Shoulder.R": (None, [(1, (0, 0, 0)), (10, (0.12, -0.08, 0.10)), (22, (-0.22, 0.14, -0.12)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (10, (0.65, 0.18, 0.25)), (22, (-0.95, -0.18, -0.25)), (36, (-0.68, -0.12, -0.16)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (10, (-0.75, 0, 0)), (22, (-0.45, 0, -0.18)), (36, (-0.30, 0, -0.10)), (48, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (10, (-0.25, 0, 0)), (22, (0.42, 0, 0)), (36, (0.18, 0, 0)), (48, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (22, (-0.35, 0.18, 0.16)), (48, (0, 0, 0))]),
+    }
+    c_truco.update(sec_curves("truco", 48))
+    add_action("truco", 48, c_truco)
 
-    smooth_fcurves(act_truco)
-    track = arm_obj.animation_data.nla_tracks.new()
-    track.name = "truco"
-    strip = track.strips.new("truco", 1, act_truco)
+    # --- VICTORY (48 frames) ---
+    c_vic = {
+        "Pelvis": ([(1, (0, 0, 0)), (14, (0, 0.02, 0.03)), (28, (0, 0, 0.05)), (48, (0, 0, 0))], None),
+        "Spine": (None, [(1, (0, 0, 0)), (28, (-0.14, 0.02, 0)), (48, (0, 0, 0))]),
+        "Chest": (None, [(1, (0, 0, 0)), (28, (-0.18, 0.02, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (28, (0.24, 0.04, 0)), (48, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (28, (-1.85, 0.40, 1.35)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (28, (-1.85, -0.40, -1.35)), (48, (0, 0, 0))]),
+        "Forearm.L": (None, [(1, (0, 0, 0)), (28, (0.25, 0.08, 0)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (28, (0.25, -0.08, 0)), (48, (0, 0, 0))]),
+        "Hand.L": (None, [(1, (0, 0, 0)), (28, (0.35, 0, 0.20)), (48, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (28, (0.35, 0, -0.20)), (48, (0, 0, 0))]),
+    }
+    c_vic.update(sec_curves("victory", 48))
+    add_action("victory", 48, c_vic)
 
-    # -------------------------------------------------------------
-    # 4. VICTORY CLIP (48 frames, triumphant celebration & arms raised)
-    # -------------------------------------------------------------
-    act_vic = bpy.data.actions.new(name="victory")
-    arm_obj.animation_data.action = act_vic
+    # --- BOSS_INTRO (56 frames) ---
+    c_boss = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (-0.14, 0.08, 0)), (36, (-0.14, -0.08, 0)), (56, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (18, (0.12, 0.24, 0.08)), (36, (0.12, -0.24, -0.08)), (56, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (24, (-0.50, 0.26, 0.22)), (56, (0, 0, 0))]),
+        "Forearm.L": (None, [(1, (0, 0, 0)), (24, (-1.10, 0.12, 0.20)), (56, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (24, (-0.54, -0.24, -0.20)), (56, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (24, (-1.10, -0.12, -0.20)), (56, (0, 0, 0))]),
+    }
+    c_boss.update(sec_curves("boss_intro", 56))
+    add_action("boss_intro", 56, c_boss)
 
-    key_loc("Chest", act_vic, [
-        (1,  (0, 0, 0)),
-        (14, (0, 0.08, 0.12)),
-        (28, (0, -0.04, 0.15)),
-        (40, (0, 0, 0.08)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Chest", act_vic, [
-        (1,  (0, 0, 0)),
-        (14, (0.28, 0, 0)),
-        (28, (0.38, 0.08, 0)),
-        (40, (0.22, 0.04, 0)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Head", act_vic, [
-        (1,  (0, 0, 0)),
-        (14, (-0.28, 0, 0)),
-        (28, (-0.42, 0.06, 0)),
-        (40, (-0.22, 0.02, 0)),
-        (48, (0, 0, 0))
-    ])
-    # Both arms raised in triumph
-    key_rot("UpperArm.L", act_vic, [
-        (1,  (0, 0, 0)),
-        (22, (1.75, 0.45, 0.55)),
-        (34, (1.85, 0.35, 0.45)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("UpperArm.R", act_vic, [
-        (1,  (0, 0, 0)),
-        (22, (1.75, -0.45, -0.55)),
-        (34, (1.85, -0.35, -0.45)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Forearm.L", act_vic, [
-        (1,  (0, 0, 0)),
-        (22, (-0.85, 0, 0)),
-        (34, (-0.95, 0, 0)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Forearm.R", act_vic, [
-        (1,  (0, 0, 0)),
-        (22, (-0.85, 0, 0)),
-        (34, (-0.95, 0, 0)),
-        (48, (0, 0, 0))
-    ])
-    if char_type == "wings":
-        key_rot("Wing.L", act_vic, [(1, (0, 0, 0)), (24, (0.20, 0.95, 0.60)), (48, (0, 0, 0))])
-        key_rot("Wing.R", act_vic, [(1, (0, 0, 0)), (24, (0.20, -0.95, -0.60)), (48, (0, 0, 0))])
-    if char_type == "tail":
-        key_rot("Tail.01", act_vic, [(1, (0, 0, 0)), (16, (0.20, 0.45, 0)), (32, (0.15, -0.45, 0)), (48, (0, 0, 0))])
+    # --- FLOURISH (48 frames) ---
+    c_flourish = {
+        "Chest": (None, [(1, (0, 0, 0)), (16, (-0.22, 0.20, 0.10)), (32, (0.12, -0.18, -0.06)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (16, (0.22, -0.16, -0.06)), (32, (-0.10, 0.16, 0.05)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (16, (-0.65, -0.25, -0.25)), (30, (-0.85, -0.32, -0.32)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (16, (-0.65, 0.18, 0.18)), (30, (-0.35, -0.14, -0.10)), (48, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (16, (0.35, 0.18, 0.15)), (30, (-0.40, -0.22, -0.18)), (48, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (22, (-0.40, 0.25, 0.18)), (48, (0, 0, 0))]),
+    }
+    c_flourish.update(sec_curves("flourish", 48))
+    add_action("flourish", 48, c_flourish)
 
-    smooth_fcurves(act_vic)
-    track = arm_obj.animation_data.nla_tracks.new()
-    track.name = "victory"
-    strip = track.strips.new("victory", 1, act_vic)
+    # --- PLAY_CARD (48 frames, synchronized CardGrab @12, CardRelease @24) ---
+    c_play = {
+        "Pelvis": ([(1, (0, 0, 0)), (24, (0, -0.03, -0.015)), (48, (0, 0, 0))], None),
+        "Spine": (None, [(1, (0, 0, 0)), (12, (0.08, 0, 0)), (24, (-0.20, 0.04, 0)), (48, (0, 0, 0))]),
+        "Chest": (None, [(1, (0, 0, 0)), (12, (0.10, -0.04, 0)), (24, (-0.24, 0.06, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (12, (-0.12, 0, 0)), (24, (0.28, -0.04, 0)), (48, (0, 0, 0))]),
+        "Shoulder.R": (None, [(1, (0, 0, 0)), (12, (0.06, -0.05, 0.04)), (24, (-0.16, 0.10, -0.08)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (12, (0.35, -0.15, 0.20)), (24, (-0.85, -0.20, -0.24)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (12, (-0.65, 0.12, -0.08)), (24, (-0.42, -0.08, -0.10)), (48, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (12, (-0.20, 0.10, 0.05)), (24, (0.36, -0.12, 0.10)), (48, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (24, (-0.18, 0.10, 0.08)), (48, (0, 0, 0))]),
+    }
+    c_play.update(sec_curves("play_card", 48))
+    add_action("play_card", 48, c_play)
 
-    # -------------------------------------------------------------
-    # 5. BOSS_INTRO CLIP (56 frames, imposing imperial dominance)
-    # -------------------------------------------------------------
-    act_boss = bpy.data.actions.new(name="boss_intro")
-    arm_obj.animation_data.action = act_boss
+    # =========================================================================
+    # 2. TABLE IDLES & CONTEMPLATION
+    # =========================================================================
 
-    key_loc("Chest", act_boss, [
-        (1,  (0, 0, 0)),
-        (18, (0, 0.05, 0.08)),
-        (36, (0, -0.05, 0.10)),
-        (56, (0, 0, 0))
-    ])
-    key_rot("Chest", act_boss, [
-        (1,  (0, 0, 0)),
-        (18, (-0.18, 0.12, 0)),
-        (36, (-0.18, -0.12, 0)),
-        (56, (0, 0, 0))
-    ])
-    key_rot("Head", act_boss, [
-        (1,  (0, 0, 0)),
-        (18, (0.15, 0.32, 0.10)),
-        (36, (0.15, -0.32, -0.10)),
-        (56, (0, 0, 0))
-    ])
-    # Arms folded across chest
-    key_rot("UpperArm.L", act_boss, [
-        (1,  (0, 0, 0)),
-        (24, (-0.95, 0.45, 0.55)),
-        (56, (0, 0, 0))
-    ])
-    key_rot("Forearm.L", act_boss, [
-        (1,  (0, 0, 0)),
-        (24, (-1.55, -0.35, 0.15)),
-        (56, (0, 0, 0))
-    ])
-    key_rot("UpperArm.R", act_boss, [
-        (1,  (0, 0, 0)),
-        (24, (-1.05, -0.40, -0.50)),
-        (56, (0, 0, 0))
-    ])
-    key_rot("Forearm.R", act_boss, [
-        (1,  (0, 0, 0)),
-        (24, (-1.45, 0.40, -0.15)),
-        (56, (0, 0, 0))
-    ])
-    if char_type == "wings":
-        key_rot("Wing.L", act_boss, [(1, (0, 0, 0)), (28, (-0.25, 0.85, 0.45)), (56, (0, 0, 0))])
-        key_rot("Wing.R", act_boss, [(1, (0, 0, 0)), (28, (-0.25, -0.85, -0.45)), (56, (0, 0, 0))])
-    if char_type == "snake":
-        key_rot("Tail.01", act_boss, [(1, (0, 0, 0)), (24, (0.12, 0.25, 0)), (56, (0, 0, 0))])
-        key_rot("Tail.02", act_boss, [(1, (0, 0, 0)), (24, (-0.10, -0.28, 0)), (56, (0, 0, 0))])
+    # --- IDLE_TABLE_01 (48 frames, relaxed attentive table rest) ---
+    c_tab1 = {
+        "Pelvis": ([(1, (0, 0, 0)), (24, (0, 0, 0.010)), (48, (0, 0, 0))], None),
+        "Chest": (None, [(1, (0, 0, 0)), (24, (-0.05, 0.03, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (16, (0.05, -0.08, 0)), (32, (-0.04, 0.08, 0)), (48, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (24, (-0.08, 0.05, 0)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (24, (-0.08, -0.05, 0)), (48, (0, 0, 0))]),
+    }
+    c_tab1.update(sec_curves("idle_table_01", 48))
+    add_action("idle_table_01", 48, c_tab1)
 
-    smooth_fcurves(act_boss)
-    track = arm_obj.animation_data.nla_tracks.new()
-    track.name = "boss_intro"
-    strip = track.strips.new("boss_intro", 1, act_boss)
+    # --- IDLE_TABLE_02 (48 frames, leaning back against chair) ---
+    c_tab2 = {
+        "Pelvis": ([(1, (0, 0, 0)), (24, (0, 0.03, -0.01)), (48, (0, 0, 0))], None),
+        "Spine": (None, [(1, (0, 0, 0)), (24, (0.08, 0, 0)), (48, (0, 0, 0))]),
+        "Chest": (None, [(1, (0, 0, 0)), (24, (0.10, 0, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (24, (-0.12, 0.04, 0)), (48, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (24, (-0.25, 0.15, 0.10)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (24, (-0.25, -0.15, -0.10)), (48, (0, 0, 0))]),
+    }
+    c_tab2.update(sec_curves("idle_table_02", 48))
+    add_action("idle_table_02", 48, c_tab2)
 
-    # -------------------------------------------------------------
-    # 6. FLOURISH CLIP (48 frames, aristocratic card mastery & display)
-    # -------------------------------------------------------------
-    act_flourish = bpy.data.actions.new(name="flourish")
-    arm_obj.animation_data.action = act_flourish
+    # --- IDLE_IMPATIENT (40 frames, slight finger tap & shift) ---
+    c_impatient = {
+        "Head": (None, [(1, (0, 0, 0)), (14, (-0.06, 0.12, 0.04)), (28, (0.06, -0.10, -0.04)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (15, (-0.20, -0.10, 0)), (40, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (15, (-0.45, 0, 0)), (40, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (12, (0.25, 0, 0)), (18, (-0.15, 0, 0)), (24, (0.25, 0, 0)), (30, (-0.15, 0, 0)), (40, (0, 0, 0))]),
+    }
+    c_impatient.update(sec_curves("idle_impatient", 40))
+    add_action("idle_impatient", 40, c_impatient)
 
-    key_rot("Chest", act_flourish, [
-        (1,  (0, 0, 0)),
-        (16, (-0.28, 0.28, 0.12)),
-        (32, (0.15, -0.25, -0.08)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Head", act_flourish, [
-        (1,  (0, 0, 0)),
-        (16, (0.28, -0.22, -0.08)),
-        (32, (-0.12, 0.22, 0.06)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("UpperArm.R", act_flourish, [
-        (1,  (0, 0, 0)),
-        (16, (-0.75, -0.35, -0.35)),
-        (30, (-1.05, -0.45, -0.45)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Forearm.R", act_flourish, [
-        (1,  (0, 0, 0)),
-        (16, (-0.85, 0.25, 0.25)),
-        (30, (-0.45, -0.20, -0.15)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Hand.R", act_flourish, [
-        (1,  (0, 0, 0)),
-        (16, (0.45, 0.25, 0.20)),
-        (30, (-0.55, -0.30, -0.25)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("UpperArm.L", act_flourish, [
-        (1,  (0, 0, 0)),
-        (22, (-0.55, 0.35, 0.25)),
-        (48, (0, 0, 0))
-    ])
-    smooth_fcurves(act_flourish)
-    track = arm_obj.animation_data.nla_tracks.new()
-    track.name = "flourish"
-    strip = track.strips.new("flourish", 1, act_flourish)
+    # --- THINK (48 frames, calculating evaluation; Corvo pince-nez, Zeca chin-scratch) ---
+    c_think = {
+        "Chest": (None, [(1, (0, 0, 0)), (20, (-0.12, 0.06, 0)), (36, (-0.08, 0.04, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (20, (0.14, 0.16, 0.08)), (36, (0.10, 0.12, 0.06)), (48, (0, 0, 0))]),
+        # Right hand raises toward face / glasses / chin
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (20, (-0.60, -0.22, 0.18)), (36, (-0.50, -0.18, 0.15)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (20, (-1.05, 0.10, 0.12)), (36, (-0.95, 0.08, 0.10)), (48, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (20, (0.25, 0.12, -0.10)), (36, (0.20, 0.10, -0.08)), (48, (0, 0, 0))]),
+    }
+    c_think.update(sec_curves("think", 48))
+    add_action("think", 48, c_think)
 
-    # -------------------------------------------------------------
-    # 7. PLAY_CARD CLIP (48 frames, reach forward & tactile snap onto felt)
-    # -------------------------------------------------------------
-    act_play = bpy.data.actions.new(name="play_card")
-    arm_obj.animation_data.action = act_play
+    # --- INSPECT_HAND (44 frames, tilting cards toward gaze) ---
+    c_inspect = {
+        "Chest": (None, [(1, (0, 0, 0)), (20, (-0.14, 0, 0)), (44, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (20, (0.22, 0, 0)), (44, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (20, (-0.45, 0.18, 0.14)), (44, (0, 0, 0))]),
+        "Forearm.L": (None, [(1, (0, 0, 0)), (20, (-0.80, 0.10, 0)), (44, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (20, (-0.45, -0.18, -0.14)), (44, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (20, (-0.80, -0.10, 0)), (44, (0, 0, 0))]),
+    }
+    c_inspect.update(sec_curves("inspect_hand", 44))
+    add_action("inspect_hand", 44, c_inspect)
 
-    key_loc("Chest", act_play, [
-        (1,  (0, 0, 0)),
-        (12, (0, 0.08, 0.05)),
-        (24, (0, -0.28, -0.06)),
-        (36, (0, -0.15, -0.03)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Chest", act_play, [
-        (1,  (0, 0, 0)),
-        (12, (0.16, -0.08, 0)),
-        (24, (-0.38, 0.12, 0)),
-        (36, (-0.18, 0.05, 0)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Head", act_play, [
-        (1,  (0, 0, 0)),
-        (12, (-0.16, 0, 0)),
-        (24, (0.38, -0.06, 0)),
-        (36, (0.18, -0.03, 0)),
-        (48, (0, 0, 0))
-    ])
-    # Active playing arm (Right arm)
-    key_rot("UpperArm.R", act_play, [
-        (1,  (0, 0, 0)),
-        (12, (0.55, -0.28, 0.35)),
-        (24, (-1.35, -0.35, -0.42)),
-        (36, (-0.85, -0.20, -0.22)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Forearm.R", act_play, [
-        (1,  (0, 0, 0)),
-        (12, (-1.20, 0.20, -0.15)),
-        (24, (-0.28, -0.12, -0.22)),
-        (36, (-0.50, 0, -0.10)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Hand.R", act_play, [
-        (1,  (0, 0, 0)),
-        (12, (-0.35, 0.18, 0.10)),
-        (24, (0.55, -0.22, 0.18)), # Snap down onto felt
-        (36, (0.18, 0, 0)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("UpperArm.L", act_play, [
-        (1,  (0, 0, 0)),
-        (24, (-0.25, 0.15, 0.10)),
-        (48, (0, 0, 0))
-    ])
-    key_rot("Forearm.L", act_play, [
-        (1,  (0, 0, 0)),
-        (24, (-0.30, 0, 0)),
-        (48, (0, 0, 0))
-    ])
-    if char_type == "wings":
-        key_rot("Wing.L", act_play, [(1, (0, 0, 0)), (24, (-0.20, 0.35, 0.15)), (48, (0, 0, 0))])
-        key_rot("Wing.R", act_play, [(1, (0, 0, 0)), (24, (-0.20, -0.35, -0.15)), (48, (0, 0, 0))])
-    if char_type == "tail":
-        key_rot("Tail.01", act_play, [(1, (0, 0, 0)), (24, (0.15, 0.35, 0)), (48, (0, 0, 0))])
+    # --- HOLD_CARDS (40 frames, defensive cards-to-chest posture) ---
+    c_hold = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (-0.10, 0, 0)), (40, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (18, (-0.35, 0.22, 0.16)), (40, (0, 0, 0))]),
+        "Forearm.L": (None, [(1, (0, 0, 0)), (18, (-0.95, 0.12, 0)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (18, (-0.35, -0.22, -0.16)), (40, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (18, (-0.95, -0.12, 0)), (40, (0, 0, 0))]),
+    }
+    c_hold.update(sec_curves("hold_cards", 40))
+    add_action("hold_cards", 40, c_hold)
 
-    smooth_fcurves(act_play)
-    track = arm_obj.animation_data.nla_tracks.new()
-    track.name = "play_card"
-    strip = track.strips.new("play_card", 1, act_play)
+    # =========================================================================
+    # 3. EXTENDED CARD MANIPULATION ACTIONS
+    # =========================================================================
+
+    # --- PLAY_CARD_FAST (36 frames, crisp flick onto felt) ---
+    c_fast = {
+        "Chest": (None, [(1, (0, 0, 0)), (14, (-0.16, 0.03, 0)), (36, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (8, (0.25, -0.10, 0.15)), (16, (-0.75, -0.15, -0.20)), (36, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (8, (-0.50, 0, 0)), (16, (-0.35, 0, 0)), (36, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (8, (-0.25, 0, 0)), (16, (0.45, 0, 0)), (36, (0, 0, 0))]),
+    }
+    c_fast.update(sec_curves("play_card", 36))
+    add_action("play_card_fast", 36, c_fast)
+
+    # --- PLAY_CARD_DRAMATIC (52 frames, high arc and emphatic table slam) ---
+    c_dramatic = {
+        "Pelvis": ([(1, (0, 0, 0)), (16, (0, 0.04, 0.02)), (28, (0, -0.05, -0.02)), (52, (0, 0, 0))], None),
+        "Chest": (None, [(1, (0, 0, 0)), (16, (0.15, -0.06, 0)), (28, (-0.32, 0.08, 0)), (52, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (16, (-0.15, 0, 0)), (28, (0.30, 0, 0)), (52, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (16, (0.75, -0.25, 0.35)), (28, (-1.10, -0.22, -0.30)), (52, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (16, (-0.85, 0.15, 0)), (28, (-0.45, -0.10, -0.15)), (52, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (16, (-0.35, 0, 0)), (28, (0.50, -0.15, 0.15)), (52, (0, 0, 0))]),
+    }
+    c_dramatic.update(sec_curves("play_card_dramatic", 52))
+    add_action("play_card_dramatic", 52, c_dramatic)
+
+    # --- DEAL (48 frames, dealing cards across table) ---
+    c_deal = {
+        "Chest": (None, [(1, (0, 0, 0)), (16, (-0.12, -0.15, 0)), (32, (-0.12, 0.15, 0)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (16, (-0.55, -0.35, -0.25)), (32, (-0.55, 0.20, 0.15)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (16, (-0.40, 0.15, 0)), (32, (-0.40, -0.15, 0)), (48, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (16, (0.30, 0, 0)), (32, (0.30, 0, 0)), (48, (0, 0, 0))]),
+    }
+    c_deal.update(sec_curves("deal", 48))
+    add_action("deal", 48, c_deal)
+
+    # --- SHUFFLE (48 frames, riffle card shuffle at table) ---
+    c_shuffle = {
+        "Chest": (None, [(1, (0, 0, 0)), (24, (-0.16, 0, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (24, (0.20, 0, 0)), (48, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (24, (-0.42, 0.18, 0.15)), (48, (0, 0, 0))]),
+        "Forearm.L": (None, [(1, (0, 0, 0)), (16, (-0.70, 0, 0)), (24, (-0.85, 0.10, 0)), (32, (-0.70, 0, 0)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (24, (-0.42, -0.18, -0.15)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (16, (-0.70, 0, 0)), (24, (-0.85, -0.10, 0)), (32, (-0.70, 0, 0)), (48, (0, 0, 0))]),
+    }
+    c_shuffle.update(sec_curves("shuffle", 48))
+    add_action("shuffle", 48, c_shuffle)
+
+    # --- CUT_DECK (40 frames, single-handed cut) ---
+    c_cut = {
+        "Chest": (None, [(1, (0, 0, 0)), (20, (-0.15, -0.06, 0)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (12, (-0.45, -0.20, 0)), (20, (-0.65, -0.10, 0)), (40, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (12, (-0.60, 0.10, 0)), (20, (-0.40, 0, 0)), (40, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (12, (-0.15, 0, 0)), (20, (0.35, 0, 0)), (40, (0, 0, 0))]),
+    }
+    c_cut.update(sec_curves("cut_deck", 40))
+    add_action("cut_deck", 40, c_cut)
+
+    # =========================================================================
+    # 4. POKER ROGUELIKE ACTIONS
+    # =========================================================================
+
+    # --- CHECK (36 frames, rap knuckles on felt twice) ---
+    c_check = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (-0.12, 0.04, 0)), (36, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (12, (-0.45, -0.15, 0)), (36, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (12, (-0.65, 0, 0)), (36, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (12, (-0.20, 0, 0)), (16, (0.30, 0, 0)), (20, (-0.15, 0, 0)), (24, (0.30, 0, 0)), (36, (0, 0, 0))]),
+    }
+    c_check.update(sec_curves("check", 36))
+    add_action("check", 36, c_check)
+
+    # --- BET (40 frames, push chips forward with confidence) ---
+    c_bet = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (-0.16, 0.04, 0)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (18, (-0.65, -0.18, -0.15)), (40, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (18, (-0.45, 0.05, 0)), (40, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (18, (0.28, -0.05, 0)), (40, (0, 0, 0))]),
+    }
+    c_bet.update(sec_curves("bet", 40))
+    add_action("bet", 40, c_bet)
+
+    # --- ALL_IN (48 frames, forceful two-handed forward push) ---
+    c_allin = {
+        "Pelvis": ([(1, (0, 0, 0)), (22, (0, -0.06, -0.02)), (48, (0, 0, 0))], None),
+        "Chest": (None, [(1, (0, 0, 0)), (22, (-0.30, 0, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (22, (0.25, 0, 0)), (48, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (22, (-0.80, 0.25, 0.20)), (48, (0, 0, 0))]),
+        "Forearm.L": (None, [(1, (0, 0, 0)), (22, (-0.35, 0, 0)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (22, (-0.80, -0.25, -0.20)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (22, (-0.35, 0, 0)), (48, (0, 0, 0))]),
+    }
+    c_allin.update(sec_curves("all_in", 48))
+    add_action("all_in", 48, c_allin)
+
+    # --- FOLD (40 frames, discard hand face-down) ---
+    c_fold = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (-0.10, -0.05, 0)), (40, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (18, (-0.08, 0.12, 0)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (18, (-0.50, -0.15, -0.12)), (40, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (18, (-0.30, 0.10, 0)), (40, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (18, (-0.35, 0, 0)), (40, (0, 0, 0))]),
+    }
+    c_fold.update(sec_curves("fold", 40))
+    add_action("fold", 40, c_fold)
+
+    # --- SHOWDOWN (48 frames, expose hand with flourish) ---
+    c_showdown = {
+        "Chest": (None, [(1, (0, 0, 0)), (22, (-0.18, 0, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (22, (0.16, 0, 0)), (48, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (22, (-0.60, 0.35, 0.25)), (48, (0, 0, 0))]),
+        "Forearm.L": (None, [(1, (0, 0, 0)), (22, (0.15, 0, 0)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (22, (-0.60, -0.35, -0.25)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (22, (0.15, 0, 0)), (48, (0, 0, 0))]),
+    }
+    c_showdown.update(sec_curves("showdown", 48))
+    add_action("showdown", 48, c_showdown)
+
+    # =========================================================================
+    # 5. TRUCO ACTIONS
+    # =========================================================================
+
+    # --- ACCEPT_TRUCO (40 frames, firm nod and decisive table smack) ---
+    c_acc = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (-0.22, 0.04, 0)), (40, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (18, (0.24, -0.04, 0)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (10, (0.45, 0, 0.15)), (18, (-0.75, -0.15, -0.20)), (40, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (10, (-0.60, 0, 0)), (18, (-0.35, 0, 0)), (40, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (18, (0.35, 0, 0)), (40, (0, 0, 0))]),
+    }
+    c_acc.update(sec_curves("accept_truco", 40))
+    add_action("accept_truco", 40, c_acc)
+
+    # --- DECLINE_TRUCO (40 frames, head shake, retreating cards) ---
+    c_dec = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (0.12, 0, 0)), (40, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (12, (-0.05, 0.20, 0)), (24, (-0.05, -0.20, 0)), (40, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (18, (-0.20, 0.12, 0)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (18, (-0.20, -0.12, 0)), (40, (0, 0, 0))]),
+    }
+    c_dec.update(sec_curves("decline_truco", 40))
+    add_action("decline_truco", 40, c_dec)
+
+    # =========================================================================
+    # 6. FODINHA ACTIONS
+    # =========================================================================
+
+    # --- BID_CONFIDENT (40 frames, chest out, chin high) ---
+    c_bconf = {
+        "Spine": (None, [(1, (0, 0, 0)), (18, (-0.12, 0, 0)), (40, (0, 0, 0))]),
+        "Chest": (None, [(1, (0, 0, 0)), (18, (-0.16, 0, 0)), (40, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (18, (-0.18, 0, 0)), (40, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (18, (-0.25, 0.15, 0.10)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (18, (-0.25, -0.15, -0.10)), (40, (0, 0, 0))]),
+    }
+    c_bconf.update(sec_curves("bid_confident", 40))
+    add_action("bid_confident", 40, c_bconf)
+
+    # --- BID_UNCERTAIN (40 frames, head tilt, questioning look) ---
+    c_bunc = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (-0.06, 0.08, 0)), (40, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (18, (0.12, 0.22, 0.10)), (40, (0, 0, 0))]),
+        "Shoulder.R": (None, [(1, (0, 0, 0)), (18, (0.08, -0.05, -0.05)), (40, (0, 0, 0))]),
+    }
+    c_bunc.update(sec_curves("bid_uncertain", 40))
+    add_action("bid_uncertain", 40, c_bunc)
+
+    # --- BID_ZERO (40 frames, casual dismissive wave) ---
+    c_bzero = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (0.08, -0.04, 0)), (40, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (18, (-0.06, 0.10, 0)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (18, (-0.40, -0.22, 0)), (40, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (18, (-0.45, 0.12, 0)), (40, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (18, (0.25, -0.20, 0)), (40, (0, 0, 0))]),
+    }
+    c_bzero.update(sec_curves("bid_zero", 40))
+    add_action("bid_zero", 40, c_bzero)
+
+    # --- TRICK_WIN (40 frames, crisp satisfied nod) ---
+    c_twin = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (-0.14, 0.04, 0)), (40, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (18, (0.18, -0.04, 0)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (18, (-0.40, -0.15, -0.10)), (40, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (18, (-0.50, 0.10, 0)), (40, (0, 0, 0))]),
+    }
+    c_twin.update(sec_curves("trick_win", 40))
+    add_action("trick_win", 40, c_twin)
+
+    # --- TRICK_LOSE (40 frames, small flinch and head dip) ---
+    c_tlose = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (0.10, 0, 0)), (40, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (18, (-0.14, 0.08, 0)), (40, (0, 0, 0))]),
+    }
+    c_tlose.update(sec_curves("trick_lose", 40))
+    add_action("trick_lose", 40, c_tlose)
+
+    # --- LIFE_LOST (44 frames, dramatic recoil/shudder) ---
+    c_llost = {
+        "Pelvis": ([(1, (0, 0, 0)), (16, (0, 0.08, -0.02)), (44, (0, 0, 0))], None),
+        "Chest": (None, [(1, (0, 0, 0)), (16, (0.22, 0, 0)), (44, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (16, (-0.24, 0, 0)), (44, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (16, (-0.45, 0.20, 0.15)), (44, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (16, (-0.45, -0.20, -0.15)), (44, (0, 0, 0))]),
+    }
+    c_llost.update(sec_curves("life_lost", 44))
+    add_action("life_lost", 44, c_llost)
+
+    # =========================================================================
+    # 7. EMOTES & REACTION CLIPS
+    # =========================================================================
+
+    # --- SMALL_WIN (40 frames, subtle aristocratic smile) ---
+    c_swin = {
+        "Chest": (None, [(1, (0, 0, 0)), (18, (-0.08, 0.04, 0)), (40, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (18, (0.10, -0.06, 0)), (40, (0, 0, 0))]),
+    }
+    c_swin.update(sec_curves("small_win", 40))
+    add_action("small_win", 40, c_swin)
+
+    # --- BIG_WIN (56 frames, triumphant double arms raise) ---
+    c_bwin = {
+        "Pelvis": ([(1, (0, 0, 0)), (28, (0, 0, 0.06)), (56, (0, 0, 0))], None),
+        "Chest": (None, [(1, (0, 0, 0)), (28, (-0.20, 0, 0)), (56, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (28, (0.28, 0, 0)), (56, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (28, (-1.90, 0.45, 1.40)), (56, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (28, (-1.90, -0.45, -1.40)), (56, (0, 0, 0))]),
+    }
+    c_bwin.update(sec_curves("big_win", 56))
+    add_action("big_win", 56, c_bwin)
+
+    # --- LOSE (48 frames, dejected slump) ---
+    c_lose = {
+        "Spine": (None, [(1, (0, 0, 0)), (24, (0.16, 0, 0)), (48, (0, 0, 0))]),
+        "Chest": (None, [(1, (0, 0, 0)), (24, (0.20, 0, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (24, (-0.25, 0, 0)), (48, (0, 0, 0))]),
+        "Shoulder.L": (None, [(1, (0, 0, 0)), (24, (0.12, 0, 0)), (48, (0, 0, 0))]),
+        "Shoulder.R": (None, [(1, (0, 0, 0)), (24, (0.12, 0, 0)), (48, (0, 0, 0))]),
+    }
+    c_lose.update(sec_curves("lose", 48))
+    add_action("lose", 48, c_lose)
+
+    # --- BAD_BEAT (48 frames, hand to forehead in shock) ---
+    c_bbeat = {
+        "Chest": (None, [(1, (0, 0, 0)), (22, (0.18, 0, 0)), (48, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (22, (-0.22, 0.08, 0)), (48, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (22, (-0.75, -0.25, 0.20)), (48, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (22, (-1.20, 0.15, 0)), (48, (0, 0, 0))]),
+        "Hand.R": (None, [(1, (0, 0, 0)), (22, (0.35, 0, 0)), (48, (0, 0, 0))]),
+    }
+    c_bbeat.update(sec_curves("bad_beat", 48))
+    add_action("bad_beat", 48, c_bbeat)
+
+    # --- SUSPICIOUS (44 frames, narrowing gaze at rival) ---
+    c_susp = {
+        "Chest": (None, [(1, (0, 0, 0)), (20, (-0.08, 0.12, 0)), (44, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (20, (0.06, 0.24, 0.06)), (44, (0, 0, 0))]),
+    }
+    c_susp.update(sec_curves("suspicious", 44))
+    add_action("suspicious", 44, c_susp)
+
+    # --- SURPRISED (40 frames, sudden recoil) ---
+    c_surp = {
+        "Chest": (None, [(1, (0, 0, 0)), (16, (0.20, 0, 0)), (40, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (16, (-0.24, 0, 0)), (40, (0, 0, 0))]),
+        "UpperArm.L": (None, [(1, (0, 0, 0)), (16, (-0.35, 0.20, 0.10)), (40, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (16, (-0.35, -0.20, -0.10)), (40, (0, 0, 0))]),
+    }
+    c_surp.update(sec_curves("surprised", 40))
+    add_action("surprised", 40, c_surp)
+
+    # --- LAUGH (44 frames, amused chuckle) ---
+    c_laugh = {
+        "Chest": (None, [(1, (0, 0, 0)), (10, (-0.10, 0, 0)), (18, (-0.04, 0, 0)), (26, (-0.10, 0, 0)), (34, (-0.04, 0, 0)), (44, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (10, (0.14, 0, 0)), (18, (0.06, 0, 0)), (26, (0.14, 0, 0)), (34, (0.06, 0, 0)), (44, (0, 0, 0))]),
+    }
+    c_laugh.update(sec_curves("laugh", 44))
+    add_action("laugh", 44, c_laugh)
+
+    # --- TAUNT (44 frames, provocative beckon) ---
+    c_taunt = {
+        "Chest": (None, [(1, (0, 0, 0)), (20, (-0.14, 0.08, 0)), (44, (0, 0, 0))]),
+        "Head": (None, [(1, (0, 0, 0)), (20, (0.12, -0.10, 0)), (44, (0, 0, 0))]),
+        "UpperArm.R": (None, [(1, (0, 0, 0)), (20, (-0.55, -0.20, -0.15)), (44, (0, 0, 0))]),
+        "Forearm.R": (None, [(1, (0, 0, 0)), (15, (-0.75, 0, 0)), (22, (-0.55, 0, 0)), (29, (-0.75, 0, 0)), (44, (0, 0, 0))]),
+    }
+    c_taunt.update(sec_curves("taunt", 44))
+    add_action("taunt", 44, c_taunt)
 
     # Return to resting frame 1
     arm_obj.animation_data.action = None
@@ -687,7 +770,7 @@ def build_character(ident, blend_name, skin_hex, char_type):
         export_force_sampling=True,
         export_materials='EXPORT'
     )
-    print(f"[{ident.upper()}] Successfully exported GLB: {out_glb} ({out_glb.stat().st_size} bytes)")
+    print(f"[{ident.upper()}] Successfully exported GLB with 39 clips: {out_glb} ({out_glb.stat().st_size} bytes)")
 
     # Render High-Definition 3D Studio Portrait (320x400 PNG)
     bpy.ops.object.camera_add(location=(1.5, -3.2, 1.45))
@@ -721,10 +804,10 @@ def build_character(ident, blend_name, skin_hex, char_type):
     print(f"[{ident.upper()}] Rendered studio portrait: {out_portrait}")
 
 def main():
-    print("=== STARTING RIGGED CAST GENERATION ===")
+    print("=== STARTING EXPANDED RIGGED CAST GENERATION (39 CLIPS) ===")
     for row in DETAILED_CAST:
         build_character(*row)
-    print("=== ALL 5 CHARACTERS GENERATED SUCCESSFULLY ===")
+    print("=== ALL 5 DETAILED CHARACTERS GENERATED SUCCESSFULLY ===")
 
 if __name__ == "__main__":
     main()

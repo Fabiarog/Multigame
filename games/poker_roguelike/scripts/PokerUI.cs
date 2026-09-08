@@ -8,6 +8,8 @@ namespace GameHub.Games.PokerRoguelike;
 /// <summary>Presentation for the Poker run. Game state remains in PokerGameManager.</summary>
 public partial class PokerUI : Control
 {
+    private const float HandDealInterval = .12f;
+    private const float HandDealFlight = .42f;
     private PokerGameManager _game;
     private Label _roundLabel, _scoreLabel, _targetLabel, _handsLabel, _discardsLabel;
     private Label _relicsLabel, _opponentsLabel, _resultLabel, _breakdownLabel, _walletLabel;
@@ -188,17 +190,6 @@ public partial class PokerUI : Control
         handHeading.AddChild(_selectionLabel);
         trayBox.AddChild(handHeading);
         var cardCenter = new CenterContainer();
-        var povHands = new TextureRect
-        {
-            Name = "PovHandsBackground",
-            Texture = GD.Load<Texture2D>("res://assets/sprites/ui/pov_hands.png"),
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            MouseFilter = MouseFilterEnum.Ignore,
-            Modulate = new Color(1, 1, 1, 0.35f),
-            CustomMinimumSize = new Vector2(820, 150)
-        };
-        cardCenter.AddChild(povHands);
         _cardContainer = new HBoxContainer();
         _cardContainer.AddThemeConstantOverride("separation", 10);
         cardCenter.AddChild(_cardContainer);
@@ -876,10 +867,12 @@ public partial class PokerUI : Control
 
     private void OnTutorialComplete() => _tutorialPanel.Visible = false;
 
-    private void OnHandDealt()
+    private async void OnHandDealt()
     {
+        if (!IsInsideTree()) return;
         _stage.ClearPlayedCards();
-        _ignoreInput = _game.CurrentPhase != PokerGameManager.GamePhase.PlayerTurn;
+        bool animateDeal = Core.Systems.SettingsManager.Instance?.ReduceMotion != true;
+        _ignoreInput = _game.CurrentPhase != PokerGameManager.GamePhase.PlayerTurn || animateDeal;
         ClearTableCards();
         ClearContainer(_cardContainer);
         _cardPanels.Clear();
@@ -889,7 +882,7 @@ public partial class PokerUI : Control
             var panel = CreateCardPanel(hand[i], i);
             _cardContainer.AddChild(panel);
             _cardPanels.Add(panel);
-            FadeIn(panel, .28f + i * .035f);
+            FadeIn(panel, .28f + i * HandDealInterval);
             int order = i;
             Callable.From(() => AnimateDealToHand(panel, order)).CallDeferred();
         }
@@ -898,6 +891,14 @@ public partial class PokerUI : Control
         RefreshResources();
         UpdateActionButtons();
         RefreshPreview();
+        if (animateDeal && _game.CurrentPhase == PokerGameManager.GamePhase.PlayerTurn)
+        {
+            float duration = HandDealFlight + Mathf.Max(0, hand.Count - 1) * HandDealInterval + .12f;
+            await ToSignal(GetTree().CreateTimer(duration), SceneTreeTimer.SignalName.Timeout);
+            if (!IsInsideTree() || _game.CurrentPhase != PokerGameManager.GamePhase.PlayerTurn) return;
+            _ignoreInput = false;
+            UpdateActionButtons();
+        }
     }
 
     private void AnimateDealToHand(PanelContainer target, int order)
@@ -909,9 +910,9 @@ public partial class PokerUI : Control
         back.Scale = new Vector2(.7f, .7f);
         _tableCardLayer.AddChild(back);
         var tween = CreateTween();
-        tween.TweenInterval(order * .035f);
-        tween.TweenProperty(back, "position", target.GlobalPosition, .28f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
-        tween.Parallel().TweenProperty(back, "scale", Vector2.One, .28f);
+        tween.TweenInterval(order * HandDealInterval);
+        tween.TweenProperty(back, "position", target.GlobalPosition, HandDealFlight).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        tween.Parallel().TweenProperty(back, "scale", Vector2.One, HandDealFlight);
         tween.TweenCallback(Callable.From(() => { if (IsInstanceValid(back)) back.QueueFree(); }));
     }
 
@@ -1079,7 +1080,17 @@ public partial class PokerUI : Control
 
     private void OnRoundEnded(int round, bool passed)
     {
-        if (passed) Core.Systems.AudioManager.Instance?.PlaySound("win");
+        if (passed)
+        {
+            Core.Systems.AudioManager.Instance?.PlaySound("win");
+            _stage?.PlayGesture(0, "big_win");
+            _stage?.PlayGesture(1, "lose");
+        }
+        else
+        {
+            _stage?.PlayGesture(0, "bad_beat");
+            _stage?.PlayGesture(1, "big_win");
+        }
         _tutorialPanel.Visible = false;
         _overlayTitle.Text = passed ? $"Mesa {round} vencida" : "A mesa levou a melhor";
         _overlayTitle.AddThemeColorOverride("font_color", passed ? ClubTheme.Gold : new Color("#e29a86"));
@@ -1094,7 +1105,17 @@ public partial class PokerUI : Control
 
     private void OnGameEnded(bool won, int totalScore)
     {
-        if (won) CharacterProgress.RecordWin();
+        if (won)
+        {
+            CharacterProgress.RecordWin();
+            _stage?.PlayGesture(0, "victory");
+            _stage?.PlayGesture(1, "lose");
+        }
+        else
+        {
+            _stage?.PlayGesture(0, "lose");
+            _stage?.PlayGesture(1, "victory");
+        }
         _shopOverlay.Visible = false;
         _tutorialPanel.Visible = false;
         _overlayTitle.Text = won ? "O clube é seu." : "Fim da corrida";
@@ -1118,7 +1139,7 @@ public partial class PokerUI : Control
     {
         if (_ignoreInput || _stage.IsPresenting || !_game.CanPlayHand()) return;
         _ignoreInput = true;
-        _stage.React(0);
+        _stage?.PlayGesture(0, "play_card_dramatic");
         Core.Systems.AudioManager.Instance?.PlaySound("play");
         UpdateActionButtons();
         AnimatePlayedCards();
@@ -1127,7 +1148,11 @@ public partial class PokerUI : Control
 
     private void OnDiscardPressed()
     {
-        if (!_ignoreInput && !_stage.IsPresenting && _game.CanDiscard()) _game.DiscardCards();
+        if (!_ignoreInput && !_stage.IsPresenting && _game.CanDiscard())
+        {
+            _stage?.PlayGesture(0, "fold");
+            _game.DiscardCards();
+        }
     }
 
     private void AnimatePlayedCards()

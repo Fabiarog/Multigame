@@ -128,7 +128,16 @@ public partial class GameplayChecks : Node
             {
                 var model = GD.Load<PackedScene>(CharacterCatalog.ModelPath(character)).Instantiate<Node3D>();
                 var animator = model.FindChildren("*", "AnimationPlayer", true, false).OfType<AnimationPlayer>().First();
-                Assert(new[] { "entrance", "truco", "victory", "boss_intro", "flourish", "idle", "play_card" }.All(clip => animator.GetAnimationList().Any(name => name == clip || name.EndsWith("/" + clip))), "Each Blender model exports all seven animated clips including play_card and idle");
+                string[] requiredClips = { "entrance", "truco", "victory", "boss_intro", "flourish", "idle", "play_card" };
+                Assert(requiredClips.All(clip => animator.GetAnimationList().Any(name => name == clip || name.EndsWith("/" + clip))), "Each Blender model exports all seven animated clips including play_card and idle");
+                Assert(Mathf.IsEqualApprox(animator.SpeedScale, 1f), "Character animation players use the normal playback rate");
+                foreach (string clip in requiredClips)
+                {
+                    string path = animator.GetAnimationList().First(name => name == clip || name.EndsWith("/" + clip));
+                    var animation = animator.GetAnimation(path);
+                    Assert(animation != null && animation.Length >= .5f && animation.Length <= 5f,
+                        $"{clip} has a readable duration instead of an accelerated or stalled clip");
+                }
                 int meshCount = model.FindChildren("*", "MeshInstance3D", true, false).Count;
                 Assert(meshCount == 1 || meshCount == 9 || meshCount == 6 || meshCount == 4, "Each GLB contains exactly one articulated character, without other open Blender scenes");
                 var head = model.FindChildren("Head*", "Node3D", true, false).OfType<Node3D>().First(node => node is not MeshInstance3D);
@@ -182,6 +191,16 @@ public partial class GameplayChecks : Node
             SettingsManager.Instance.RoomTheme = "classic_club";
             SettingsManager.Instance.SaveSettings();
             Assert(CharacterCatalog.PlayableCount == 6 && CharacterCatalog.IsBoss(6) && CharacterCatalog.IsBoss(7), "Bosses are separated from playable characters");
+
+            // Validate Truco Call sprites for all 8 characters across stakes 3, 6, 9, 12
+            for (int c = 0; c < CharacterCatalog.Ids.Length; c++)
+            {
+                foreach (int stakes in new[] { 3, 6, 9, 12 })
+                {
+                    var sprite = CharacterCatalog.TrucoCallSprite(c, stakes);
+                    Assert(sprite != null, $"Truco call sprite exists for character {CharacterCatalog.Ids[c]} at stakes {stakes}");
+                }
+            }
             SettingsManager.Instance.CharacterId = "corvo";
             for (int win = 0; win < 3; win++) CharacterProgress.RecordWin();
             Assert(CharacterProgress.TrucoClip(2) == "flourish" && CharacterProgress.TrucoClip(3) == "truco", "Cosmetic mission unlocks only for the character used");

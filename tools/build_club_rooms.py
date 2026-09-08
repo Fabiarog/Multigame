@@ -10,11 +10,15 @@ os.makedirs(out_dir, exist_ok=True)
 def make_mat(name, base_color, metallic=0.0, roughness=0.5, emission=(0,0,0,1), emission_strength=0.0):
     mat = bpy.data.materials.new(name=name)
     mat.use_nodes = True
-    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    mat.diffuse_color = base_color
+    bsdf = next((n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
     if bsdf:
-        bsdf.inputs["Base Color"].default_value = base_color
-        bsdf.inputs["Metallic"].default_value = metallic
-        bsdf.inputs["Roughness"].default_value = roughness
+        if "Base Color" in bsdf.inputs:
+            bsdf.inputs["Base Color"].default_value = base_color
+        if "Metallic" in bsdf.inputs:
+            bsdf.inputs["Metallic"].default_value = metallic
+        if "Roughness" in bsdf.inputs:
+            bsdf.inputs["Roughness"].default_value = roughness
         if emission_strength > 0:
             if "Emission Color" in bsdf.inputs:
                 bsdf.inputs["Emission Color"].default_value = emission
@@ -290,47 +294,231 @@ def build_classic_club():
     irons_rod = bpy.context.active_object
     irons_rod.data.materials.append(mat_gold)
 
-    # --- ARCHITECTURAL UNIQUE PIECE 2: FLANKING ARCHED MAHOGANY BOOKSHELVES ---
-    mat_book_red = make_mat("BookRed", (0.55, 0.08, 0.10, 1.0), roughness=0.6)
-    mat_book_blue = make_mat("BookBlue", (0.08, 0.18, 0.45, 1.0), roughness=0.6)
-    mat_book_green = make_mat("BookGreen", (0.06, 0.35, 0.16, 1.0), roughness=0.6)
-    mat_book_gold = make_mat("BookGold", (0.75, 0.60, 0.20, 1.0), roughness=0.4)
+    # --- ARCHITECTURAL PIECE 2: ORNATE BAROQUE FRAMED OIL PAINTINGS (FLANKING FIREPLACE) ---
+    mat_oil_1 = make_mat("ClassicOilAce", (0.28, 0.18, 0.10, 1.0), metallic=0.05, roughness=0.6)
+    mat_oil_2 = make_mat("ClassicOilKings", (0.16, 0.20, 0.28, 1.0), metallic=0.05, roughness=0.6)
+    for pname, px, pmat in [("Painting_L", -2.6, mat_oil_1), ("Painting_R", 2.6, mat_oil_2)]:
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, wall_y - 0.15, 3.40))
+        p_frame = bpy.context.active_object
+        p_frame.name = f"{pname}_Frame"
+        p_frame.scale = (1.20, 0.08, 1.60)
+        p_frame.data.materials.append(mat_gold)
+        bpy.ops.object.transform_apply(scale=True)
+        
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(px, wall_y - 0.20, 3.40))
+        canvas = bpy.context.active_object
+        canvas.name = f"{pname}_Canvas"
+        canvas.scale = (0.98, 0.04, 1.38)
+        canvas.data.materials.append(pmat)
+        bpy.ops.object.transform_apply(scale=True)
+        
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.025, depth=0.60, vertices=16, location=(px, wall_y - 0.35, 4.30))
+        pic_light = bpy.context.active_object
+        pic_light.rotation_euler = (0, math.pi/2, 0)
+        pic_light.data.materials.append(mat_sconce)
+        bpy.ops.object.transform_apply(rotation=True)
 
-    for bx_pos in [-4.8, 4.8]:
-        # Bookshelf Cabinet Frame
-        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos, wall_y - 0.15, 2.20))
-        bs_frame = bpy.context.active_object
-        bs_frame.name = f"Bookcase_{bx_pos}"
-        bs_frame.scale = (2.6, 0.55, 5.2)
-        bs_frame.data.materials.append(mat_wood)
+    # --- ARCHITECTURAL PIECE 3: FLANKING GRAND HERITAGE BOOKCASES & TROPHIES ---
+    mat_book_red = make_mat("BookRed", (0.55, 0.08, 0.10, 1.0), roughness=0.55)
+    mat_book_navy = make_mat("BookNavy", (0.07, 0.14, 0.42, 1.0), roughness=0.55)
+    mat_book_green = make_mat("BookGreen", (0.05, 0.32, 0.14, 1.0), roughness=0.55)
+    mat_book_ochre = make_mat("BookOchre", (0.70, 0.48, 0.16, 1.0), roughness=0.55)
+    mat_book_spine = make_mat("GoldSpineTooling", (0.92, 0.78, 0.28, 1.0), metallic=0.88, roughness=0.25)
+    mat_marble = make_mat("BlackMarble", (0.05, 0.05, 0.06, 1.0), metallic=0.1, roughness=0.15)
+    mat_glass = make_mat("CutCrystal", (0.82, 0.90, 0.95, 1.0), metallic=0.1, roughness=0.06)
+    mat_bourbon = make_mat("BourbonLiquid", (0.85, 0.38, 0.06, 1.0), metallic=0.0, roughness=0.15)
+
+    for bx_pos in [-5.0, 5.0]:
+        for side_idx, px_off in [(-1, -1.35), (1, 1.35)]:
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos + px_off, wall_y - 0.28, 2.30))
+            col = bpy.context.active_object
+            col.name = f"BookcaseCol_{bx_pos}_{side_idx}"
+            col.scale = (0.16, 0.58, 4.80)
+            col.data.materials.append(mat_wood)
+            bpy.ops.object.transform_apply(scale=True)
+            
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=4.6, vertices=16, location=(bx_pos + px_off, wall_y - 0.58, 2.30))
+            pil = bpy.context.active_object
+            pil.data.materials.append(mat_wood)
+            
+            for cz in [0.15, 4.55]:
+                bpy.ops.mesh.primitive_cylinder_add(radius=0.085, depth=0.12, vertices=16, location=(bx_pos + px_off, wall_y - 0.58, cz))
+                cap = bpy.context.active_object
+                cap.data.materials.append(mat_gold)
+
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos, wall_y - 0.30, -0.05))
+        bs_base = bpy.context.active_object
+        bs_base.name = f"BookcaseBase_{bx_pos}"
+        bs_base.scale = (2.85, 0.65, 0.30)
+        bs_base.data.materials.append(mat_wood)
         bpy.ops.object.transform_apply(scale=True)
 
-        # Arched Top Molding
-        bpy.ops.mesh.primitive_cylinder_add(radius=1.3, depth=0.55, vertices=24, location=(bx_pos, wall_y - 0.15, 4.80))
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos, wall_y - 0.30, 4.75))
+        bs_top = bpy.context.active_object
+        bs_top.name = f"BookcaseTop_{bx_pos}"
+        bs_top.scale = (2.85, 0.65, 0.22)
+        bs_top.data.materials.append(mat_wood)
+        bpy.ops.object.transform_apply(scale=True)
+
+        bpy.ops.mesh.primitive_cylinder_add(radius=1.35, depth=0.62, vertices=24, location=(bx_pos, wall_y - 0.29, 4.88))
         arch_top = bpy.context.active_object
         arch_top.rotation_euler = (math.pi / 2, 0, 0)
-        arch_top.scale = (1.0, 0.6, 1.0)
+        arch_top.scale = (1.0, 0.50, 1.0)
         arch_top.data.materials.append(mat_wood)
         bpy.ops.object.transform_apply(scale=True, rotation=True)
 
-        # 4 Shelf Levels with Colorful 3D Books
-        for s_idx, sz_val in enumerate([0.2, 1.3, 2.4, 3.5]):
-            # Shelf Board
-            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos, wall_y - 0.25, sz_val))
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.28, depth=0.08, vertices=24, location=(bx_pos, wall_y - 0.62, 5.08))
+        medallion = bpy.context.active_object
+        medallion.rotation_euler = (math.pi/2, 0, 0)
+        medallion.data.materials.append(mat_gold)
+        bpy.ops.object.transform_apply(rotation=True)
+
+        for s_idx, sz_val in enumerate([0.25, 1.35, 2.45, 3.55]):
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos, wall_y - 0.26, sz_val))
             shelf = bpy.context.active_object
-            shelf.scale = (2.4, 0.45, 0.06)
-            shelf.data.materials.append(mat_gold)
+            shelf.name = f"BookcaseShelf_{bx_pos}_{s_idx}"
+            shelf.scale = (2.55, 0.54, 0.05)
+            shelf.data.materials.append(mat_wood)
+            bpy.ops.object.transform_apply(scale=True)
+            
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos, wall_y - 0.53, sz_val))
+            lip = bpy.context.active_object
+            lip.scale = (2.55, 0.03, 0.06)
+            lip.data.materials.append(mat_gold)
             bpy.ops.object.transform_apply(scale=True)
 
-            # Rows of Books
-            book_mats = [mat_book_red, mat_book_blue, mat_book_green, mat_book_gold]
-            for bk in range(7):
-                bx_off = (bk - 3) * 0.30
-                bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos + bx_off, wall_y - 0.25, sz_val + 0.30))
-                book = bpy.context.active_object
-                book.scale = (0.24, 0.35, 0.52 + (bk % 3) * 0.06)
-                book.data.materials.append(book_mats[(bk + s_idx) % 4])
+        # Shelf 0: Antique Books
+        for bk in range(11):
+            bx_off = -1.05 + bk * 0.21
+            bh = 0.52 + (bk % 3) * 0.07
+            bw = 0.17
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos + bx_off, wall_y - 0.26, 0.25 + bh/2 + 0.03))
+            bobj = bpy.context.active_object
+            bobj.scale = (bw, 0.38, bh)
+            bobj.data.materials.append(book_mats[(bk + int(bx_pos)) % 4])
+            bpy.ops.object.transform_apply(scale=True)
+            for rz in [0.25, 0.5, 0.75]:
+                bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos + bx_off, wall_y - 0.46, 0.25 + bh*rz))
+                rib = bpy.context.active_object
+                rib.scale = (bw * 0.85, 0.015, 0.02)
+                rib.data.materials.append(mat_book_spine)
                 bpy.ops.object.transform_apply(scale=True)
+
+        # Shelf 1: Decanter & Tumblers & Books
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos - 0.70, wall_y - 0.28, 1.62))
+        dec_body = bpy.context.active_object
+        dec_body.scale = (0.26, 0.26, 0.40)
+        dec_body.data.materials.append(mat_glass)
+        bpy.ops.object.transform_apply(scale=True)
+
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos - 0.70, wall_y - 0.28, 1.53))
+        dec_liq = bpy.context.active_object
+        dec_liq.scale = (0.22, 0.22, 0.22)
+        dec_liq.data.materials.append(mat_bourbon)
+        bpy.ops.object.transform_apply(scale=True)
+
+        for tx in [-0.35, -0.15]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.07, depth=0.14, vertices=16, location=(bx_pos + tx, wall_y - 0.35, 1.45))
+            tumbler = bpy.context.active_object
+            tumbler.data.materials.append(mat_glass)
+
+        for bk in range(5):
+            bx_off = 0.35 + bk * 0.18
+            bh = 0.50 + (bk % 2) * 0.06
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos + bx_off, wall_y - 0.26, 1.35 + bh/2 + 0.03))
+            bobj = bpy.context.active_object
+            bobj.scale = (0.15, 0.36, bh)
+            bobj.data.materials.append(book_mats[(bk + 1) % 4])
+            bpy.ops.object.transform_apply(scale=True)
+
+        # Shelf 2: Grand Truco Championship Trophy
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos, wall_y - 0.26, 2.56))
+        trop_base = bpy.context.active_object
+        trop_base.scale = (0.42, 0.42, 0.16)
+        trop_base.data.materials.append(mat_marble)
+        bpy.ops.object.transform_apply(scale=True)
+
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.14, depth=0.06, vertices=20, location=(bx_pos, wall_y - 0.26, 2.67))
+        bpy.context.active_object.data.materials.append(mat_gold)
+
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.065, depth=0.24, vertices=16, location=(bx_pos, wall_y - 0.26, 2.80))
+        bpy.context.active_object.data.materials.append(mat_gold)
+
+        bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=0.26, radius2=0.10, depth=0.38, location=(bx_pos, wall_y - 0.26, 3.04))
+        cup = bpy.context.active_object
+        cup.data.materials.append(mat_gold)
+
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.26, minor_radius=0.025, location=(bx_pos, wall_y - 0.26, 3.23))
+        bpy.context.active_object.data.materials.append(mat_gold)
+
+        for sign in [-1, 1]:
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.14, minor_radius=0.022, location=(bx_pos + sign * 0.29, wall_y - 0.26, 3.08))
+            handle = bpy.context.active_object
+            handle.rotation_euler = (0, math.pi/2, 0)
+            handle.scale = (1.2, 0.7, 1.0)
+            handle.data.materials.append(mat_gold)
+            bpy.ops.object.transform_apply(rotation=True, scale=True)
+
+        for ca, crot in [(-0.06, -0.2), (0.0, 0.0), (0.06, 0.2)]:
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos + ca, wall_y - 0.26, 3.32))
+            card = bpy.context.active_object
+            card.rotation_euler = (0, crot, 0)
+            card.scale = (0.09, 0.01, 0.15)
+            card.data.materials.append(mat_gold)
+            bpy.ops.object.transform_apply(rotation=True, scale=True)
+
+        # Shelf 3: Upper Volumes
+        for bk in range(12):
+            bx_off = -1.10 + bk * 0.20
+            bh = 0.46 + (bk % 3) * 0.06
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=(bx_pos + bx_off, wall_y - 0.26, 3.55 + bh/2 + 0.03))
+            bobj = bpy.context.active_object
+            bobj.scale = (0.16, 0.36, bh)
+            bobj.data.materials.append(book_mats[(bk + 2) % 4])
+            bpy.ops.object.transform_apply(scale=True)
+
+    # --- ARCHITECTURAL PIECE 4: VICTORIAN DRINKS BAR CART ---
+    cart_x, cart_y, cart_z = -8.2, 1.6, -0.71
+    cx_half, cy_half = 0.50, 0.28
+    c_top_z, c_bot_z = cart_z + 0.86, cart_z + 0.25
+    mat_cart_brass = make_mat("CartBrass", (0.90, 0.74, 0.25, 1.0), metallic=0.92, roughness=0.20)
+    mat_chrome = make_mat("CartChrome", (0.92, 0.94, 0.96, 1.0), metallic=0.96, roughness=0.12)
+    mat_smoke_glass = make_mat("SmokeGlass", (0.12, 0.12, 0.15, 0.7), metallic=0.1, roughness=0.08)
+    mat_bottle_green = make_mat("BottleEmerald", (0.04, 0.38, 0.16, 0.8), metallic=0.1, roughness=0.12)
+    mat_bottle_amber = make_mat("BottleAmber", (0.80, 0.40, 0.05, 0.8), metallic=0.1, roughness=0.12)
+    mat_bottle_ruby = make_mat("BottleRuby", (0.50, 0.05, 0.10, 0.8), metallic=0.1, roughness=0.12)
+
+    for sx in [-1, 1]:
+        for sy in [-1, 1]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.82, vertices=14,
+                                                location=(cart_x + sx * cx_half, cart_y + sy * cy_half, (c_top_z + c_bot_z)/2))
+            bpy.context.active_object.data.materials.append(mat_cart_brass)
+
+    for tz in [c_top_z, c_bot_z]:
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(cart_x, cart_y, tz))
+        tr = bpy.context.active_object
+        tr.scale = (cx_half * 2 + 0.06, cy_half * 2 + 0.06, 0.02)
+        tr.data.materials.append(mat_smoke_glass)
+        bpy.ops.object.transform_apply(scale=True)
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(cart_x, cart_y, tz + 0.03))
+        rail = bpy.context.active_object
+        rail.scale = (cx_half * 2 + 0.08, cy_half * 2 + 0.08, 0.012)
+        rail.data.materials.append(mat_cart_brass)
+        bpy.ops.object.transform_apply(scale=True)
+
+    for wy in [-cy_half - 0.04, cy_half + 0.04]:
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.18, minor_radius=0.016, location=(cart_x + cx_half, cart_y + wy, cart_z + 0.18))
+        w_rim = bpy.context.active_object
+        w_rim.rotation_euler = (math.pi/2, 0, 0)
+        w_rim.data.materials.append(mat_cart_brass)
+        bpy.ops.object.transform_apply(rotation=True)
+
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.065, depth=0.20, vertices=16, location=(cart_x - 0.15, cart_y + 0.08, c_top_z + 0.12))
+    bpy.context.active_object.data.materials.append(mat_chrome)
+
+    for bx, by, bmat in [(cart_x + 0.15, cart_y - 0.08, mat_bottle_green), (cart_x + 0.15, cart_y + 0.08, mat_bottle_amber), (cart_x - 0.10, cart_y, mat_bottle_ruby)]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.24, vertices=14, location=(bx, by, c_bot_z + 0.14))
+        bpy.context.active_object.data.materials.append(bmat)
 
     # --- ARCHITECTURAL UNIQUE PIECE 3: GRANDFATHER CLOCK (RELÓGIO DE PÊNDULO) ---
     clk_x, clk_y = -8.5, wall_y - 0.20

@@ -10,6 +10,20 @@ namespace GameHub.Core.Visuals;
 /// <summary>Orthographic 2.5D table: Blender actors, physical card piles and lightweight stage light.</summary>
 public partial class TableStage : Control
 {
+    // Shared tempo contract: game state waits for the physical card motion,
+    // instead of accepting the next turn while cards are still in flight.
+    public const float DealCardInterval = .18f;
+    public const float DealFlightDuration = .42f;
+    public const float DealSettlingTime = .35f;
+    public const float StandardCardFlightDuration = .82f;
+    public const float SpecialCardFlightDuration = .65f;
+
+    public static float DealPresentationDuration(int movingCards) =>
+        movingCards <= 0 ? 0f : DealFlightDuration + (movingCards - 1) * DealCardInterval + DealSettlingTime;
+
+    public static float CardPresentationDuration(bool special) =>
+        (special ? SpecialCardFlightDuration : StandardCardFlightDuration) + .14f;
+
     private SubViewport _viewport;
     private Node3D _world;
     private Camera3D _camera;
@@ -43,6 +57,7 @@ public partial class TableStage : Control
     private Button _pauseCameraToggleBtn;
     private Button _pauseThemeToggleBtn;
     private readonly List<OmniLight3D> _sconceLights = new();
+    private OmniLight3D _fireplaceLight;
     private Control _cinema;
     private Label _caption;
     private bool _intro, _skip;
@@ -190,6 +205,28 @@ public partial class TableStage : Control
                     _clockClip = clip;
                     _clockAnimator.GetAnimation(clip).LoopMode = Animation.LoopModeEnum.Linear;
                 }
+        }
+
+        // Luxury classic bar cart with decanters, cocktail shaker and crystal glasses
+        if (ResourceLoader.Exists("res://assets/models/club/club_bar_cart.glb"))
+        {
+            try
+            {
+                var cartScene = GD.Load<PackedScene>("res://assets/models/club/club_bar_cart.glb");
+                if (cartScene != null)
+                {
+                    var barCart = cartScene.Instantiate<Node3D>();
+                    barCart.Name = "ClubBarCart";
+                    barCart.Position = new Vector3(4.8f, -0.72f, -3.8f);
+                    barCart.RotationDegrees = new Vector3(0, -32f, 0);
+                    barCart.Scale = Vector3.One * 0.96f;
+                    _world.AddChild(barCart);
+                }
+            }
+            catch (Exception ex)
+            {
+                GD.PushWarning($"[TableStage] Bar cart loading: {ex.Message}");
+            }
         }
 
         // Multi-layered table geometry:
@@ -434,6 +471,7 @@ public partial class TableStage : Control
             if (IsInstanceValid(light)) light.QueueFree();
         }
         _sconceLights.Clear();
+        _fireplaceLight = null;
 
         string roomPath = $"res://assets/models/club/room_{themeId}.glb";
         if (!ResourceLoader.Exists(roomPath))
@@ -503,6 +541,23 @@ public partial class TableStage : Control
                         _world.AddChild(sideLight);
                         _sconceLights.Add(sideLight);
                     }
+                }
+
+                // Dynamic Warm Fireplace Light for Classic Club
+                if (themeId == "classic_club")
+                {
+                    _fireplaceLight = new OmniLight3D
+                    {
+                        Name = "FireplaceLight",
+                        Position = new Vector3(0.0f, 0.85f, -5.75f),
+                        LightColor = new Color("#ff6a18"),
+                        LightEnergy = 2.2f,
+                        OmniRange = 7.8f,
+                        OmniAttenuation = 1.25f,
+                        ShadowEnabled = false
+                    };
+                    _world.AddChild(_fireplaceLight);
+                    _sconceLights.Add(_fireplaceLight);
                 }
             }
         }
@@ -590,31 +645,55 @@ public partial class TableStage : Control
     public void AnimateDeck(bool cutting)
     {
         if (_deckPile == null || SettingsManager.Instance?.ReduceMotion == true) return;
-        int i = 0;
-        foreach (Node3D card in _deckPile.GetChildren())
+        var cards = new List<MeshInstance3D>();
+        foreach (Node3D child in _deckPile.GetChildren())
         {
-            if (card is not MeshInstance3D mi || mi.Mesh is not BoxMesh) continue;
-            int index = i++;
-            var origin = card.Position;
-            var motion = CreateTween();
-            _motions.Add(motion);
-            if (cutting)
+            if (child is MeshInstance3D mi && mi.Mesh is BoxMesh) cards.Add(mi);
+        }
+        if (cards.Count == 0) return;
+
+        if (cutting)
+        {
+            // Corte realista do baralho: metade superior ergue, desloca lateralmente,
+            // desce para baixo do baralho e fecha o montinho certinho
+            int half = cards.Count / 2;
+            for (int idx = 0; idx < cards.Count; idx++)
             {
-                bool isTop = index >= 6;
-                Vector3 cutOffset = isTop
-                    ? new Vector3(0.55f, 0.12f, -0.08f)
-                    : new Vector3(-0.35f, 0.05f, 0.04f);
-                motion.TweenProperty(card, "position", origin + cutOffset, 0.20f)
-                    .SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
-                motion.TweenProperty(card, "position", origin, 0.24f)
-                    .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+                var card = cards[idx];
+                var orig = card.Position;
+                bool isTop = idx >= half;
+                if (isTop)
+                {
+                    Vector3 upPos = orig + new Vector3(0.24f, 0.14f, -0.04f);
+                    int newIdx = idx - half;
+                    Vector3 underPos = new Vector3(orig.X, 0.082f + newIdx * 0.018f, orig.Z);
+
+                    var seq = CreateTween();
+                    _motions.Add(seq);
+                    seq.TweenProperty(card, "position", upPos, 0.18f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+                    seq.TweenProperty(card, "position", orig, 0.22f).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+                }
+                else
+                {
+                    var seq = CreateTween();
+                    _motions.Add(seq);
+                    seq.TweenProperty(card, "position", orig + new Vector3(-0.12f, 0.03f, 0.02f), 0.16f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+                    seq.TweenProperty(card, "position", orig, 0.22f).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+                }
             }
-            else
+        }
+        else
+        {
+            for (int idx = 0; idx < cards.Count; idx++)
             {
-                var offset = new Vector3(index % 2 == 0 ? -0.32f : 0.32f, 0.10f, 0);
+                var card = cards[idx];
+                var origin = card.Position;
+                var motion = CreateTween();
+                _motions.Add(motion);
+                var offset = new Vector3(idx % 2 == 0 ? -0.28f : 0.28f, 0.08f, 0);
                 motion.TweenProperty(card, "position", origin + offset, 0.18f)
                     .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
-                motion.TweenProperty(card, "position", origin, 0.32f)
+                motion.TweenProperty(card, "position", origin, 0.28f)
                     .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.In);
             }
         }
@@ -642,14 +721,14 @@ public partial class TableStage : Control
                 _world.AddChild(card);
                 var start = card.Position; var target = _hands[seat].Position;
                 var flight = CreateTween(); _motions.Add(flight);
-                flight.TweenInterval(emitted++ * .045f);
+                flight.TweenInterval(emitted++ * DealCardInterval);
                 flight.TweenMethod(Callable.From<float>(t => {
                     if (IsInstanceValid(card))
                     {
                         card.Position = start.Lerp(target, t) + Vector3.Up * Mathf.Sin(t * Mathf.Pi) * .35f;
                         card.Rotation = new Vector3(0, t * Mathf.Pi * 0.5f + seat * 0.2f, 0);
                     }
-                }), 0f, 1f, .32f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+                }), 0f, 1f, DealFlightDuration).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
                 int handCount = pass + held + 1;
                 flight.TweenCallback(Callable.From(() => {
                     SetCardCount(seat, handCount);
@@ -711,11 +790,15 @@ public partial class TableStage : Control
     public void PlayTableAction(int seat)
     {
         if (seat < 0 || seat >= _actors.Count || SettingsManager.Instance?.ReduceMotion == true) return;
+        // If this actor has an active skeletal animator, let the rich bezier skeleton gesture play without root jerk
+        if (seat < _animators.Count && _animators[seat] != null && _animators[seat].IsPlaying()) return;
         if (_tableActions.TryGetValue(seat, out var previous)) previous.Kill();
-        var actor = _actors[seat]; var rest = new Vector3(0, actor.Rotation.Y, 0);
+        var actor = _actors[seat];
+        float rotY = actor.Rotation.Y;
+        Vector3 forwardOffset = new Vector3(Mathf.Sin(rotY) * 0.045f, 0, Mathf.Cos(rotY) * 0.045f);
         var action = CreateTween(); _motions.Add(action); _tableActions[seat] = action;
-        action.TweenProperty(actor, "rotation", rest + new Vector3(.07f, 0, 0), .16f);
-        action.TweenProperty(actor, "rotation", rest, .25f);
+        action.TweenProperty(actor, "position", _positions[seat] + forwardOffset, .16f);
+        action.TweenProperty(actor, "position", _positions[seat], .25f);
     }
 
     private static StandardMaterial3D StageMaterial(Color color) => new() { AlbedoColor = color, Roughness = .75f };
@@ -1014,7 +1097,7 @@ public partial class TableStage : Control
 
         // Accessibility toggle
         var reduceToggle = new CheckButton {
-            Text = "Reduzir animações e tremores",
+            Text = "Reduzir animações, tremores e esperas",
             ButtonPressed = SettingsManager.Instance?.ReduceMotion == true
         };
         reduceToggle.Toggled += pressed => {
@@ -1092,6 +1175,15 @@ public partial class TableStage : Control
 
     public override void _Input(InputEvent @event)
     {
+        if (_intro && @event is InputEventKey key && key.Pressed && !key.Echo)
+        {
+            if (key.Keycode == Key.Escape || key.Keycode == Key.Space)
+            {
+                _skip = true;
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+        }
         if (@event is InputEventMouseButton button && button.ButtonIndex == MouseButton.Right)
         {
             Vector2 globalPos = button.GlobalPosition != Vector2.Zero ? button.GlobalPosition : GetGlobalMousePosition();
@@ -1153,7 +1245,7 @@ public partial class TableStage : Control
             var right = toCenter.Cross(Vector3.Up).Normalized();
             float yaw = Mathf.DegToRad(_lookAngles.X);
             float lean = SettingsManager.Instance?.ReduceMotion == true ? 0 : Mathf.Sin(yaw) * .055f;
-            Vector3 eyePos = seatPos + Vector3.Up * (2.28f + bobY) + toCenter * .18f + right * lean;
+            Vector3 eyePos = seatPos + Vector3.Up * (2.35f + bobY) - toCenter * 0.70f + right * (0.35f + lean);
             _camera.Projection = Camera3D.ProjectionType.Perspective;
             _camera.KeepAspect = Camera3D.KeepAspectEnum.Height;
             _camera.Fov = 48.0f;
@@ -1165,22 +1257,17 @@ public partial class TableStage : Control
             if (SettingsManager.Instance?.ReduceMotion != true) _camera.RotateObjectLocal(Vector3.Back, -lean * .08f);
             if (_cameraModeButton != null) _cameraModeButton.Text = "Visão: POV [C]";
 
-            // In First-Person POV, hide the local seat character mesh completely so the camera has an unobstructed,
-            // clean view of the table, cards and opponents. Other seats remain fully visible.
+            // In first-person POV, the local player's mesh and chair are hidden to avoid clipping into the eye camera
             for (int i = 0; i < _actors.Count; i++)
             {
                 if (!IsInstanceValid(_actors[i])) continue;
                 bool isLocal = (i == seat);
                 _actors[i].Visible = !isLocal;
-                foreach (Node node in _actors[i].FindChildren("Head*", "Node3D", true, false))
-                {
-                    if (node is Node3D node3D) node3D.Visible = !isLocal;
-                }
             }
             for (int i = 0; i < _chairs.Count; i++)
             {
                 if (IsInstanceValid(_chairs[i]))
-                    _chairs[i].Visible = true;
+                    _chairs[i].Visible = (i != seat);
             }
             for (int i = 0; i < _hands.Count; i++)
             {
@@ -1190,7 +1277,7 @@ public partial class TableStage : Control
         }
         else
         {
-            // Overhead Cinematic View
+            // Overhead Cinematic View - all seated characters and furniture are visible
             _camera.Projection = Camera3D.ProjectionType.Orthogonal;
             _camera.KeepAspect = Camera3D.KeepAspectEnum.Width;
             if (_cameraModeButton != null) _cameraModeButton.Text = "Visão: Mesa [C]";
@@ -1201,12 +1288,7 @@ public partial class TableStage : Control
             for (int i = 0; i < _actors.Count; i++)
             {
                 if (!IsInstanceValid(_actors[i])) continue;
-                bool isLocal = (i == LocalSeatIndex);
-                _actors[i].Visible = !isLocal;
-                foreach (Node node in _actors[i].FindChildren("Head*", "Node3D", true, false))
-                {
-                    if (node is Node3D node3D) node3D.Visible = !isLocal;
-                }
+                _actors[i].Visible = true;
             }
             for (int i = 0; i < _chairs.Count; i++)
             {
@@ -1359,7 +1441,12 @@ public partial class TableStage : Control
             target = new Vector3(rowX, .088f + n * .008f, rowZ);
         }
 
-        Vector3 start = _hands[Mathf.PosMod(seat, _hands.Count)].Position + Vector3.Up * .08f;
+        Vector3 start = GetHandSocketPosition(seat);
+        if (seat == LocalSeatIndex && CurrentCameraMode == CameraPerspectiveMode.FirstPersonPov && _camera != null)
+        {
+            // In first-person POV, spawn the played card cleanly in front of and below the eye camera view
+            start = _camera.GlobalPosition + (-_camera.GlobalTransform.Basis.Y) * 0.28f + (-_camera.GlobalTransform.Basis.Z) * 0.48f;
+        }
         card.Position = start;
         card.Rotation = new Vector3(0, seat * .35f, 0);
 
@@ -1380,7 +1467,7 @@ public partial class TableStage : Control
         _motions.Add(tween);
         tween.TweenInterval(delay);
         float peakArc = isSpecial ? 0.70f : 0.48f;
-        float duration = isSpecial ? 0.65f : 0.82f;
+        float duration = isSpecial ? SpecialCardFlightDuration : StandardCardFlightDuration;
         var shadowMat = shadow.MaterialOverride as StandardMaterial3D;
         tween.TweenMethod(Callable.From<float>(t =>
         {
@@ -1437,6 +1524,20 @@ public partial class TableStage : Control
         _played.Clear();
         _collecting.AddRange(roundCards);
 
+        // 1. Destruir IMEDIATAMENTE todos os rótulos 3D de nome e manilha para não flutuarem sobre o baralho
+        foreach (var card in roundCards)
+        {
+            if (!IsInstanceValid(card)) continue;
+            foreach (var child in card.GetChildren())
+            {
+                if (child is Label3D lbl)
+                {
+                    lbl.Visible = false;
+                    lbl.QueueFree();
+                }
+            }
+        }
+
         Vector3 deckPos = new Vector3(-1.85f, 0.082f, 0.2f);
         if (SettingsManager.Instance?.ReduceMotion == true)
         {
@@ -1444,75 +1545,106 @@ public partial class TableStage : Control
             {
                 var card = roundCards[i];
                 if (!IsInstanceValid(card)) continue;
-                card.Position = deckPos + new Vector3(0, _discards.Count * 0.018f, 0);
-                card.Rotation = new Vector3(Mathf.Pi, (i % 3 - 1) * 0.06f, 0);
-                foreach (var child in card.GetChildren())
-                {
-                    if (child is Label3D lbl) lbl.Visible = false;
-                }
+                card.Position = deckPos + new Vector3(0, i * 0.018f, 0);
+                card.Rotation = new Vector3(Mathf.Pi, 0, 0);
                 _discards.Add(card);
             }
             _collecting.Clear();
             return;
         }
 
-        // 1. Juntar as cartas: gather played cards smoothly to the center in a neat stack
+        // 2. Juntar as cartas jogadas no centro da mesa, viradas para baixo em montinho
         var gatherTween = CreateTween();
         _motions.Add(gatherTween);
         gatherTween.SetParallel(true);
-        Vector3 tableCenter = new Vector3(0, 0.16f, 0.10f);
+        Vector3 tableCenter = new Vector3(0, 0.12f, 0.0f);
 
         for (int i = 0; i < roundCards.Count; i++)
         {
             var card = roundCards[i];
             if (!IsInstanceValid(card)) continue;
-            Vector3 centerOffset = tableCenter + new Vector3(0, i * 0.015f, 0);
-            gatherTween.TweenProperty(card, "position", centerOffset, 0.26f)
+            Vector3 centerOffset = tableCenter + new Vector3(0, i * 0.014f, 0);
+            gatherTween.TweenProperty(card, "position", centerOffset, 0.20f)
                 .SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
-            gatherTween.TweenProperty(card, "rotation", new Vector3(Mathf.Pi, (i % 5 - 2) * 0.04f, 0), 0.26f)
+            gatherTween.TweenProperty(card, "rotation", new Vector3(Mathf.Pi, (i % 5 - 2) * 0.03f, 0), 0.20f)
                 .SetTrans(Tween.TransitionType.Quad);
-
-            // Esmaecer suavemente os rótulos de nome e indicação de MANILHA
-            foreach (var child in card.GetChildren())
-            {
-                if (child is Label3D lbl)
-                {
-                    gatherTween.TweenProperty(lbl, "modulate:a", 0.0f, 0.18f);
-                }
-            }
         }
 
         await ToSignal(gatherTween, Tween.SignalName.Finished);
         if (!IsInsideTree()) return;
 
-        // 2. Deslizar a pilha diretamente de volta para a posição do baralho
-        var discardTween = CreateTween();
-        _motions.Add(discardTween);
-        discardTween.SetParallel(true);
+        // 3. "meio que ergue o baralho, essa parte do baralho ali ergue"
+        // Coletar todos os cartões que atualmente compõem o baralho
+        var deckCards = new List<MeshInstance3D>();
+        if (_deckPile != null)
+        {
+            foreach (Node3D child in _deckPile.GetChildren())
+            {
+                if (child is MeshInstance3D mi && mi.Mesh is BoxMesh) deckCards.Add(mi);
+            }
+        }
+
+        float liftHeight = 0.16f + roundCards.Count * 0.018f;
+        var liftTween = CreateTween();
+        _motions.Add(liftTween);
+        liftTween.SetParallel(true);
+        foreach (var dc in deckCards)
+        {
+            liftTween.TweenProperty(dc, "position:y", dc.Position.Y + liftHeight, 0.18f)
+                .SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        }
+
+        await ToSignal(liftTween, Tween.SignalName.Finished);
+        if (!IsInsideTree()) return;
+
+        // 4. "e essas cartas que tão em cima elas vão embaixo"
+        // As cartas recolhidas do centro deslizam diretamente para BAIXO do baralho erguido
+        var underTween = CreateTween();
+        _motions.Add(underTween);
+        underTween.SetParallel(true);
 
         for (int i = 0; i < roundCards.Count; i++)
         {
             var card = roundCards[i];
             if (!IsInstanceValid(card)) continue;
-            int pileIdx = _discards.Count + i;
-            Vector3 target = deckPos + new Vector3(
-                (pileIdx % 3 - 1.0f) * 0.004f,
-                .082f + (12 + pileIdx) * 0.018f,
-                (pileIdx % 4 - 1.5f) * 0.004f
-            );
-            Vector3 targetRot = new Vector3(Mathf.Pi, (pileIdx % 5 - 2) * 0.03f, 0);
+            float jitterX = (i % 3 - 1) * 0.0035f;
+            float jitterZ = (i % 4 - 1.5f) * 0.004f;
+            float jitterRot = (i % 5 - 2) * 0.012f;
 
-            float delay = i * 0.025f;
-            discardTween.TweenProperty(card, "position", target, 0.32f)
+            Vector3 target = new Vector3(-1.85f + jitterX, 0.082f + i * 0.018f, 0.2f + jitterZ);
+            Vector3 targetRot = new Vector3(Mathf.Pi, jitterRot, 0);
+
+            float delay = i * 0.02f;
+            underTween.TweenProperty(card, "position", target, 0.22f)
                 .SetDelay(delay)
                 .SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.InOut);
-            discardTween.TweenProperty(card, "rotation", targetRot, 0.32f)
-                .SetDelay(delay)
-                .SetTrans(Tween.TransitionType.Quad);
+            underTween.TweenProperty(card, "rotation", targetRot, 0.22f)
+                .SetDelay(delay);
         }
 
-        await ToSignal(discardTween, Tween.SignalName.Finished);
+        await ToSignal(underTween, Tween.SignalName.Finished);
         if (!IsInsideTree()) return;
+
+        // 5. "aí fecha, faz um montinho certinho pra não ficar essa parte aí esquisita"
+        // As cartas do baralho que estavam no ar descem suavemente para fechar por cima das novas cartas!
+        var closeTween = CreateTween();
+        _motions.Add(closeTween);
+        closeTween.SetParallel(true);
+
+        for (int i = 0; i < deckCards.Count; i++)
+        {
+            var dc = deckCards[i];
+            float jitterX = (i % 3 - 1) * 0.0035f;
+            float jitterZ = (i % 4 - 1.5f) * 0.004f;
+            float finalY = 0.082f + (roundCards.Count + i) * 0.018f;
+            closeTween.TweenProperty(dc, "position", new Vector3(-1.85f + jitterX, finalY, 0.2f + jitterZ), 0.22f)
+                .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+        }
+
+        await ToSignal(closeTween, Tween.SignalName.Finished);
+        if (!IsInsideTree()) return;
+
+        AudioManager.Instance?.PlaySound("cut");
 
         foreach (var card in roundCards)
         {
@@ -1582,58 +1714,345 @@ public partial class TableStage : Control
         }
     }
 
+    public Vector3 GetHandSocketPosition(int seat)
+    {
+        if (seat >= 0 && seat < _actors.Count && IsInstanceValid(_actors[seat]))
+        {
+            var skeleton = _actors[seat].FindChild("Skeleton3D", true, false) as Skeleton3D;
+            if (skeleton != null)
+            {
+                int boneIdx = skeleton.FindBone("CardSocket.R");
+                if (boneIdx < 0) boneIdx = skeleton.FindBone("Hand.R");
+                if (boneIdx >= 0)
+                {
+                    Transform3D globalPose = skeleton.GlobalTransform * skeleton.GetBoneGlobalPose(boneIdx);
+                    return globalPose.Origin;
+                }
+            }
+        }
+        int seatIdx = Mathf.PosMod(seat, _hands.Count);
+        return _hands[seatIdx].Position + Vector3.Up * .08f;
+    }
+
+    private static readonly Dictionary<string, string> GestureFallback = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "idle_table_01", "idle" },
+        { "idle_table_02", "idle" },
+        { "idle_impatient", "idle" },
+        { "think", "idle" },
+        { "inspect_hand", "idle" },
+        { "hold_cards", "idle" },
+        { "play_card_fast", "play_card" },
+        { "play_card_dramatic", "play_card" },
+        { "deal", "play_card" },
+        { "shuffle", "play_card" },
+        { "cut_deck", "play_card" },
+        { "check", "play_card" },
+        { "bet", "play_card" },
+        { "all_in", "truco" },
+        { "fold", "idle" },
+        { "showdown", "flourish" },
+        { "accept_truco", "truco" },
+        { "decline_truco", "idle" },
+        { "bid_confident", "victory" },
+        { "bid_uncertain", "idle" },
+        { "bid_zero", "idle" },
+        { "trick_win", "victory" },
+        { "trick_lose", "idle" },
+        { "life_lost", "idle" },
+        { "small_win", "victory" },
+        { "big_win", "victory" },
+        { "lose", "idle" },
+        { "bad_beat", "idle" },
+        { "suspicious", "idle" },
+        { "surprised", "idle" },
+        { "laugh", "idle" },
+        { "taunt", "flourish" }
+    };
+
     public void PlayGesture(int seat, string clip)
     {
         if (seat < 0 || seat >= _animators.Count || SettingsManager.Instance?.ReduceMotion == true) return;
         var player = _animators[seat];
         if (player == null) return;
+
+        string targetClip = clip;
+        bool hasClip = false;
         foreach (string animation in player.GetAnimationList())
+        {
             if (animation.Equals(clip, StringComparison.OrdinalIgnoreCase) || animation.EndsWith("/" + clip, StringComparison.OrdinalIgnoreCase))
             {
-                player.Play(animation, 0.22);
-                foreach (string idle in player.GetAnimationList())
-                    if (idle.Equals("idle", StringComparison.OrdinalIgnoreCase) || idle.EndsWith("/idle", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var idleAnim = player.GetAnimation(idle);
-                        if (idleAnim != null) idleAnim.LoopMode = Animation.LoopModeEnum.Linear;
-                        player.Queue(idle);
-                        break;
-                    }
-                return;
+                hasClip = true;
+                targetClip = animation;
+                break;
             }
+        }
+
+        if (!hasClip && GestureFallback.TryGetValue(clip, out var fallback))
+        {
+            foreach (string animation in player.GetAnimationList())
+            {
+                if (animation.Equals(fallback, StringComparison.OrdinalIgnoreCase) || animation.EndsWith("/" + fallback, StringComparison.OrdinalIgnoreCase))
+                {
+                    targetClip = animation;
+                    hasClip = true;
+                    break;
+                }
+            }
+        }
+
+        if (hasClip)
+        {
+            var anim = player.GetAnimation(targetClip);
+            if (anim != null)
+            {
+                if (targetClip.Equals("idle", StringComparison.OrdinalIgnoreCase) || targetClip.EndsWith("/idle", StringComparison.OrdinalIgnoreCase))
+                    anim.LoopMode = Animation.LoopModeEnum.Linear;
+                else
+                    anim.LoopMode = Animation.LoopModeEnum.None;
+            }
+            player.Play(targetClip, 0.22);
+            foreach (string idle in player.GetAnimationList())
+            {
+                if (idle.Equals("idle", StringComparison.OrdinalIgnoreCase) || idle.EndsWith("/idle", StringComparison.OrdinalIgnoreCase))
+                {
+                    var idleAnim = player.GetAnimation(idle);
+                    if (idleAnim != null) idleAnim.LoopMode = Animation.LoopModeEnum.Linear;
+                    player.Queue(idle);
+                    break;
+                }
+            }
+        }
     }
 
-    /// <summary>Entrants move to their places before rules start. Skip and reduced motion do not advance any gameplay turn.</summary>
-    public async Task PlayEntrance(bool boss=false)
+    /// <summary>3D cinematic intro cutscene with dynamic camera angles, letterbox 2.35:1 bars, luxury gold chyrons and instant skip.</summary>
+    public async Task PlayEntrance(bool boss = false)
     {
-        if(SettingsManager.Instance?.ReduceMotion==true||_intro)return;
-        _intro=true;_skip=false;
-        _cinema=new Control {Name="TableEntrance",MouseFilter=MouseFilterEnum.Stop};
+        if (SettingsManager.Instance?.ReduceMotion == true || _intro) return;
+        _intro = true;
+        _skip = false;
+
+        // Cinematic UI overlay
+        _cinema = new Control { Name = "TableEntrance", MouseFilter = MouseFilterEnum.Stop };
         _cinema.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         AddChild(_cinema);
-        var banner=new PanelContainer {MouseFilter=MouseFilterEnum.Ignore};banner.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);banner.OffsetTop=-72;
-        banner.AddThemeStyleboxOverride("panel",ClubTheme.Box(new Color(.025f,.055f,.05f,.93f),ClubTheme.Gold,12));
-        var row=new HBoxContainer();banner.AddChild(row);
-        _caption=ClubTheme.Label(boss?"A CASA TEM UM NOVO DESAFIO":"OS JOGADORES ESTÃO CHEGANDO",18,ClubTheme.Gold);_caption.HorizontalAlignment=HorizontalAlignment.Center;_caption.SizeFlagsHorizontal=SizeFlags.ExpandFill;row.AddChild(_caption);_cinema.AddChild(banner);
-        var skip=ClubTheme.Button("Pular entrada");skip.CustomMinimumSize=new Vector2(140,36);skip.Pressed+=()=>_skip=true;row.AddChild(skip);
-        for(int i=0;i<_actors.Count;i++){_actors[i].Position=_positions[i]+new Vector3(i%2==0?-6:6,0,0);_hands[i].Visible=false;}
-        AudioManager.Instance?.PlaySound(boss?"boss-arrival":"arrival");
-        for(int seat=0;seat<_actors.Count&&!_skip;seat++)
+
+        // Letterbox Anamorphic 2.35:1 Bars
+        var topBar = new ColorRect { Color = new Color(0.02f, 0.02f, 0.03f, 0.96f), MouseFilter = MouseFilterEnum.Ignore };
+        topBar.SetAnchorsAndOffsetsPreset(LayoutPreset.TopWide);
+        topBar.CustomMinimumSize = new Vector2(0, 64);
+        _cinema.AddChild(topBar);
+
+        var bottomBar = new ColorRect { Color = new Color(0.02f, 0.02f, 0.03f, 0.96f), MouseFilter = MouseFilterEnum.Ignore };
+        bottomBar.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
+        bottomBar.CustomMinimumSize = new Vector2(0, 64);
+        _cinema.AddChild(bottomBar);
+
+        // Skip Button top right
+        var skipMargin = new MarginContainer();
+        skipMargin.SetAnchorsAndOffsetsPreset(LayoutPreset.TopRight);
+        skipMargin.AddThemeConstantOverride("margin_top", 14);
+        skipMargin.AddThemeConstantOverride("margin_right", 18);
+        _cinema.AddChild(skipMargin);
+        var skip = ClubTheme.Button("Pular entrada");
+        skip.Name = "SkipButton";
+        skip.CustomMinimumSize = new Vector2(130, 36);
+        skip.Pressed += () => _skip = true;
+        skipMargin.AddChild(skip);
+
+        // Centered Golden Chyron Container
+        var chyronMargin = new MarginContainer();
+        chyronMargin.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
+        chyronMargin.AddThemeConstantOverride("margin_bottom", 74);
+        chyronMargin.AddThemeConstantOverride("margin_left", 180);
+        chyronMargin.AddThemeConstantOverride("margin_right", 180);
+        _cinema.AddChild(chyronMargin);
+
+        var chyronPanel = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
+        chyronPanel.AddThemeStyleboxOverride("panel", ClubTheme.Box(new Color(0.03f, 0.07f, 0.055f, 0.92f), ClubTheme.Gold, 10));
+        chyronMargin.AddChild(chyronPanel);
+
+        var chyronBox = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        chyronBox.AddThemeConstantOverride("separation", 2);
+        chyronPanel.AddChild(chyronBox);
+
+        var eyebrow = ClubTheme.Label(boss ? "★ CONFRONTO DE ALTA CÚPULA ★" : "CLUBE PRIVADO  ·  SESSÃO DE ALTA APOSTA", 11, ClubTheme.Gold);
+        eyebrow.HorizontalAlignment = HorizontalAlignment.Center;
+        chyronBox.AddChild(eyebrow);
+
+        _caption = ClubTheme.Label(boss ? "O DESAFIO DO CHEFÃO" : "A GRANDE MESA DO CLUBE", 22, ClubTheme.Paper);
+        _caption.HorizontalAlignment = HorizontalAlignment.Center;
+        _caption.AddThemeFontOverride("font", ClubTheme.DisplayFont);
+        chyronBox.AddChild(_caption);
+
+        var subtitle = ClubTheme.Label(boss ? "A casa apresenta seu mestre supremo" : "Os mestres tomam seus lugares à mesa", 13, ClubTheme.Muted);
+        subtitle.HorizontalAlignment = HorizontalAlignment.Center;
+        chyronBox.AddChild(subtitle);
+
+        int rivalSeat = RivalIndex >= 0 && RivalIndex < _actors.Count ? RivalIndex : (_actors.Count > 1 ? 1 : 0);
+        int rivalCast = _cast.Count > rivalSeat ? _cast[rivalSeat] : rivalSeat;
+        int localSeat = Mathf.Clamp(LocalSeatIndex, 0, _positions.Count - 1);
+        Vector3 seatPos = _positions[localSeat];
+        Vector3 toCenter = -new Vector3(seatPos.X, 0, seatPos.Z).Normalized();
+        var right = toCenter.Cross(Vector3.Up).Normalized();
+        Vector3 eyePos = seatPos + Vector3.Up * 2.35f - toCenter * 0.70f + right * 0.35f;
+
+        _camera.Projection = Camera3D.ProjectionType.Perspective;
+        _camera.KeepAspect = Camera3D.KeepAspectEnum.Height;
+
+        if (boss)
         {
-            _caption.Text=(CharacterCatalog.IsBoss(_cast[seat])?"CHEFE DA MESA  ·  ":"À MESA  ·  ")+CharacterCatalog.Names[_cast[seat]];
-            PlayGesture(seat,boss&&CharacterCatalog.IsBoss(_cast[seat])?"boss_intro":"entrance");
-            var tween=CreateTween();_motions.Add(tween);tween.TweenProperty(_actors[seat],"position",_positions[seat],.5f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
-            if(!await WaitPresentation(.62))return;
+            // ===== MODO PÔQUER / CHEFÃO =====
+            // Trilha sonora de fundo e efeito de chegada dramática
+            AudioManager.Instance?.PlayMusic("midnight-baron");
+            AudioManager.Instance?.PlaySound("boss-arrival");
+
+            for (int i = 0; i < _actors.Count; i++)
+            {
+                _actors[i].Position = _positions[i];
+                _actors[i].Visible = true;
+                _hands[i].Visible = false;
+                PlayIdle(i);
+            }
+
+            Vector3 bPos = _positions[rivalSeat];
+            Vector3 bFwd = -new Vector3(bPos.X, 0, bPos.Z).Normalized();
+
+            // SHOT 1 (Pôquer): Plano médio imersivo da sala com o Chefão à mesa (1.6s)
+            _camera.Fov = 42.0f;
+            Vector3 bMidStart = new Vector3(0, 2.75f, 3.2f);
+            Vector3 bMidEnd = new Vector3(0, 2.50f, 2.7f);
+            _camera.Position = bMidStart;
+            _camera.LookAt(bPos + Vector3.Up * 1.55f, Vector3.Up);
+
+            var t1 = CreateTween();
+            _motions.Add(t1);
+            t1.TweenProperty(_camera, "position", bMidEnd, 1.6f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+            if (!await WaitPresentation(1.55)) return;
+
+            // SHOT 2 (Pôquer): CLOSE-UP DETALHADO NA CARA DO BOSS COM ANIMAÇÃO (2.2s)
+            if (!_skip && IsInsideTree())
+            {
+                eyebrow.Text = "★ O CHEFÃO DA BANCA ★";
+                _caption.Text = CharacterCatalog.Names[rivalCast].ToUpper();
+                subtitle.Text = CharacterCatalog.Descriptions[rivalCast];
+
+                // Câmera posicionada bem de perto na altura do rosto do boss (Y = 1.62m, nunca abaixo da mesa)
+                Vector3 faceCam = bPos + bFwd * 1.12f + Vector3.Up * 2.30f;
+                _camera.Position = faceCam;
+                _camera.LookAt(bPos + Vector3.Up * 2.36f, Vector3.Up);
+                _camera.Fov = 28.0f; // Lente retrato telephoto fechada com foco na face e bokeh
+
+                // O boss executa uma animação de apresentação/desafio
+                PlayGesture(rivalSeat, "boss_intro");
+
+                var t2 = CreateTween();
+                _motions.Add(t2);
+                t2.TweenProperty(_camera, "position", faceCam + bFwd * -0.10f + Vector3.Up * 0.04f, 2.2f).SetTrans(Tween.TransitionType.Linear);
+                if (!await WaitPresentation(2.15)) return;
+            }
+
+            // SHOT 3 (Pôquer): Transição arqueada e suave por cima da mesa para o POV do jogador (1.4s)
+            if (!_skip && IsInsideTree())
+            {
+                eyebrow.Text = "SUA VEZ NA MESA";
+                _caption.Text = "PREPARE SUAS APOSTAS";
+                subtitle.Text = "Vença a meta de fichas para avançar.";
+
+                Vector3 arcStart = new Vector3(seatPos.X * 0.5f, 2.45f, seatPos.Z * 0.5f + 0.6f);
+                _camera.Position = arcStart;
+                _camera.LookAt(new Vector3(0, 0.72f, -0.35f), Vector3.Up);
+                _camera.Fov = 48.0f;
+
+                var t3 = CreateTween();
+                _motions.Add(t3);
+                t3.TweenProperty(_camera, "position", eyePos, 1.35f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.InOut);
+                if (!await WaitPresentation(1.30)) return;
+            }
         }
-        if(!_skip && !await WaitPresentation(boss ? .65 : .25))return;
-        foreach(var tween in _motions)tween?.Kill();_motions.Clear();
-        for(int i=0;i<_actors.Count;i++)
+        else
         {
-            _actors[i].Position=_positions[i];
-            _hands[i].Visible=true;
+            // ===== MODO TRUCO / FODINHA =====
+            AudioManager.Instance?.PlaySound("arrival");
+
+            // Personagens sentando na cadeira: disparamos o gesto 'entrance' para todos
+            for (int i = 0; i < _actors.Count; i++)
+            {
+                _actors[i].Position = _positions[i];
+                _actors[i].Visible = true;
+                _hands[i].Visible = false;
+                PlayGesture(i, "entrance");
+            }
+
+            // SHOT 1 (Truco/Fodinha): Ângulo de fora no canto superior da sala (2.2s)
+            // Revela a atmosfera completa do clube (lareira, relógio, bar cart) com os personagens tomando assento
+            _camera.Fov = 52.0f;
+            Vector3 cornerStart = new Vector3(-4.9f, 3.45f, 4.6f);
+            Vector3 cornerEnd = new Vector3(-4.1f, 3.10f, 3.9f);
+            _camera.Position = cornerStart;
+            _camera.LookAt(new Vector3(0, 0.75f, 0.0f), Vector3.Up);
+
+            eyebrow.Text = "CLUBE PRIVADO  ·  SESSÃO DE ALTA APOSTA";
+            _caption.Text = "A GRANDE MESA DO CLUBE";
+            subtitle.Text = "Os mestres tomam seus lugares à mesa.";
+
+            var t1 = CreateTween();
+            _motions.Add(t1);
+            t1.TweenProperty(_camera, "position", cornerEnd, 2.2f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.Out);
+            if (!await WaitPresentation(2.10)) return;
+
+            // SHOT 2 (Truco/Fodinha): Varredura aérea elegante da mesa (1.8s)
+            if (!_skip && IsInsideTree())
+            {
+                eyebrow.Text = "MESA COMPLETA";
+                _caption.Text = rivalCast < CharacterCatalog.Names.Length ? $"DISPUTA CONTRA {CharacterCatalog.Names[rivalCast].ToUpper()}" : "RODADA DE APOSTAS";
+                subtitle.Text = "Feltro clássico, baralho selado e regras tradicionais.";
+
+                // Posição orbital elevada ao redor da mesa (Y = 2.40m -> 2.25m, bem acima do feltro)
+                Vector3 orbitStart = new Vector3(2.8f, 2.40f, 3.1f);
+                Vector3 orbitEnd = new Vector3(1.4f, 2.25f, 2.8f);
+                _camera.Position = orbitStart;
+                _camera.LookAt(new Vector3(0, 0.72f, 0.0f), Vector3.Up);
+                _camera.Fov = 46.0f;
+
+                var t2 = CreateTween();
+                _motions.Add(t2);
+                t2.TweenProperty(_camera, "position", orbitEnd, 1.8f).SetTrans(Tween.TransitionType.Quad).SetEase(Tween.EaseType.InOut);
+                if (!await WaitPresentation(1.75)) return;
+            }
+
+            // SHOT 3 (Truco/Fodinha): Descida suave para o assento POV do jogador (1.4s)
+            if (!_skip && IsInsideTree())
+            {
+                eyebrow.Text = "SUA VEZ NA MESA";
+                _caption.Text = "QUE OS JOGOS COMECEM";
+                subtitle.Text = "Boa sorte no feltro.";
+
+                Vector3 descentStart = seatPos + Vector3.Up * 2.45f + toCenter * 0.40f;
+                _camera.Position = descentStart;
+                _camera.LookAt(new Vector3(0, 0.72f, -0.35f), Vector3.Up);
+                _camera.Fov = 48.0f;
+
+                var t3 = CreateTween();
+                _motions.Add(t3);
+                t3.TweenProperty(_camera, "position", eyePos, 1.35f).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.InOut);
+                if (!await WaitPresentation(1.30)) return;
+            }
+        }
+
+        // ===== CLEANUP & SEAMLESS GAMEPLAY HANDOFF =====
+        foreach (var tween in _motions) tween?.Kill();
+        _motions.Clear();
+        for (int i = 0; i < _actors.Count; i++)
+        {
+            _actors[i].Position = _positions[i];
+            _hands[i].Visible = true;
             PlayIdle(i);
         }
-        _cinema.QueueFree();_cinema=null;_intro=false;
+        if (IsInstanceValid(_cinema)) _cinema.QueueFree();
+        _cinema = null;
+        _intro = false;
+        UpdateCameraPosition();
     }
 
     private async Task<bool> WaitPresentation(double seconds)
@@ -1680,7 +2099,13 @@ public partial class TableStage : Control
                 float flicker = Mathf.Sin(_time * 2.3f) * 0.035f + Mathf.Sin(_time * 7.1f) * 0.015f;
                 _pendant.LightEnergy = _basePendantEnergy + flicker;
             }
+            if (_fireplaceLight != null && IsInstanceValid(_fireplaceLight))
+            {
+                float fireFlicker = Mathf.Sin(_time * 7.5f) * 0.18f + Mathf.Sin(_time * 16.3f) * 0.10f;
+                _fireplaceLight.LightEnergy = 2.2f + fireFlicker;
+            }
         }
+        if (_intro) return;
         if (CurrentCameraMode == CameraPerspectiveMode.FirstPersonPov)
         {
             _lookAngles = _lookAngles.Lerp(_lookTarget, motion ? 1f - Mathf.Exp(-10f * (float)delta) : 1f);

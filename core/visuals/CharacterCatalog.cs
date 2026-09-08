@@ -31,4 +31,17 @@ public static class CharacterCatalog
         var frame = sheet.GetSize() / new Vector2(8, 2);
         return new AtlasTexture { Atlas = sheet, Region = new Rect2(new Vector2(Mathf.PosMod(index, 8) * frame.X, react ? frame.Y : 0), frame) };
     }
+
+    public static Texture2D TrucoCallSprite(int index, int stakes)
+    {
+        string id = Ids[Mathf.PosMod(index, Ids.Length)];
+        int validStakes = stakes switch { 6 => 6, 9 => 9, 12 => 12, _ => 3 };
+        string path = $"res://assets/sprites/truco_calls/{id}_{validStakes}.png";
+        if (ResourceLoader.Exists(path))
+        {
+            var tex = GD.Load<Texture2D>(path);
+            if (tex != null) return tex;
+        }
+        return Portrait(index, react: stakes >= 6);
+    }
 }

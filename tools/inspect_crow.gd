@@ -1,7 +1,7 @@
 extends SceneTree
 
 func _init():
-    var m = load("res://assets/models/club/mascot_crow.glb").instantiate()
+    var m = load("res://temp/test_crow_split.glb").instantiate()
     print("=== Mascot Crow Tree ===")
     _print_tree(m, 0)
     var anim = m.find_children("*", "AnimationPlayer", true, false)

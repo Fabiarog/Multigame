@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 
 func _init():
     var project_dir = 'c:/workspace/multigame'
@@ -15,7 +15,7 @@ func _init():
     await create_timer(0.5).timeout
     for i in range(5): await process_frame
     
-    var chars_to_test = ['Seu Corvo', 'Barão da Meia-Noite', 'Dama de Copas', 'Zeca', 'Iara']
+    var chars_to_test = ['Aki', 'Seu Corvo', 'Barão da Meia-Noite', 'Dama de Copas', 'Zeca', 'Iara']
     for char_name in chars_to_test:
         for btn in current_scene.find_children('*', 'Button', true, false):
             if char_name in btn.text:

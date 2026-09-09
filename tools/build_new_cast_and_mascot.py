@@ -15,7 +15,7 @@ OUT_DIR = ROOT / "assets/models/club"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 NEW_CAST = [
-    ("aki",      "aki_fbx/Aki.fbx",                  "#dfb15b", "biped"),
+    ("aki",      "aki_fbx/Aki.fbx",                  "#f8e5d7", "biped"),
     ("morgana",  "source/Witch_skeletal_mesh.fbx",   "#5e2a84", "biped"),
     ("carnical", "ghoul_ue5.fbx",                    "#3a4048", "biped"),
 ]
@@ -51,7 +51,7 @@ def export_mascot_crow():
 
     # Remove all WGT widgets and unneeded objects
     for o in list(bpy.data.objects):
-        if o.name.startswith("WGT") or o.name == "metarig":
+        if o.name.startswith("WGT") or o.name in ("metarig", "Cube", "Cube.001", "Icosphere", "Sphere"):
             bpy.data.objects.remove(o, do_unlink=True)
 
     # Link textures
@@ -68,20 +68,60 @@ def export_mascot_crow():
     # Find the active rig
     rig = bpy.data.objects.get("rig")
     if rig:
-        # Bake or rename rigAction to idle
-        if rig.animation_data and rig.animation_data.action:
-            act = rig.animation_data.action
-            act.name = "idle"
-            smooth_fcurves(act)
-            if not rig.animation_data.nla_tracks:
-                track = rig.animation_data.nla_tracks.new()
-                track.name = "idle"
-                strip = track.strips.new("idle", 1, act)
-                strip.extrapolation = 'HOLD'
-
-        # Scale so bird is ~0.42m tall and nicely perched
+        orig_act = rig.animation_data.action if rig.animation_data else None
         rig.scale = Vector((0.075, 0.075, 0.075))
-        rig.location.z = -10.87 * 0.075
+        bpy.context.scene.frame_set(120)
+        bpy.context.view_layer.update()
+        foot_l = rig.pose.bones.get("foot_ik.L") or rig.pose.bones.get("foot_fk.L")
+        if foot_l:
+            rig.location.z = -(rig.matrix_world @ foot_l.head).z
+        bpy.context.view_layer.update()
+
+        if orig_act:
+            # Action 1: Landing cutscene clip (frames 1 to 105)
+            act_landing = orig_act.copy()
+            act_landing.name = "landing"
+            smooth_fcurves(act_landing)
+
+            # Action 2: Perched idle observation clip (frames 106 to 182 shifted to 1..77)
+            act_idle = bpy.data.actions.new(name="idle")
+            pose_bones = list(rig.pose.bones)
+            for f_src in range(106, 183):
+                f_dst = f_src - 105
+                bpy.context.scene.frame_set(f_src)
+                rig.animation_data.action = orig_act
+                bpy.context.view_layer.update()
+                transforms = []
+                for pb in pose_bones:
+                    transforms.append((pb, pb.location.copy(), pb.rotation_quaternion.copy() if pb.rotation_mode == 'QUATERNION' else pb.rotation_euler.copy()))
+                rig.animation_data.action = act_idle
+                for pb, loc, rot in transforms:
+                    pb.location = loc
+                    pb.keyframe_insert(data_path="location", frame=f_dst)
+                    if pb.rotation_mode == 'QUATERNION':
+                        pb.rotation_quaternion = rot
+                        pb.keyframe_insert(data_path="rotation_quaternion", frame=f_dst)
+                    else:
+                        pb.rotation_euler = rot
+                        pb.keyframe_insert(data_path="rotation_euler", frame=f_dst)
+
+            smooth_fcurves(act_idle)
+
+            for track in list(rig.animation_data.nla_tracks):
+                rig.animation_data.nla_tracks.remove(track)
+
+            t_landing = rig.animation_data.nla_tracks.new()
+            t_landing.name = "landing"
+            s_landing = t_landing.strips.new("landing", 1, act_landing)
+            s_landing.action_frame_start = 1
+            s_landing.action_frame_end = 105
+
+            t_idle = rig.animation_data.nla_tracks.new()
+            t_idle.name = "idle"
+            s_idle = t_idle.strips.new("idle", 1, act_idle)
+            s_idle.action_frame_start = 1
+            s_idle.action_frame_end = 77
+            s_idle.extrapolation = 'HOLD'
 
     out_glb = OUT_DIR / "mascot_crow.glb"
     bpy.ops.export_scene.gltf(
@@ -187,42 +227,46 @@ def build_character(ident, rel_path, skin_hex, char_type):
     print(f"[{ident.upper()}] Found {len(mesh_objs)} raw meshes.")
 
     # Character-specific pre-adjustments
-    if ident == "aki":
-        # Aki faces +Y naturally, rotate 180° around Z so she faces -Y (towards the table)
-        for m in mesh_objs:
-            m.rotation_euler.z += math.pi
-    elif ident == "carnical":
+    if ident == "carnical":
         # Ghoul: protect Belt and Hair vertex groups before joining
         for m in mesh_objs:
             if m.name.startswith("Belt"):
-                # Zero out any arm/forearm/hand groups on belt
                 for vg in list(m.vertex_groups):
                     if any(k in vg.name.lower() for k in ["arm", "hand", "finger", "thumb", "claw"]):
                         m.vertex_groups.remove(vg)
-                # Ensure belt has pelvis weight
                 pelvis_vg = m.vertex_groups.get("pelvis") or m.vertex_groups.new(name="pelvis")
                 for v in m.data.vertices:
                     pelvis_vg.add([v.index], 1.0, 'REPLACE')
             elif m.name == "Hair":
-                # Ensure all hair vertices have head weight 1.0
                 head_vg = m.vertex_groups.get("head") or m.vertex_groups.new(name="head")
                 for v in m.data.vertices:
                     head_vg.add([v.index], 1.0, 'REPLACE')
 
     # Unparent meshes while strictly preserving world transforms
+    bpy.ops.object.select_all(action='DESELECT')
     for m in mesh_objs:
-        mw = m.matrix_world.copy()
-        m.parent = None
-        m.matrix_world = mw
-        bpy.ops.object.select_all(action='DESELECT')
         m.select_set(True)
-        bpy.context.view_layer.objects.active = m
-        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    bpy.context.view_layer.objects.active = mesh_objs[0]
+    bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
     # Clean non-mesh objects (empties, old armatures, lights, cameras)
     for o in list(bpy.data.objects):
         if o.type != 'MESH':
             bpy.data.objects.remove(o, do_unlink=True)
+
+    if ident == "aki":
+        # Remove the 1300 mannequin head vertices on Body (Z > 1.38) so the real face textures are unobstructed
+        body_obj = bpy.data.objects.get("Body")
+        if body_obj:
+            bpy.context.view_layer.objects.active = body_obj
+            bpy.ops.object.mode_set(mode='EDIT')
+            import bmesh
+            bm = bmesh.from_edit_mesh(body_obj.data)
+            del_verts = [v for v in bm.verts if v.co.z > 1.38]
+            bmesh.ops.delete(bm, geom=del_verts, context='VERTS')
+            bmesh.update_edit_mesh(body_obj.data)
+            bpy.ops.object.mode_set(mode='OBJECT')
 
     # Join meshes
     if len(mesh_objs) > 1:
@@ -234,6 +278,11 @@ def build_character(ident, rel_path, skin_hex, char_type):
         mesh_obj = mesh_objs[0]
     else:
         mesh_obj = mesh_objs[0]
+
+    if ident == "aki":
+        # Rotate the unified mesh 180° around Z so she faces -Y (towards the table / camera)
+        mesh_obj.rotation_euler.z = math.pi
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
 
     # Ground mesh (min Z = 0)
     bbox = [mesh_obj.matrix_world @ Vector(b) for b in mesh_obj.bound_box]
@@ -281,6 +330,11 @@ def build_character(ident, rel_path, skin_hex, char_type):
                         bsdf.inputs['Roughness'].default_value = 0.55
                     if 'Metallic' in bsdf.inputs:
                         bsdf.inputs['Metallic'].default_value = 0.12
+            elif ident == "aki":
+                if 'Base Color' in bsdf.inputs:
+                    bsdf.inputs['Base Color'].default_value = (0.97, 0.90, 0.84, 1.0)
+                if 'Roughness' in bsdf.inputs:
+                    bsdf.inputs['Roughness'].default_value = 0.40
             else:
                 if 'Base Color' in bsdf.inputs and not bsdf.inputs['Base Color'].is_linked:
                     bsdf.inputs['Base Color'].default_value = rgba
@@ -304,31 +358,60 @@ def build_character(ident, rel_path, skin_hex, char_type):
         return b
 
     root = add_bone("Root", (0, 0, 0), (0, 0, 0.15), deform=False)
-    pelvis = add_bone("Pelvis", (0, 0, 0.88), (0, 0, 1.02), root, deform=True)
-    spine = add_bone("Spine", (0, 0, 1.02), (0, 0, 1.22), pelvis)
-    chest = add_bone("Chest", (0, 0, 1.22), (0, 0, 1.42), spine)
-    neck = add_bone("Neck", (0, 0, 1.42), (0, -0.02, 1.54), chest)
-    head = add_bone("Head", (0, -0.02, 1.54), (0, -0.05, 1.82), neck)
 
-    sh_l = add_bone("Shoulder.L", (0.05, 0, 1.40), (0.22, 0.01, 1.38), chest)
-    ua_l = add_bone("UpperArm.L", (0.22, 0.01, 1.38), (0.33, 0.04, 1.08), sh_l)
-    fa_l = add_bone("Forearm.L", (0.33, 0.04, 1.08), (0.26, -0.15, 0.84), ua_l)
-    h_l = add_bone("Hand.L", (0.26, -0.15, 0.84), (0.18, -0.26, 0.80), fa_l)
+    if ident == "aki":
+        pelvis = add_bone("Pelvis", (0, -0.008, 0.92), (0, -0.008, 1.05), root, deform=True)
+        spine = add_bone("Spine", (0, -0.03, 1.05), (0, -0.03, 1.20), pelvis)
+        chest = add_bone("Chest", (0, -0.02, 1.20), (0, -0.02, 1.40), spine)
+        neck = add_bone("Neck", (0, 0.03, 1.40), (0, 0.03, 1.54), chest)
+        head = add_bone("Head", (0, 0.01, 1.54), (0, -0.02, 1.82), neck)
 
-    sh_r = add_bone("Shoulder.R", (-0.05, 0, 1.40), (-0.22, 0.01, 1.38), chest)
-    ua_r = add_bone("UpperArm.R", (-0.22, 0.01, 1.38), (-0.33, 0.04, 1.08), sh_r)
-    fa_r = add_bone("Forearm.R", (-0.33, 0.04, 1.08), (-0.26, -0.15, 0.84), ua_r)
-    h_r = add_bone("Hand.R", (-0.26, -0.15, 0.84), (-0.18, -0.26, 0.80), fa_r)
+        # Rest pose arms matching Aki's horizontal T-pose mesh
+        sh_l = add_bone("Shoulder.L", (0.05, 0.03, 1.48), (0.15, 0.03, 1.47), chest)
+        ua_l = add_bone("UpperArm.L", (0.15, 0.03, 1.47), (0.38, 0.03, 1.46), sh_l)
+        fa_l = add_bone("Forearm.L", (0.38, 0.03, 1.46), (0.58, 0.03, 1.46), ua_l)
+        h_l = add_bone("Hand.L", (0.58, 0.03, 1.46), (0.70, 0.03, 1.47), fa_l)
 
-    card_sock = add_bone("CardSocket.R", (-0.18, -0.26, 0.80), (-0.18, -0.32, 0.80), h_r, deform=False)
+        sh_r = add_bone("Shoulder.R", (-0.05, 0.03, 1.48), (-0.15, 0.03, 1.47), chest)
+        ua_r = add_bone("UpperArm.R", (-0.15, 0.03, 1.47), (-0.38, 0.03, 1.46), sh_r)
+        fa_r = add_bone("Forearm.R", (-0.38, 0.03, 1.46), (-0.58, 0.03, 1.46), ua_r)
+        h_r = add_bone("Hand.R", (-0.58, 0.03, 1.46), (-0.70, 0.03, 1.47), fa_r)
 
-    th_l = add_bone("Thigh.L", (0.15, 0, 0.88), (0.16, 0.02, 0.48), pelvis)
-    shn_l = add_bone("Shin.L", (0.16, 0.02, 0.48), (0.16, 0.01, 0.12), th_l)
-    ft_l = add_bone("Foot.L", (0.16, 0.01, 0.12), (0.16, -0.18, 0.02), shn_l)
+        card_sock = add_bone("CardSocket.R", (-0.58, -0.15, 1.0), (-0.58, -0.22, 1.0), h_r, deform=False)
 
-    th_r = add_bone("Thigh.R", (-0.15, 0, 0.88), (-0.16, 0.02, 0.48), pelvis)
-    shn_r = add_bone("Shin.R", (-0.16, 0.02, 0.48), (-0.16, 0.01, 0.12), th_r)
-    ft_r = add_bone("Foot.R", (-0.16, 0.01, 0.12), (-0.16, -0.18, 0.02), shn_r)
+        th_l = add_bone("Thigh.L", (0.09, 0.0, 0.88), (0.09, 0.02, 0.48), pelvis)
+        shn_l = add_bone("Shin.L", (0.09, 0.02, 0.48), (0.09, 0.01, 0.12), th_l)
+        ft_l = add_bone("Foot.L", (0.09, 0.01, 0.12), (0.09, -0.16, 0.02), shn_l)
+
+        th_r = add_bone("Thigh.R", (-0.09, 0.0, 0.88), (-0.09, 0.02, 0.48), pelvis)
+        shn_r = add_bone("Shin.R", (-0.09, 0.02, 0.48), (-0.09, 0.01, 0.12), th_r)
+        ft_r = add_bone("Foot.R", (-0.09, 0.01, 0.12), (-0.09, -0.16, 0.02), shn_r)
+    else:
+        pelvis = add_bone("Pelvis", (0, 0, 0.88), (0, 0, 1.02), root, deform=True)
+        spine = add_bone("Spine", (0, 0, 1.02), (0, 0, 1.22), pelvis)
+        chest = add_bone("Chest", (0, 0, 1.22), (0, 0, 1.42), spine)
+        neck = add_bone("Neck", (0, 0, 1.42), (0, -0.02, 1.54), chest)
+        head = add_bone("Head", (0, -0.02, 1.54), (0, -0.05, 1.82), neck)
+
+        sh_l = add_bone("Shoulder.L", (0.05, 0, 1.40), (0.22, 0.01, 1.38), chest)
+        ua_l = add_bone("UpperArm.L", (0.22, 0.01, 1.38), (0.33, 0.04, 1.08), sh_l)
+        fa_l = add_bone("Forearm.L", (0.33, 0.04, 1.08), (0.26, -0.15, 0.84), ua_l)
+        h_l = add_bone("Hand.L", (0.26, -0.15, 0.84), (0.18, -0.26, 0.80), fa_l)
+
+        sh_r = add_bone("Shoulder.R", (-0.05, 0, 1.40), (-0.22, 0.01, 1.38), chest)
+        ua_r = add_bone("UpperArm.R", (-0.22, 0.01, 1.38), (-0.33, 0.04, 1.08), sh_r)
+        fa_r = add_bone("Forearm.R", (-0.33, 0.04, 1.08), (-0.26, -0.15, 0.84), ua_r)
+        h_r = add_bone("Hand.R", (-0.26, -0.15, 0.84), (-0.18, -0.26, 0.80), fa_r)
+
+        card_sock = add_bone("CardSocket.R", (-0.18, -0.26, 0.80), (-0.18, -0.32, 0.80), h_r, deform=False)
+
+        th_l = add_bone("Thigh.L", (0.15, 0, 0.88), (0.16, 0.02, 0.48), pelvis)
+        shn_l = add_bone("Shin.L", (0.16, 0.02, 0.48), (0.16, 0.01, 0.12), th_l)
+        ft_l = add_bone("Foot.L", (0.16, 0.01, 0.12), (0.16, -0.18, 0.02), shn_l)
+
+        th_r = add_bone("Thigh.R", (-0.15, 0, 0.88), (-0.16, 0.02, 0.48), pelvis)
+        shn_r = add_bone("Shin.R", (-0.16, 0.02, 0.48), (-0.16, 0.01, 0.12), th_r)
+        ft_r = add_bone("Foot.R", (-0.16, 0.01, 0.12), (-0.16, -0.18, 0.02), shn_r)
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -460,6 +543,16 @@ def build_character(ident, rel_path, skin_hex, char_type):
             c["Pelvis"] = (p_locs, c["Pelvis"][1])
         else:
             c["Pelvis"] = ([(1, (0, -0.36, 0)), (total_frames, (0, -0.36, 0))], None)
+
+        if ident == "aki":
+            # Aki's rest mesh is T-pose; seated clips bend arms down and forward onto table/lap
+            b_ual, b_fal = (-1.15, 0.0, -0.45), (-0.45, 0.0, -0.75)
+            b_uar, b_far = (-1.15, 0.0, 0.45), (-0.45, 0.0, 0.75)
+            for bone, base in [("UpperArm.L", b_ual), ("Forearm.L", b_fal), ("UpperArm.R", b_uar), ("Forearm.R", b_far)]:
+                if bone not in c:
+                    c[bone] = (None, [(1, base), (total_frames, base)])
+                elif c[bone][1]:
+                    c[bone] = (c[bone][0], [(f, (base[0] + r[0], base[1] + r[1], base[2] + r[2])) for f, r in c[bone][1]])
 
         for bone_name, (loc_keys, rot_keys) in c.items():
             if loc_keys:

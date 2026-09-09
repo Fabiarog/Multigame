@@ -42,6 +42,7 @@ public partial class TableStage : Control
     private AnimationPlayer _clockAnimator;
     private string _clockClip;
     private bool _clockMoving;
+    private AnimationPlayer _mascotAnimator;
     private readonly List<Node3D> _actors = new(), _hands = new(), _played = new(), _discards = new(), _collecting = new(), _chairs = new();
     private readonly List<Vector3> _positions = new();
     private readonly List<int> _cast = new();
@@ -249,22 +250,21 @@ public partial class TableStage : Control
                 {
                     var mascot = crowScene.Instantiate<Node3D>();
                     mascot.Name = "MascotCrow";
-                    mascot.Position = new Vector3(2.55f, 0.96f, 0.35f);
-                    mascot.RotationDegrees = new Vector3(0, -115f, 0);
+                    // Sit cleanly atop the perch bar (pBar Y is -0.72 + 1.68 + 0.032 = 0.992f)
+                    mascot.Position = new Vector3(2.55f, 0.992f, 0.35f);
+                    mascot.RotationDegrees = new Vector3(0, -90f, 0);
                     mascot.Scale = Vector3.One * 0.58f;
                     _world.AddChild(mascot);
                     foreach (var node in mascot.FindChildren("*", "AnimationPlayer", true, false))
                     {
-                        var anim = (AnimationPlayer)node;
-                        string[] anims = anim.GetAnimationList();
-                        string clipToPlay = anim.HasAnimation("rigAction") ? "rigAction" :
-                                            (anim.HasAnimation("idle") ? "idle" : (anims.Length > 0 ? anims[0] : null));
-                        if (!string.IsNullOrEmpty(clipToPlay))
-                        {
-                            var a = anim.GetAnimation(clipToPlay);
-                            if (a != null) a.LoopMode = Animation.LoopModeEnum.Linear;
-                            anim.Play(clipToPlay);
-                        }
+                        _mascotAnimator = (AnimationPlayer)node;
+                        break;
+                    }
+                    if (_mascotAnimator != null && _mascotAnimator.HasAnimation("idle"))
+                    {
+                        var a = _mascotAnimator.GetAnimation("idle");
+                        if (a != null) a.LoopMode = Animation.LoopModeEnum.Linear;
+                        _mascotAnimator.Play("idle");
                     }
                 }
             }
@@ -1875,7 +1875,13 @@ public partial class TableStage : Control
     {
         if (SettingsManager.Instance?.ReduceMotion == true || _intro) return;
         _intro = true;
-        _skip = false;
+        // Mascot Crow flies in and lands on perch during the entrance cutscene
+        if (_mascotAnimator != null && _mascotAnimator.HasAnimation("landing"))
+        {
+            var landAnim = _mascotAnimator.GetAnimation("landing");
+            if (landAnim != null) landAnim.LoopMode = Animation.LoopModeEnum.None;
+            _mascotAnimator.Play("landing");
+        }
 
         // Cinematic UI overlay
         _cinema = new Control { Name = "TableEntrance", MouseFilter = MouseFilterEnum.Stop };
@@ -2095,6 +2101,14 @@ public partial class TableStage : Control
             _hands[i].Visible = true;
             PlayIdle(i);
         }
+        // Switch mascot crow to calm idle observation atop the perch
+        if (_mascotAnimator != null && _mascotAnimator.HasAnimation("idle"))
+        {
+            var a = _mascotAnimator.GetAnimation("idle");
+            if (a != null) a.LoopMode = Animation.LoopModeEnum.Linear;
+            _mascotAnimator.Play("idle", 0.3);
+        }
+
         if (IsInstanceValid(_cinema)) _cinema.QueueFree();
         _cinema = null;
         _intro = false;

@@ -77,6 +77,8 @@ public partial class FodinhaUI : Control
         var button = ClubTheme.Button(text, primary); button.Pressed += action; _actions.AddChild(button);
     }
 
+    private string _lastHandPresentation = "";
+
     private void Render()
     {
         _round.Text = $"MÃO {_match.RoundIndex + 1} / 9  ·  {_match.CardsPerHand} CARTA(S)";
@@ -90,7 +92,10 @@ public partial class FodinhaUI : Control
             _scores[seat].Modulate = _match.Lives[seat] == 0 ? new Color(1, 1, 1, .45f) : Colors.White;
         }
         Clear(_actions); Clear(_hand);
-        bool playable = !_starting && _match.State == FodinhaMatch.Phase.Playing && _match.CurrentSeat == 0;
+        string handPresentation = _dealing ? "" : $"{_match.RoundIndex}:" + string.Join(",", _match.Hand(0));
+        bool animateHand = handPresentation != _lastHandPresentation;
+        _lastHandPresentation = handPresentation;
+        bool playable = !_starting && !_collecting && _cooldown <= 0 && _match.State == FodinhaMatch.Phase.Playing && _match.CurrentSeat == 0;
         for (int i = 0; i < (_dealing ? 0 : _match.Hand(0).Count); i++)
         {
             int index = i; var card = _match.Hand(0)[i];
@@ -103,7 +108,7 @@ public partial class FodinhaUI : Control
             button.AddChild(face); face.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect, LayoutPresetMode.Minsize, 5);
             button.Pressed += () => Play(0, index); _hand.AddChild(button);
 
-            if (GameHub.Core.Systems.SettingsManager.Instance?.ReduceMotion != true)
+            if (animateHand && GameHub.Core.Systems.SettingsManager.Instance?.ReduceMotion != true)
             {
                 button.Modulate = new Color(1, 1, 1, 0);
                 button.Scale = new Vector2(0.82f, 0.82f);
@@ -183,9 +188,10 @@ public partial class FodinhaUI : Control
         _dealing = true; _dealAnimationStarted = false; _cooldown = .60;
         AudioManager.Instance?.PlaySound("cut"); _table.AnimateDeck(true); Render();
     }
-    private void Play(int seat, int cardIndex)
+    private async void Play(int seat, int cardIndex)
     {
-        if (_starting || _match.State != FodinhaMatch.Phase.Playing || _match.CurrentSeat != seat) return;
+        if (_starting || _dealing || _collecting || _cooldown > 0 || _match.State != FodinhaMatch.Phase.Playing || _match.CurrentSeat != seat) return;
+        if (cardIndex < 0 || cardIndex >= _match.Hand(seat).Count) return;
         var card = _match.Hand(seat)[cardIndex];
         if (!_match.Play(seat, cardIndex)) return;
         _table.PlayCard(seat, card.ToString(), 0, SeatName(seat), card.Rank == _match.Manilha);
@@ -193,6 +199,9 @@ public partial class FodinhaUI : Control
         _cooldown = _match.State == FodinhaMatch.Phase.TrickResult ? 2.25 : TableStage.CardPresentationDuration(card.Rank == _match.Manilha) + .35;
         if (_match.State == FodinhaMatch.Phase.TrickResult)
         {
+            Render();
+            await ToSignal(GetTree().CreateTimer(TableStage.CardPresentationDuration(card.Rank == _match.Manilha)), SceneTreeTimer.SignalName.Timeout);
+            if (!IsInsideTree() || _match.State != FodinhaMatch.Phase.TrickResult) return;
             int winner = _match.LastWinner;
             _table.PlayGesture(winner, "trick_win");
             for (int s = 0; s < 4; s++)
@@ -209,6 +218,9 @@ public partial class FodinhaUI : Control
     {
         if (_starting || _match == null || _collecting) return;
         _cooldown -= delta; if (_cooldown > 0) return;
+        if (!_dealing && _match.State == FodinhaMatch.Phase.Playing && _match.CurrentSeat == 0)
+            foreach (var child in _hand.GetChildren())
+                if (child is Button cardButton) cardButton.Disabled = false;
         if (_dealing)
         {
             if (!_dealAnimationStarted)
@@ -221,13 +233,13 @@ public partial class FodinhaUI : Control
                 return;
             }
             _dealing = false; SyncFans();
-            _cooldown = (SettingsManager.Instance?.ReduceMotion == true) ? 0.15 : 2.00;
+            _cooldown = 2.00;
             Render(); return;
         }
         int seat = _match.CurrentSeat;
         if (_match.State == FodinhaMatch.Phase.Cutting)
         {
-            if (!_cutReady) { _cutReady = true; _cooldown = (SettingsManager.Instance?.ReduceMotion == true) ? 0.15 : 1.10; Render(); }
+            if (!_cutReady) { _cutReady = true; _cooldown = 1.10; Render(); }
             else if (seat != 0) Cut(seat);
         }
         else if (_match.State == FodinhaMatch.Phase.Bidding && seat != 0)
@@ -235,7 +247,7 @@ public partial class FodinhaUI : Control
             if (!_botThinking)
             {
                 _botThinking = true;
-                _cooldown = (SettingsManager.Instance?.ReduceMotion == true) ? 0.12 : 1.90;
+                _cooldown = 1.90;
                 _status.Text = $"{SeatName(seat)} analisando as cartas para o palpite…";
                 _table.PlayGesture(seat, "think");
                 return;
@@ -245,7 +257,7 @@ public partial class FodinhaUI : Control
             _match.Bid(seat, botBid);
             string botBidClip = botBid >= 2 ? "bid_confident" : (botBid == 1 ? "bid_uncertain" : "bid_zero");
             _table.PlayGesture(seat, botBidClip);
-            _cooldown = (SettingsManager.Instance?.ReduceMotion == true) ? 0.12 : 1.45;
+            _cooldown = 1.45;
             Render();
         }
         else if (_match.State == FodinhaMatch.Phase.Playing && seat != 0)
@@ -253,7 +265,7 @@ public partial class FodinhaUI : Control
             if (!_botThinking)
             {
                 _botThinking = true;
-                _cooldown = (SettingsManager.Instance?.ReduceMotion == true) ? 0.12 : 2.20;
+                _cooldown = 2.20;
                 _status.Text = $"{SeatName(seat)} calculando a jogada…";
                 return;
             }
@@ -269,7 +281,7 @@ public partial class FodinhaUI : Control
         await _table.CollectRoundCardsToDiscard();
         if (!IsInsideTree()) return;
         _match.AdvanceTrick(); _collecting = false;
-        _cooldown = (SettingsManager.Instance?.ReduceMotion == true) ? 0.15 : 1.25;
+        _cooldown = 1.25;
         if (_match.State == FodinhaMatch.Phase.Finished)
         {
             foreach (int winner in _match.Winners) _table.React(winner);

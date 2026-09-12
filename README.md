@@ -4,6 +4,8 @@ Pôquer roguelike, truco e Fodinha em Godot .NET/C#, com mesas em **2.5D**, elen
 
 ![Abertura do clube](docs/screenshots/abertura.png)
 
+Atualização de 12/09/2026: ritmo de IA preservado ao reduzir movimentos, correções da distribuição/pontuação no pôquer, transições de gestos e câmera mais estáveis, feltro mais discreto e sombras de contato suavizadas. Veja [escopo e validação do Patch 25](docs/PATCH25_VALIDACAO.md).
+
 ## O que está jogável
 
 - **Pôquer roguelike solo:** seleção de cartas, prévia de pontuação, descartes, metas por rodada, relíquias, loja e tutorial. A apresentação dos rivais usa o novo elenco.

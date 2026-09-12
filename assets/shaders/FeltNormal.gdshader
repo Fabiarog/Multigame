@@ -7,7 +7,7 @@ render_mode cull_back;
 uniform vec4 felt_color : source_color = vec4(0.086, 0.329, 0.239, 1.0);
 uniform float roughness_base : hint_range(0.5, 1.0) = 0.82;
 uniform float roughness_wear : hint_range(0.0, 0.3) = 0.08;
-uniform float normal_strength : hint_range(0.0, 2.0) = 0.45;
+uniform float normal_strength : hint_range(0.0, 2.0) = 0.18;
 uniform float fiber_scale : hint_range(1.0, 80.0) = 38.0;
 uniform float wear_scale : hint_range(0.5, 20.0) = 6.0;
 
@@ -58,8 +58,11 @@ void fragment() {
                      + fbm((uv + vec2(0.0, eps)) * vec2(3.2, 1.0) + 73.1, 4)) * 0.5;
 
     vec3 normal_map;
-    normal_map.x = (h_center - h_right) * normal_strength;
-    normal_map.y = (h_center - h_up) * normal_strength;
+    // Fade subpixel fibers at grazing angles to avoid shimmering in the POV.
+    float footprint = max(length(dFdx(uv)), length(dFdy(uv)));
+    float detail_visibility = 1.0 - smoothstep(0.35, 1.2, footprint);
+    normal_map.x = (h_center - h_right) * detail_visibility;
+    normal_map.y = (h_center - h_up) * detail_visibility;
     normal_map.z = 1.0;
     normal_map = normalize(normal_map);
 
@@ -68,7 +71,7 @@ void fragment() {
     float roughness = roughness_base - roughness_wear * smoothstep(0.35, 0.7, wear);
 
     // Subtle color variation to break uniformity
-    vec3 color = felt_color.rgb * (0.95 + 0.10 * fbm(UV * 12.0, 2));
+    vec3 color = felt_color.rgb * (0.985 + 0.03 * fbm(UV * 12.0, 2));
 
     ALBEDO = color;
     ROUGHNESS = roughness;

@@ -144,7 +144,7 @@ public partial class TableStage : Control
                 _vignetteMaterial.SetShaderParameter("vignette_radius", 0.72f);
                 _vignetteMaterial.SetShaderParameter("vignette_softness", 0.42f);
                 _vignetteMaterial.SetShaderParameter("vignette_intensity", 0.35f);
-                _vignetteMaterial.SetShaderParameter("grain_intensity", 0.015f);
+                _vignetteMaterial.SetShaderParameter("grain_intensity", 0.003f);
                 _vignetteMaterial.SetShaderParameter("warmth", 0.035f);
                 _vignetteMaterial.SetShaderParameter("contrast_boost", 1.04f);
                 picture.Material = _vignetteMaterial;
@@ -651,7 +651,7 @@ public partial class TableStage : Control
         bool detailed = enhanced && settings?.RayTracingEnabled == true;
         _viewport.Scaling3DScale = VideoSettingsManager.Instance?.RenderScale ?? 1;
         _viewport.Msaa3D = detailed ? Viewport.Msaa.Msaa4X : Viewport.Msaa.Msaa2X;
-        _viewport.ScreenSpaceAA = detailed ? Viewport.ScreenSpaceAAEnum.Fxaa : Viewport.ScreenSpaceAAEnum.Disabled;
+        _viewport.ScreenSpaceAA = Viewport.ScreenSpaceAAEnum.Disabled; // Keep card lettering sharp after MSAA.
         _key.ShadowEnabled = enhanced;
         _pendant.ShadowEnabled = detailed && settings.RtaoQuality >= RayTracingSettings.RtQualityLevel.High;
         _key.DirectionalShadowMaxDistance = 24;
@@ -666,7 +666,7 @@ public partial class TableStage : Control
             RenderingServer.PositionalSoftShadowFilterSetQuality(RenderingServer.ShadowQuality.SoftLow);
         }
         _environment.SsaoEnabled = detailed && settings.RtaoEnabled;
-        _environment.SsaoRadius = 1.05f; _environment.SsaoIntensity = 1.75f; _environment.SsaoPower = 1.50f;
+        _environment.SsaoRadius = .65f; _environment.SsaoIntensity = 1.15f; _environment.SsaoPower = 1.25f;
         _environment.SsrEnabled = detailed && settings.RtReflectionsEnabled;
         _viewport.TransparentBg = false;
         _environment.SsrMaxSteps = settings?.RtReflectionsQuality == RayTracingSettings.RtQualityLevel.Ultra ? 56 : 36;
@@ -861,7 +861,7 @@ public partial class TableStage : Control
                     feltMat.SetShaderParameter("felt_color", new Color("#16543d"));
                     feltMat.SetShaderParameter("roughness_base", 0.82f);
                     feltMat.SetShaderParameter("roughness_wear", 0.08f);
-                    feltMat.SetShaderParameter("normal_strength", 0.45f);
+                    feltMat.SetShaderParameter("normal_strength", 0.18f);
                     feltMat.SetShaderParameter("fiber_scale", 42.0f);
                     feltMat.SetShaderParameter("wear_scale", 6.0f);
                     _world.AddChild(new MeshInstance3D {
@@ -1142,7 +1142,7 @@ public partial class TableStage : Control
 
         // Accessibility toggle
         var reduceToggle = new CheckButton {
-            Text = "Reduzir animações, tremores e esperas",
+            Text = "Reduzir animações e tremores",
             ButtonPressed = SettingsManager.Instance?.ReduceMotion == true
         };
         reduceToggle.Toggled += pressed => {
@@ -1204,7 +1204,7 @@ public partial class TableStage : Control
         AddChild(bubble);
 
         Vector3 headPos = _positions[seat] + Vector3.Up * 2.1f;
-        Vector2 screenPos = _camera.UnprojectPosition(headPos);
+        Vector2 screenPos = Project(headPos) - GlobalPosition;
         bubble.Position = screenPos - new Vector2(50, 40);
         bubble.Modulate = new Color(1, 1, 1, 0);
 
@@ -1220,6 +1220,16 @@ public partial class TableStage : Control
 
     public override void _Input(InputEvent @event)
     {
+        // Focused card controls can consume keys before _UnhandledInput.
+        // Camera shortcuts belong to the table, except while typing or in a modal.
+        if (!_intro && _inGameSettingsModal?.Visible != true &&
+            GetViewport().GuiGetFocusOwner() is not LineEdit and not TextEdit &&
+            @event is InputEventKey shortcut && shortcut.Pressed && !shortcut.Echo && shortcut.Keycode == Key.C)
+        {
+            ToggleCameraMode();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         if (_intro && @event is InputEventKey key && key.Pressed && !key.Echo)
         {
             if (key.Keycode == Key.Escape || key.Keycode == Key.Space)
@@ -1327,8 +1337,8 @@ public partial class TableStage : Control
             _camera.KeepAspect = Camera3D.KeepAspectEnum.Width;
             if (_cameraModeButton != null) _cameraModeButton.Text = "Visão: Mesa [C]";
             _camera.Fov = 46.0f;
-            _camera.Position = new Vector3(0, 4.75f, 5.85f);
-            _camera.LookAt(new Vector3(0, 0.62f, -0.25f), Vector3.Up);
+            _camera.Position = new Vector3(0, 6.2f, 11);
+            _camera.LookAt(new Vector3(0, .7f, 0), Vector3.Up);
 
             for (int i = 0; i < _actors.Count; i++)
             {
@@ -1848,6 +1858,7 @@ public partial class TableStage : Control
 
         if (hasClip)
         {
+            player.ClearQueue();
             var anim = player.GetAnimation(targetClip);
             if (anim != null)
             {
@@ -2177,15 +2188,12 @@ public partial class TableStage : Control
         }
         else
         {
-            _camera.Size = Mathf.Max(11.5f, Size.X / Mathf.Max(1, Size.Y) * 6.2f);
+            // Use the same framing as the camera toggle and the intro landing.
+            // The old idle branch snapped from (0,4.75,5.85) to (0,6.2,11).
+            UpdateCameraPosition();
             if (motion)
             {
-                _camera.Position = new Vector3(Mathf.Sin(_time * .17f) * .07f, 6.2f, 11);
-                _camera.LookAt(new Vector3(0, .7f, 0), Vector3.Up);
-            }
-            else
-            {
-                _camera.Position = new Vector3(0, 6.2f, 11);
+                _camera.Position += Vector3.Right * (Mathf.Sin(_time * .17f) * .035f);
                 _camera.LookAt(new Vector3(0, .7f, 0), Vector3.Up);
             }
         }

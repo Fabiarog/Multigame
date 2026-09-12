@@ -124,6 +124,7 @@ public partial class GameplayChecks : Node
         {
             SettingsManager.Instance.ReduceMotion = true;
             CheckFodinha();
+            await CheckPokerPacing();
             for (int character = 0; character < CharacterCatalog.Ids.Length; character++)
             {
                 var model = GD.Load<PackedScene>(CharacterCatalog.ModelPath(character)).Instantiate<Node3D>();
@@ -256,6 +257,9 @@ public partial class GameplayChecks : Node
                     Assert(game.PenaDecisionIsLocal && game.CurrentPhase == TrucoGameManager.TrucoPhase.PenaDecision, "Human recipient waits for a real choice");
                     string pena = game.PenaCard.ToString();
                     game.ResolvePena(true);
+                    ulong dealDeadline = Time.GetTicksMsec() + 5000;
+                    while ((game.CurrentPhase is TrucoGameManager.TrucoPhase.PenaDecision or TrucoGameManager.TrucoPhase.Dealing) && Time.GetTicksMsec() < dealDeadline)
+                        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                     Assert(game.PenaWasKept && game.PlayerHand.Count == 3 && game.PlayerHand.Any(card => card.ToString() == pena), "Keeping the Pena grants it plus exactly two other cards");
                 }
                 // Reach a settled phase before freeing async game callbacks.
@@ -271,6 +275,27 @@ public partial class GameplayChecks : Node
             GD.PushError(ex.ToString());
             EmitSignal(SignalName.Completed, false, ex.Message);
         }
+    }
+
+    private async Task CheckPokerPacing()
+    {
+        var poker = new GameHub.Games.PokerRoguelike.PokerGameManager();
+        AddChild(poker);
+        poker.StartNewGame();
+        int deals = 0;
+        poker.HandDealt += () => deals++;
+        poker.ToggleCard(0);
+        int hands = poker.HandsRemaining;
+        poker.PlayHand();
+        Assert(poker.CurrentPhase == GameHub.Games.PokerRoguelike.PokerGameManager.GamePhase.Scoring, "Poker locks its rules before scoring awaits");
+        poker.ToggleCard(0);
+        poker.PlayHand(); poker.DiscardCards();
+        Assert(poker.HandsRemaining == hands - 1 && poker.DiscardsRemaining == 3, "Repeated actions cannot spend a second hand or discard while scoring");
+        await ToSignal(GetTree().CreateTimer(.5), SceneTreeTimer.SignalName.Timeout);
+        Assert(deals == 0, "Reduced motion still gives players time to read the score");
+        await ToSignal(GetTree().CreateTimer(2.0), SceneTreeTimer.SignalName.Timeout);
+        Assert(deals == 1 && poker.GetPlayerHand().Count == 8, "Poker refills and emits exactly one hand presentation");
+        poker.QueueFree();
     }
 
     private async Task FinishHand(TrucoGameManager game)

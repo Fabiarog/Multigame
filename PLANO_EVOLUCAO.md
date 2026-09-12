@@ -1,12 +1,12 @@
 # Plano simples de evolução — MultiGame
 
-Atualizado em 07/09/2026. Este plano parte do estado já existente: pôquer roguelike, truco solo com equipes de IA, Fodinha solo, mesa 2.5D/POV e o elenco no Blender.
+Atualizado em 12/09/2026. Base: 11 personagens, quatro salas, pôquer roguelike, truco com equipes de IA, Fodinha solo e mesa 2.5D/POV. Patch 25 implementa o primeiro passe de estabilidade e materiais; a nova arquitetura e revisão de pesos ainda são próximas etapas.
 
 ## Agora: ritmo e estabilidade
 
 - Sincronizar cada etapa da partida com o fim visível da animação: embaralhar, cortar, distribuir, jogar, recolher e mostrar resultado.
 - Manter o jogador bloqueado somente enquanto a carta está chegando à mão; nunca liberar a próxima ação com uma carta ainda voando.
-- Tratar a opção **Reduzir animações** como acessibilidade: ela encurta movimentos e esperas de propósito. O texto da opção deve deixar isso claro.
+- **Implementado:** reduzir movimentos preserva os tempos de leitura e decisão. Aceleração de regras existe somente no teste isolado.
 - Testar pôquer, truco 1x1/2x2/3x3 e Fodinha em janela e 4K, registrando imagens e falhas no log de atualização.
 
 ## Próximo passe de personagens
@@ -33,4 +33,3 @@ Atualizado em 07/09/2026. Este plano parte do estado já existente: pôquer rogu
 1. Você quer que o ritmo normal tenha mais clima de mesa real (mais pausado) ou de jogo rápido, mas sem sobreposição? Vou manter um meio-termo até sua resposta.
 2. Para o próximo modelo detalhado, você prefere priorizar **Onça**, **Nina** ou **Bento**? Hoje Corvo, Barão, Dama, Iara e Zeca são a base mais avançada.
 3. No Fodinha, você quer que a campanha roguelike comece com relíquias/modificadores simples ou primeiro com mais personagens e chefes?
-

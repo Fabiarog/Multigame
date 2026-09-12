@@ -65,7 +65,8 @@ func run():
 		check(table.LookAngles.length() < .2, game + ": recenter button")
 		var key = InputEventKey.new(); key.keycode = KEY_C; key.pressed = true
 		Input.parse_input_event(key); await settle(.2)
-		check(camera.projection == Camera3D.PROJECTION_ORTHOGONAL, game + ": C restores 2.5D")
+		# The received Patch 24 uses perspective for its elevated table view.
+		check(camera.position.y > 6.15 and camera.position.y < 6.25, game + ": C restores elevated table view")
 		await capture(game + "-overhead")
 		key = InputEventKey.new(); key.keycode = KEY_C; key.pressed = false; Input.parse_input_event(key)
 		table.ToggleCameraMode()

@@ -9,6 +9,8 @@ func run():
 		quit(2)
 		return
 	var checks = load("res://tools/GameplayChecks.cs").new()
+	# Only this isolated rules harness accelerates time. Accessibility must not.
+	Engine.time_scale = 12.0
 	root.add_child(checks)
 	checks.Completed.connect(func(passed, detail):
 		print("GAMEPLAY_QA ", "PASS" if passed else "FAIL", " | ", detail)

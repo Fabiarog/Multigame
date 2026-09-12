@@ -737,7 +737,7 @@ public partial class HubMain : Control
         _screenShakeToggle = new CheckButton { Text = "Reduzir tremores de tela" };
         _screenShakeToggle.AddThemeFontSizeOverride("font_size", 16);
         box.AddChild(_screenShakeToggle);
-        _reduceMotionToggle = new CheckButton { Text = "Reduzir animações e encurtar esperas" };
+        _reduceMotionToggle = new CheckButton { Text = "Reduzir animações e tremores" };
         _reduceMotionToggle.AddThemeFontSizeOverride("font_size", 16);
         box.AddChild(_reduceMotionToggle);
 

@@ -1,4 +1,21 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
+
+## Patch 25 — 12/09/2026 — Ritmo, transições e polimento de imagem
+
+Base recebida `1f30bf0`; preservada no GitHub em Backup `43e7f9a` antes das alterações. Trabalho destinado a review; main preservada.
+
+- **Ritmo:** ReduceMotion deixa de encurtar a decisão das IAs no Truco/Fodinha e o tempo de leitura da pontuação do pôquer. Textos de acessibilidade atualizados.
+- **Pôquer:** fase Scoring bloqueia ações concorrentes; removido HandDealt duplicado; entrega da interface usa geração para ignorar callbacks antigos e manter os botões bloqueados até pousar.
+- **Fodinha:** animação da mão só se repete quando as cartas mudam; cliques bloqueados durante voo/coleta; vitória da vaza aguarda o pouso da última carta.
+- **Gestos e câmera:** limpar fila antes de trocar clipes; projeção de balões em coordenadas lógicas; mesma posição ampla durante alternância e repouso da câmera, eliminando salto; tecla C protegida contra consumo por controles focados.
+- **Gráficos/cenário existente:** menos grão e relevo do feltro, atenuação de detalhes subpixel, MSAA sem FXAA adicional, sombras de contato mais discretas e correção do smoothstep da vinheta. Arquitetura, identidades e pesos dos modelos preservados; nenhuma reconstrução de esqueleto foi feita neste patch.
+- **Validação:** compilação sem erros/avisos; regras PASS (509 asserções na última execução), interface PASS (27 capturas, 25 ações, zero falhas/layout), câmera PASS nos três modos incluindo 4K; Vulkan leve/ultra em 720p/4K sem erros de shader. Persistem avisos de objetos retidos ao encerrar o QA. Rede entre computadores não testada.
+- **Ferramentas:** orientações dos plugins consultadas; CLI game-dev ausente, validação executada com as ferramentas Godot do projeto. Nenhum pacote pago ou novo modelo gerado. Fontes recentes de Aki/mascote mantidas.
+
+Evidências e limites: [PATCH25_VALIDACAO.md](docs/PATCH25_VALIDACAO.md). Próximas etapas/perguntas em PLANO_EVOLUCAO.md e prompt atualizado em CONTINUAR_TRABALHO.md.
+
+---
+
 > **Público-alvo:** Agentes de Inteligência Artificial (Antigravity/Gemini/Claude/GPT) e Engenheiros de Software que forem trabalhar neste repositório.
 > **Última Atualização:** Setembro/2026
 

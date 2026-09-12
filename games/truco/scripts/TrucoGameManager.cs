@@ -176,7 +176,7 @@ public partial class TrucoGameManager : Node
             {
                 CurrentPhase = TrucoPhase.Cutting;
                 _aiCutting = !CutterIsPlayer;
-                _aiCutTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? .35f : 1.25f;
+                _aiCutTimer = 1.25f;
                 EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
             }
             return;
@@ -267,7 +267,7 @@ public partial class TrucoGameManager : Node
         _deck = TrucoCardData.CreateDeck();
         _rng.ShuffleList(_deck);
         CurrentPhase = TrucoPhase.Shuffling;
-        _shuffleTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? .25f : .95f;
+        _shuffleTimer = .95f;
         EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
         EmitSignal(SignalName.DeckShuffled);
 
@@ -309,7 +309,7 @@ public partial class TrucoGameManager : Node
             if (!CutterIsPlayer)
             {
                 _aiPenaThinking = true;
-                _aiPenaTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.45f : 1.90f;
+                _aiPenaTimer = 1.90f;
             }
             return;
         }
@@ -734,7 +734,7 @@ public partial class TrucoGameManager : Node
 
     private async System.Threading.Tasks.Task WaitForAnimation(float seconds)
     {
-        if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true) return;
+        // Accessibility changes movement, never the time available to read a turn.
         await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
     }
 
@@ -743,7 +743,7 @@ public partial class TrucoGameManager : Node
     private void StartAIThinking()
     {
         _aiThinking = true;
-        _aiThinkTimer = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? .04f : _rng.RandiRange(20, 32) / 10f;
+        _aiThinkTimer = _rng.RandiRange(20, 32) / 10f;
     }
 
     private void ExecuteAITurn()
@@ -803,7 +803,7 @@ public partial class TrucoGameManager : Node
     private async void RespondAIToTrucoDelayed()
     {
         int thisHand = _handId;
-        float delay = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.05f : 2.4f;
+        float delay = 2.4f;
         await ToSignal(GetTree().CreateTimer(delay), SceneTreeTimer.SignalName.Timeout);
         if (!IsInsideTree() || _handId != thisHand) return;
         if (_waitingTrucoResponse && _trucoPendingByPlayer)

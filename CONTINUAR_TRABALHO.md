@@ -1,5 +1,17 @@
 # Prompt de continuidade — MultiGame
 
+## Estado mais recente — 12/09/2026, Patch 25
+
+Trabalhe em `C:/workspace/multigame`. Leia este bloco antes dos relatos históricos abaixo. A base recebida é `1f30bf0` (review), com 11 personagens e quatro salas; não recrie as correções da Aki nem do mascote. Backup no GitHub: `43e7f9a`, árvore idêntica à base recebida, preservando também a história anterior de Backup. Main não deve ser alterada. Remoto: pc-casa, https://github.com/Fabiarog/Multigame.git.
+
+Implementado nesta etapa: tempos de IA independentes de ReduceMotion; fase Scoring protegendo o pôquer; remoção de HandDealt duplicado; geração de distribuição protegendo callbacks antigos da interface; fila de gestos limpa; reação de Fodinha após a carta pousar; proteção contra cliques durante voo; mão sem repetir entrada a cada palpite; projeção de balões corrigida para densidade física; feltro com detalhe atenuado quando subpixel; menos grão, sem FXAA adicional, oclusão de contato mais suave e smoothstep de vinheta corrigido.
+
+Validação concluída: regras PASS (509 asserções na última execução), visual PASS (27 capturas/25 ações), câmera PASS incluindo 4K nos três modos; Vulkan leve/ultra sem erros de shader. Relatórios em `docs/patch25`, resumo em `docs/PATCH25_VALIDACAO.md`, logs locais em `temp/patch25-*`. Executável Windows exportado e menu aberto no teste do pacote. Priorizar DOTNET_ROOT e PATH para o SDK .NET 8 portátil; o SDK global 10 falha na exportação. O teste isolado de regras usa Engine.time_scale=12; isso não entra no jogo nem no teste visual. Não garantir ausência de todos os bugs; há avisos de objetos retidos no encerramento. A câmera elevada teve suas duas posições conflitantes unificadas mantendo enquadramento amplo.
+
+Próximo trabalho: revisar clipes completos e pesos dos 11 personagens no Blender, começando por Corvo/Onça; comparar todas as salas em POV, mesa e 4K com Vulkan; testar duas máquinas para multiplayer; preparar proposta visual de nova arquitetura antes de substituir GLBs. Nesta etapa não foram regenerados esqueletos nem exportados modelos novos. Preservar identidades e fontes existentes.
+
+Plugins pedidos: Build 3D Game Rooms e Game Development Studio. O segundo exige CLI game-dev separada, não encontrada neste ambiente. Não inventar recibos de plugin nem instalar dependências pagas. Para nova composição de sala, seguir os gates explícitos Function/Form/Runtime do SKILL.md; o polimento atual mantém a arquitetura existente. Atualizar este arquivo, PLANO_EVOLUCAO.md e AI_DEV_PATCH_NOTES.md com resultados reais, então publicar apenas os arquivos revisados em review.
+
 > Documento criado primeiro, a pedido de Lucas, em 06/09/2026, antes de iniciar a nova etapa de câmera. Leia este arquivo e `AI_DEV_PATCH_NOTES.md`, confira o estado real do Git e continue o trabalho pendente. Não recomece a repaginada nem descarte mudanças existentes.
 
 ## Pedido vigente do usuário

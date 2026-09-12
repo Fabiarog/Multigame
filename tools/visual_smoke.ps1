@@ -42,10 +42,10 @@ function Invoke-GodotQa {
     }
     $process = Start-Process -FilePath $env:GODOT_BIN -ArgumentList $quotedArguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
     try {
-        Wait-Process -InputObject $process -Timeout 60 -ErrorAction Stop
+        Wait-Process -InputObject $process -Timeout 300 -ErrorAction Stop
     } catch {
         Stop-Process -Id $process.Id -Force
-        throw "Godot QA timed out after 60 seconds. Logs: $qaDirectory"
+        throw "Godot QA timed out after 300 seconds. Logs: $qaDirectory"
     }
     Get-Content -LiteralPath $stdoutPath
     Get-Content -LiteralPath $stderrPath

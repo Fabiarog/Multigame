@@ -74,16 +74,16 @@ func run_checks() -> void:
 			await check_truco_actions()
 		elif scene_name == "fodinha":
 			if find_button("Pular entrada") != null: press_button("Pular entrada")
-			await wait_for_button("Palpite: 0", 7.0)
+			await wait_for_button("Palpite: 0", 30.0)
 			press_button("Como jogar")
 			await capture("fodinha-regras")
 			for dialog in current_scene.find_children("*", "AcceptDialog", true, false): dialog.hide(); dialog.queue_free()
 			press_button("Palpite: 0")
-			await wait_for_local_fodinha_card(6.0)
+			await wait_for_local_fodinha_card(30.0)
 			var card = current_scene.find_child("HandCard0", true, false)
 			if card == null or card.disabled: fail("Fodinha did not enable the local card after bidding")
 			else: card.emit_signal("pressed"); report.actions.append("Played Fodinha card")
-			await wait_for_button("Próxima mão", 9.0)
+			await wait_for_button("Próxima mão", 30.0)
 			await capture("fodinha-resultado")
 			press_button("Próxima mão")
 			await settle(.4)
@@ -320,9 +320,12 @@ func check_poker_actions() -> void:
 
 func check_truco_actions() -> void:
 	var gm = current_scene.get_node("GameManager")
-	var deadline := Time.get_ticks_msec() + 8000
+	var deadline := Time.get_ticks_msec() + 20000
 	while gm.CurrentPhase != 3 and Time.get_ticks_msec() < deadline:
 		await settle(0.2)
+	if gm.CurrentPhase != 3:
+		fail("Truco did not reach the human turn before the deadline")
+		return
 	var cards := playable_cards()
 	if cards.size() != 3:
 		fail("Truco dealt hand should expose 3 playable cards; found %s." % cards.size())

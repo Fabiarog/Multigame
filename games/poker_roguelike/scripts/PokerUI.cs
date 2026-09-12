@@ -866,12 +866,17 @@ public partial class PokerUI : Control
 
     private void OnTutorialComplete() => _tutorialPanel.Visible = false;
 
+    private int _dealGeneration;
+    private bool _dealInProgress;
+
     private async void OnHandDealt()
     {
         if (!IsInsideTree()) return;
         if (_hud != null) _hud.Visible = true;
         _stage.ClearPlayedCards();
         bool animateDeal = Core.Systems.SettingsManager.Instance?.ReduceMotion != true;
+        int generation = ++_dealGeneration;
+        _dealInProgress = animateDeal;
         _ignoreInput = _game.CurrentPhase != PokerGameManager.GamePhase.PlayerTurn || animateDeal;
         ClearTableCards();
         ClearContainer(_cardContainer);
@@ -891,12 +896,13 @@ public partial class PokerUI : Control
         RefreshResources();
         UpdateActionButtons();
         RefreshPreview();
-        if (animateDeal && _game.CurrentPhase == PokerGameManager.GamePhase.PlayerTurn)
+        if (animateDeal)
         {
             float duration = HandDealFlight + Mathf.Max(0, hand.Count - 1) * HandDealInterval + .12f;
             await ToSignal(GetTree().CreateTimer(duration), SceneTreeTimer.SignalName.Timeout);
-            if (!IsInsideTree() || _game.CurrentPhase != PokerGameManager.GamePhase.PlayerTurn) return;
-            _ignoreInput = false;
+            if (!IsInsideTree() || generation != _dealGeneration) return;
+            _dealInProgress = false;
+            _ignoreInput = _game.CurrentPhase != PokerGameManager.GamePhase.PlayerTurn;
             UpdateActionButtons();
         }
     }
@@ -1148,7 +1154,7 @@ public partial class PokerUI : Control
 
     private void OnPhaseChanged(int phase)
     {
-        _ignoreInput = (PokerGameManager.GamePhase)phase != PokerGameManager.GamePhase.PlayerTurn;
+        _ignoreInput = _dealInProgress || (PokerGameManager.GamePhase)phase != PokerGameManager.GamePhase.PlayerTurn;
         UpdateActionButtons();
     }
 

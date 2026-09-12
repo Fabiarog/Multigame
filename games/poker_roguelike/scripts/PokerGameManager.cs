@@ -237,6 +237,9 @@ public partial class PokerGameManager : Node
     {
         if (!CanPlayHand()) return;
 
+        CurrentPhase = GamePhase.Scoring;
+        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
+
         // Gather selected cards
         var playedCards = _selectedIndices.OrderBy(i => i).Select(i => _playerHand[i]).ToList();
         _playerAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Action);
@@ -273,7 +276,7 @@ public partial class PokerGameManager : Node
         _boss?.ReactToPlayerHand(RoundScore, RoundTarget);
 
         // Wait to show the result and score breakdown
-        float waitResult = Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.3f : 2.2f;
+        float waitResult = 2.2f;
         await ToSignal(GetTree().CreateTimer(waitResult), SceneTreeTimer.SignalName.Timeout);
         if (!IsInsideTree()) return;
 
@@ -284,8 +287,6 @@ public partial class PokerGameManager : Node
 
         // Draw new cards to refill hand
         DrawCardsToFillHand();
-        EmitSignal(SignalName.HandDealt);
-
         // Check win condition
         if (RoundScore >= RoundTarget)
         {
@@ -312,6 +313,8 @@ public partial class PokerGameManager : Node
         }
 
         // Continue playing
+        CurrentPhase = GamePhase.PlayerTurn;
+        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
         EmitSignal(SignalName.HandDealt);
     }
 

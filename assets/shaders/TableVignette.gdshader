@@ -34,7 +34,7 @@ void fragment() {
     // --- Vignette ---
     vec2 center = UV - 0.5;
     float dist = length(center * vec2(1.0, 0.75)); // wider horizontally
-    float vig = smoothstep(vignette_radius, vignette_radius - vignette_softness, dist);
+    float vig = 1.0 - smoothstep(vignette_radius - vignette_softness, vignette_radius, dist);
     color *= mix(1.0 - vignette_intensity, 1.0, vig);
 
     // Clamp to valid range

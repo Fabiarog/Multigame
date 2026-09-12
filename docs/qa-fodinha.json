@@ -1,0 +1,151 @@
+{
+	"actions": [
+		"Pressed: Coleção",
+		"Pressed: Voltar",
+		"Pressed: Ajustes",
+		"Pressed: Voltar",
+		"Pressed: Acessibilidade",
+		"Pressed: Voltar",
+		"Pressed: Entrar em sala",
+		"Pressed: Voltar",
+		"Card GUI input: /root/PokerGame3D/UILayer/PokerUI/@MarginContainer@410/@HBoxContainer@411/@VBoxContainer@431/@PanelContainer@497/@VBoxContainer@484/@CenterContainer@490/@HBoxContainer@489/@PanelContainer@550",
+		"Pressed: Descartar",
+		"Card GUI input: /root/PokerGame3D/UILayer/PokerUI/@MarginContainer@410/@HBoxContainer@411/@VBoxContainer@431/@PanelContainer@497/@VBoxContainer@484/@CenterContainer@490/@HBoxContainer@489/@PanelContainer@643",
+		"Pressed: Jogar mão",
+		"Pressed: Cortar o baralho",
+		"Card GUI input: /root/TrucoGame3D/UILayer/TrucoUI/@MarginContainer@857/@VBoxContainer@858/@PanelContainer@933/@HBoxContainer@934/@CenterContainer@939/@HBoxContainer@940/@PanelContainer@1018",
+		"Pressed: Pular entrada",
+		"Pressed: Como jogar",
+		"Pressed: Palpite: 0",
+		"Played Fodinha card",
+		"Pressed: Próxima mão",
+		"Pressed: Cortar o baralho",
+		"Pressed: Entregar a pena",
+		"Pressed: Cortar o baralho",
+		"Pressed: Entregar a pena"
+	],
+	"failures": [],
+	"layout_issues": [],
+	"screenshots": [
+		{
+			"height": 720,
+			"name": "abertura",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "colecao",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "ajustes",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "acessibilidade",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "entrar-sala",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "boss-entrada",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "poker",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "poker-selecao",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "poker-pilha",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "poker-jogada",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "truco-corte",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "truco",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "truco-jogada",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "fodinha",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "fodinha-regras",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "fodinha-resultado",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "fodinha-mao-2",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "truco-entrada",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "truco-2x2-pena",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "truco-2x2",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "truco-3x3-pena",
+			"width": 1280
+		},
+		{
+			"height": 720,
+			"name": "truco-3x3",
+			"width": 1280
+		},
+		{
+			"height": 900,
+			"name": "abertura-1600x900",
+			"width": 1600
+		},
+		{
+			"height": 576,
+			"name": "abertura-1024x768",
+			"width": 1024
+		}
+	]
+}

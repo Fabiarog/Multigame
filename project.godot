@@ -11,11 +11,11 @@ config_version=5
 [application]
 
 config/name="Game Hub"
-config/description="A scalable, modular Game Hub supporting multiple 2D Pixel Art multiplayer games."
-config/version="0.1.0"
+config/description="Um clube de cartas. Pôquer, truco e caminhos improváveis."
+config/version="0.2.0"
 run/main_scene="res://hub/scenes/HubMain.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
-config/icon="res://icon.svg"
+config/icon="res://assets/ui/club-mark.svg"
 
 [autoload]
 
@@ -27,14 +27,19 @@ SaveManager="*res://core/systems/SaveManager.cs"
 LanDiscovery="*res://core/networking/LanDiscovery.cs"
 LobbyManager="*res://core/networking/LobbyManager.cs"
 ScenarioManager="*res://core/scenarios/ScenarioManager.cs"
+VideoSettings="*res://core/graphics/VideoSettingsManager.cs"
+GraphicsQuality="*res://core/graphics/GraphicsQualityManager.cs"
+NetworkSession="*res://core/networking/NetworkSessionManager.cs"
 
 [display]
 
-window/size/viewport_width=640
-window/size/viewport_height=360
+window/size/viewport_width=1280
+window/size/viewport_height=720
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
+window/size/min_width=960
+window/size/min_height=540
 
 [dotnet]
 

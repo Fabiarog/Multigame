@@ -39,6 +39,7 @@ public partial class GameRegistry : Node
         // Load all registered game definitions
         LoadGameResource("res://games/poker_roguelike/resources/poker_def.tres");
         LoadGameResource("res://games/truco/resources/truco_def.tres");
+        LoadGameResource("res://games/fodinha/resources/fodinha_def.tres");
     }
 
     private void LoadGameResource(string path)

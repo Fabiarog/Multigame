@@ -59,6 +59,7 @@ public partial class PokerGameManager : Node
     public int BaseMultiplierBonus { get; private set; } = 0;
     public int ExtraHands { get; private set; } = 0;
     public int ExtraDiscards { get; private set; } = 0;
+    public int DeckCount => _deck?.Count ?? 52;
 
     // ===== CONSTANTS =====
 
@@ -83,6 +84,7 @@ public partial class PokerGameManager : Node
     private Core.Visuals.AvatarComposite _playerAvatar;
     private RelicManager _relics;
     private readonly List<Sprite3D> _additionalOpponentVisuals = new();
+    private static readonly Dictionary<string, Texture2D> _cachedMaps = new();
 
     public RelicManager Relics => _relics;
 
@@ -135,7 +137,12 @@ public partial class PokerGameManager : Node
                 "res://assets/sprites/backgrounds/retro_arcade.jpg"
             };
             string chosenMap = maps[_rng.RandiRange(0, maps.Length - 1)];
-            bgSprite.Texture = ResourceLoader.Load<Texture2D>(chosenMap);
+            if (!_cachedMaps.TryGetValue(chosenMap, out var tex) || !IsInstanceValid(tex))
+            {
+                tex = GD.Load<Texture2D>(chosenMap);
+                if (tex != null) _cachedMaps[chosenMap] = tex;
+            }
+            if (tex != null) bgSprite.Texture = tex;
             GD.Print($"[Poker] Chosen map: {chosenMap}");
         }
 
@@ -230,6 +237,9 @@ public partial class PokerGameManager : Node
     {
         if (!CanPlayHand()) return;
 
+        CurrentPhase = GamePhase.Scoring;
+        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
+
         // Gather selected cards
         var playedCards = _selectedIndices.OrderBy(i => i).Select(i => _playerHand[i]).ToList();
         _playerAvatar?.SetState(Core.Visuals.AvatarComposite.AnimState.Action);
@@ -252,14 +262,23 @@ public partial class PokerGameManager : Node
         }
         _selectedIndices.Clear();
 
+        // Allow cards to fly and land on the felt before showing score calculations
+        if (Core.Systems.SettingsManager.Instance?.ReduceMotion != true)
+        {
+            await ToSignal(GetTree().CreateTimer(0.85f), SceneTreeTimer.SignalName.Timeout);
+            if (!IsInsideTree()) return;
+        }
+
         // Emit scoring signals
         EmitSignal(SignalName.HandScored, result.HandName, result.TotalScore, result.GetScoreBreakdown());
         EmitSignal(SignalName.ScoreUpdated, RoundScore, RoundTarget);
 
         _boss?.ReactToPlayerHand(RoundScore, RoundTarget);
 
-        // Wait to show the result
-        await ToSignal(GetTree().CreateTimer(1.5f), SceneTreeTimer.SignalName.Timeout);
+        // Wait to show the result and score breakdown
+        float waitResult = 2.2f;
+        await ToSignal(GetTree().CreateTimer(waitResult), SceneTreeTimer.SignalName.Timeout);
+        if (!IsInsideTree()) return;
 
         _playerAvatar?.SetState(
             RoundScore >= RoundTarget
@@ -268,8 +287,6 @@ public partial class PokerGameManager : Node
 
         // Draw new cards to refill hand
         DrawCardsToFillHand();
-        EmitSignal(SignalName.HandDealt);
-
         // Check win condition
         if (RoundScore >= RoundTarget)
         {
@@ -296,6 +313,8 @@ public partial class PokerGameManager : Node
         }
 
         // Continue playing
+        CurrentPhase = GamePhase.PlayerTurn;
+        EmitSignal(SignalName.PhaseChanged, (int)CurrentPhase);
         EmitSignal(SignalName.HandDealt);
     }
 
@@ -339,6 +358,21 @@ public partial class PokerGameManager : Node
                 return false;
         }
         
+        Gold -= cost;
+        return true;
+    }
+
+    public bool BuyRelic(RelicManager.RelicId relic, int cost)
+    {
+        if (Gold < cost || _relics == null || !_relics.CanAddRelic) return false;
+        if (!_relics.AddRelic(relic)) return false;
+        Gold -= cost;
+        return true;
+    }
+
+    public bool RerollShop(int cost)
+    {
+        if (Gold < cost) return false;
         Gold -= cost;
         return true;
     }

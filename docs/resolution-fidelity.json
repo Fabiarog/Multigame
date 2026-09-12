@@ -1,0 +1,86 @@
+[
+	{
+		"game": "poker_roguelike",
+		"render_scale": 1.0,
+		"table_logical_size": "(948, 245)",
+		"table_target_pixels": "(1422, 368)",
+		"window": "(1920, 1080)"
+	},
+	{
+		"game": "poker_roguelike",
+		"render_scale": 0.5,
+		"table_logical_size": "(948, 245)",
+		"table_target_pixels": "(1422, 368)",
+		"window": "(1920, 1080)"
+	},
+	{
+		"game": "poker_roguelike",
+		"render_scale": 1.0,
+		"table_logical_size": "(948, 245)",
+		"table_target_pixels": "(2844, 735)",
+		"window": "(3840, 2160)"
+	},
+	{
+		"game": "poker_roguelike",
+		"render_scale": 0.5,
+		"table_logical_size": "(948, 245)",
+		"table_target_pixels": "(2844, 735)",
+		"window": "(3840, 2160)"
+	},
+	{
+		"game": "truco",
+		"render_scale": 1.0,
+		"table_logical_size": "(724, 375)",
+		"table_target_pixels": "(1086, 562)",
+		"window": "(1920, 1080)"
+	},
+	{
+		"game": "truco",
+		"render_scale": 0.5,
+		"table_logical_size": "(724, 375)",
+		"table_target_pixels": "(1086, 562)",
+		"window": "(1920, 1080)"
+	},
+	{
+		"game": "truco",
+		"render_scale": 1.0,
+		"table_logical_size": "(724, 375)",
+		"table_target_pixels": "(2172, 1125)",
+		"window": "(3840, 2160)"
+	},
+	{
+		"game": "truco",
+		"render_scale": 0.5,
+		"table_logical_size": "(724, 375)",
+		"table_target_pixels": "(2172, 1125)",
+		"window": "(3840, 2160)"
+	},
+	{
+		"game": "fodinha",
+		"render_scale": 1.0,
+		"table_logical_size": "(1002, 421)",
+		"table_target_pixels": "(1503, 632)",
+		"window": "(1920, 1080)"
+	},
+	{
+		"game": "fodinha",
+		"render_scale": 0.5,
+		"table_logical_size": "(1002, 421)",
+		"table_target_pixels": "(1503, 632)",
+		"window": "(1920, 1080)"
+	},
+	{
+		"game": "fodinha",
+		"render_scale": 1.0,
+		"table_logical_size": "(1002, 421)",
+		"table_target_pixels": "(3006, 1263)",
+		"window": "(3840, 2160)"
+	},
+	{
+		"game": "fodinha",
+		"render_scale": 0.5,
+		"table_logical_size": "(1002, 421)",
+		"table_target_pixels": "(3006, 1263)",
+		"window": "(3840, 2160)"
+	}
+]

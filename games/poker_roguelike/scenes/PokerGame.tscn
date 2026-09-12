@@ -1,10 +1,10 @@
-[gd_scene load_steps=9 format=3 uid="uid://cxpokerscene"]
+[gd_scene load_steps=10 format=3 uid="uid://cxpokerscene"]
 
 [ext_resource type="Script" path="res://games/poker_roguelike/scripts/PokerBossAI.cs" id="1_boss"]
 [ext_resource type="Script" path="res://games/poker_roguelike/scripts/PokerGameManager.cs" id="2_mgr"]
 [ext_resource type="Script" path="res://games/poker_roguelike/scripts/PokerUI.cs" id="3_ui"]
-[ext_resource type="Texture2D" uid="uid://cxbgtexture" path="res://assets/sprites/backgrounds/cyber_casino.jpg" id="4_bg"]
-[ext_resource type="Texture2D" uid="uid://cxbosstexture" path="res://assets/sprites/characters/turtle/turtle_spritesheet.jpg" id="5_boss"]
+[ext_resource type="Texture2D" path="res://assets/sprites/backgrounds/cyber_casino.jpg" id="4_bg"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/turtle/turtle_spritesheet.jpg" id="5_boss"]
 [ext_resource type="Script" path="res://core/visuals/AvatarComposite.cs" id="6_avatar"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_table"]

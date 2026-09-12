@@ -1,0 +1,32 @@
+{
+	"failures": [],
+	"measurements": [
+		{
+			"eye_height": 1.62999987602234,
+			"game": "poker_roguelike",
+			"pitch_limit": 12,
+			"render_scale": 1.0,
+			"table_logical_size": "(1280, 720)",
+			"table_target_pixels": "(3840, 2160)",
+			"yaw_limit": 48
+		},
+		{
+			"eye_height": 1.62999987602234,
+			"game": "truco",
+			"pitch_limit": 12,
+			"render_scale": 1.0,
+			"table_logical_size": "(1280, 720)",
+			"table_target_pixels": "(3840, 2160)",
+			"yaw_limit": 48
+		},
+		{
+			"eye_height": 1.62999987602234,
+			"game": "fodinha",
+			"pitch_limit": 12,
+			"render_scale": 1.0,
+			"table_logical_size": "(1002, 421)",
+			"table_target_pixels": "(3006, 1263)",
+			"yaw_limit": 48
+		}
+	]
+}

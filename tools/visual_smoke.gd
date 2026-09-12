@@ -59,7 +59,7 @@ func run_checks() -> void:
 				press_button("Pular entrada")
 			await capture("truco-corte")
 			if find_button("Cortar o baralho") != null: fail("Local cut button is visible during the AI's cut")
-			await settle(3.2)
+			await wait_for_truco_hand(9.0)
 			if current_scene.get_node("GameManager").GetSeatCardCount(0) != 3: fail("AI did not cut and deal automatically")
 			else: report.actions.append("AI cut and dealt in Truco 1v1")
 		if scene_name == "poker":
@@ -79,7 +79,7 @@ func run_checks() -> void:
 			await capture("fodinha-regras")
 			for dialog in current_scene.find_children("*", "AcceptDialog", true, false): dialog.hide(); dialog.queue_free()
 			press_button("Palpite: 0")
-			await settle(2.5)
+			await wait_for_local_fodinha_card(6.0)
 			var card = current_scene.find_child("HandCard0", true, false)
 			if card == null or card.disabled: fail("Fodinha did not enable the local card after bidding")
 			else: card.emit_signal("pressed"); report.actions.append("Played Fodinha card")
@@ -161,8 +161,9 @@ func layout_issue(scene_name: String, control: Control, kind: String, detail: St
 
 func find_button(prefix: String) -> Button:
 	for node in current_scene.find_children("*", "Button", true, false):
-		if node.is_visible_in_tree() and not node.disabled and node.text.begins_with(prefix):
-			return node
+		if node.is_visible_in_tree() and not node.disabled:
+			if node.text.begins_with(prefix) or prefix.to_lower() in node.text.to_lower():
+				return node
 	return null
 
 
@@ -182,6 +183,20 @@ func wait_for_button(prefix: String, timeout_seconds := 7.0) -> void:
 		await process_frame
 
 
+func wait_for_truco_hand(timeout_seconds := 10.0) -> void:
+	var deadline := Time.get_ticks_msec() + int(timeout_seconds * 1000)
+	while current_scene != null and current_scene.get_node("GameManager").GetSeatCardCount(0) != 3 and Time.get_ticks_msec() < deadline:
+		await process_frame
+
+
+func wait_for_local_fodinha_card(timeout_seconds := 6.0) -> void:
+	var deadline := Time.get_ticks_msec() + int(timeout_seconds * 1000)
+	while Time.get_ticks_msec() < deadline:
+		var card = current_scene.find_child("HandCard0", true, false)
+		if card != null and not card.disabled: return
+		await process_frame
+
+
 func check_hub_menus() -> void:
 	var menus := {"Coleção": "colecao", "Ajustes": "ajustes", "Acessibilidade": "acessibilidade", "Entrar em sala": "entrar-sala"}
 	for button_text in menus:
@@ -189,6 +204,14 @@ func check_hub_menus() -> void:
 			continue
 		await settle(0.35)
 		await capture(menus[button_text])
+		if button_text == "Coleção":
+			if find_button("Artes Conceituais") != null:
+				press_button("Artes Conceituais")
+				await settle(0.35)
+				await capture("colecao-conceito")
+				if find_button("Modelos 3D") != null:
+					press_button("Modelos 3D")
+					await settle(0.2)
 		if not press_button("Voltar"):
 			return
 		await settle(0.2)
@@ -223,7 +246,7 @@ func check_team_tables() -> void:
 		await settle(1.6)
 		await capture("truco-%sx%s-pena" % [team_size, team_size])
 		if find_button("Entregar a pena") != null: fail("Bot Pena offer exposed as a local action")
-		await settle(3.0)
+		await wait_for_truco_hand(12.0)
 		await capture("truco-%sx%s" % [team_size, team_size])
 		if current_scene.get_node("GameManager").GetSeatCardCount(0) != 3: fail("Team AI cut/pena/distribution failed")
 		else: report.actions.append("AI cut, resolved Pena and dealt in team Truco")
@@ -250,6 +273,12 @@ func activate_card(card: Control) -> void:
 
 func check_poker_actions() -> void:
 	var cards := playable_cards()
+	# The hand is intentionally input-locked until the final card lands. Wait
+	# for the real action button instead of racing the delivery animation.
+	var deadline := Time.get_ticks_msec() + 3500
+	while (cards.size() != 8 or find_button("Descartar") == null) and Time.get_ticks_msec() < deadline:
+		await process_frame
+		cards = playable_cards()
 	if cards.size() != 8:
 		fail("Poker opening hand should expose 8 playable cards; found %s." % cards.size())
 		return
@@ -258,7 +287,9 @@ func check_poker_actions() -> void:
 	await capture("poker-selecao")
 	if not press_button("Descartar"):
 		return
-	await settle(0.5)
+	deadline = Time.get_ticks_msec() + 3500
+	while find_button("Descartar") == null and Time.get_ticks_msec() < deadline:
+		await process_frame
 	cards = playable_cards()
 	if cards.size() != 8:
 		fail("Poker discard should replenish the hand to 8 cards.")
@@ -270,6 +301,21 @@ func check_poker_actions() -> void:
 		await capture("poker-pilha")
 		await settle(1.6)
 		await capture("poker-jogada")
+	var poker_ui = current_scene.find_child("PokerUI", true, false)
+	if poker_ui != null and poker_ui.has_method("OpenShop"):
+		poker_ui.OpenShop()
+		await settle(0.6)
+		await capture("poker-loja")
+		if find_button("Ajustes") != null:
+			press_button("Ajustes")
+			await settle(0.4)
+			await capture("poker-loja-ajustes")
+			if find_button("Continuar") != null:
+				press_button("Continuar")
+				await settle(0.3)
+		if find_button("Próxima rodada") != null:
+			press_button("Próxima rodada")
+			await settle(0.4)
 
 
 func check_truco_actions() -> void:

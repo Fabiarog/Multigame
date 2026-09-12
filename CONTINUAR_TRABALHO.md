@@ -4,6 +4,53 @@
 
 ## Pedido vigente do usuário
 
+### Atualização de continuidade — Patch 24 Concluído com Sucesso
+
+- **Redesign Panorâmico de Pôquer Balatro:** Removido o letterbox escuro e o fundo opaco com bandeja pesada. O cenário 3D (`TableStage`) opera em tela cheia (`FullRect`). A mão do jogador agora flutua elegantemente na parte inferior da tela. O painel lateral direito ("quadradão pro lado") unifica corrida, pontos, meta, recursos, relíquias ativas, combinação de mão e botões de ação com âncoras calibradas milimetricamente (0 avisos de layout).
+- **Postura Sentada Realista:** Pélvis rebaixada para 0.52m (altura da almofada) com pernas flexionadas a 90° (coxas -88°, canelas +85°). Os personagens agora jogam confortavelmente sentados em suas poltronas.
+- **Novos Modelos 3D Integrados:**
+  - **Mascote Corvo ("Edgar" / "Corvinho") (`mascot_crow.glb`):** Empoleirado como sentinela no topo do relógio de salão do Classic Club com animação idle de observação.
+  - **Aki (`aki.glb`, `aki_3d.png`):** Nova personagem jogável (total de jogáveis elevado para 7).
+  - **Madame Morgana (`morgana.glb`, `morgana_3d.png`):** Nova boss exclusiva (rodadas 5–6 no Classic Club).
+  - **Lorde Carniçal (`carnical.glb`, `carnical_3d.png`):** Novo boss exclusivo (rodadas 7–8 no Cyber Casino).
+  - Rodízio de 4 chefes nas 8 rodadas com suas respectivas salas e trilhas temáticas.
+- **Upgrade de Nina, Bento e Dona Onça:** Modelos regenerados com pernas sentadas a 90° e retratos de estúdio em alta definição.
+- **Coleção Expandida:** Suporte aos 11 personagens com rolagem suave (`ScrollContainer`) e lore conceitual detalhado para cada um.
+- **Validação:** `GameplayChecks.cs` (336 asserções PASS), `visual_smoke.ps1` (27 screenshots, 0 layout issues PASS), `visual_smoke.ps1 -CameraOnly` (PASS), executável Windows `Game Hub.exe` (103 MB) exportado.
+
+### Atualização de continuidade — Patch 23 Concluído com Sucesso
+
+- **Direção Cinematográfica & Fim da Tela Preta:** Corrigido o vetor de interpolação da cutscene de entrada em `TableStage.cs`, onde a descida afundava a lente para `Y = -0.30m` no interior da mesa de madeira sólida (`Y = 0.08m` topo, `-0.15m` base), gerando tela preta. Todas as câmeras foram fixadas em `Y >= 1.58m`, garantindo visão limpa.
+- **Close-Up e Pôquer com Chefe:** No Pôquer (`boss == true`), adicionado plano geral do salão (`Y = 2.75m`), corte direto para close-up fechado no rosto e olhos do chefe (`Fov = 28.0f`, distância 1.12m), disparo de animação temática do boss (`boss_intro`/`flourish`), música misteriosa (`midnight-baron`) e som de chegada (`boss-arrival`), seguido de varredura superior suave até o POV do jogador (`Y = 1.63m`).
+- **Tomada do Canto do Salão e Personagens Sentando (Truco & Fodinha):** Em mesas sem chefe (`boss == false`), o primeiro plano agora posiciona a câmera estrategicamente no canto alto do salão (`Vector3(-4.9f, 3.45f, 4.6f)`, `Fov = 52.0f`) enquadrando o salão aristocrático completo (lareira com iluminação trêmula, relógio de pêndulo, carrinho de bar clássico e poltronas); todos os personagens sentam simultaneamente em suas poltronas (`PlayGesture(i, "entrance")`), com transição orbital panorâmica elevada antes do POV.
+- **Recolhimento Realista de Cartas e Encaixe Físico do Baralho:** Eliminados todos os `Label3D` flutuantes das cartas descartadas (`lbl.QueueFree()`). As cartas jogadas da rodada são unidas viradas para baixo no centro; o maço do baralho se eleva no ar (`liftHeight = 0.16m + n * 0.018m`); as cartas da mesa deslizam diretamente para baixo do baralho; o maço suspenso desce com efeito elástico amortecido e som táctil de corte (`"cut"`), formando um bloco perfeitamente alinhado e homogêneo com a capa dourada no topo.
+- **QA e Automação 100% Aprovados:**
+  - `gameplay_smoke.gd`: **287 asserções aprovadas** (`GAMEPLAY_QA PASS`).
+  - `visual_smoke.ps1`: **27 screenshots geradas**, 25 ações, 0 falhas e 0 avisos de layout (`VISUAL_QA PASS`).
+  - `visual_smoke.ps1 -CameraOnly`: **100% aprovado** sem desvios (`CAMERA_QA PASS []`).
+  - Executáveis `Game Hub.exe` e `Game Hub.pck` re-exportados e prontos para jogar.
+
+### Atualização de continuidade — Patch 22 Concluído com Sucesso
+
+- **Bugs de Animação e POV:** Corrigida a lógica de visibilidade no POV (`!isLocal`), eliminando qualquer torso/cabeça clipando na câmera do jogador local. Em modo Mesa (Overhead), todos os ocupantes são visíveis. A carta jogada agora nasce à frente da lente em POV, e animações esqueléticas suprimem o solavanco rígido em `PlayTableAction`.
+- **Ritmo do Truco:** Identificado que `settings.cfg` estava com `ReduceMotion=true` (acessibilidade extrema que zerava os tempos de espera), corrigido para `false`. No `TrucoGameManager`, foi inserido o token `_handId` para prevenir sobreposição assíncrona entre mãos, além de pausas dramáticas de suspense no grito e resposta de Truco.
+- **Cenário Classic Club HD:** Integrado o carrinho de bar vintage (`club_bar_cart.glb`) e iluminação dinâmica com cintilação suave na lareira (`_fireplaceLight`).
+- **QA e Automação 100% Aprovados:**
+  - `gameplay_smoke.gd`: **287 asserções aprovadas** (`GAMEPLAY_QA PASS`).
+  - `visual_smoke.ps1`: **27 screenshots geradas**, 25 ações, 0 falhas e 0 avisos de layout.
+  - `visual_smoke.ps1 -CameraOnly`: **100% aprovado** (`CAMERA_QA PASS []`).
+  - Executáveis `Game Hub.exe` e `Game Hub.pck` re-exportados e prontos para jogar.
+
+- **Status Atual — ETAPAS CONCLUÍDAS E VALIDADAS (Patch 10, 11 & 12):**
+  - **Mãos Articuladas em 5 Falanges e Acessórios Exclusivos (Patch 12):** Cada um dos 8 personagens (`nina`, `bento`, `corvo`, `onca`, `iara`, `zeca`, `barao`, `dama`) possui mãos com 5 dígitos individuais e falanges anatômicas (`ThumbProximal/Distal`, `IndexProximal/Distal`, `MiddleProximal/Distal`, `RingProximal/Distal`, `PinkyProximal/Distal`), além de garras em queratina e esporão no Seu Corvo. Cada personagem recebeu acabamento exclusivo nos pulsos e mãos (luvas sem dedos com rebites na Nina, relógio clássico e anel no Bento, anel de sinete de rubi no Corvo, garras douradas na Onça, bracelete de lótus na Iara, luvas de croupier peroladas no Zeca, anel de safira no Barão e bracelete de serpente na Dama).
+  - **Carta 3D Física na Mão:** Carta com espessura e acabamento fino mantida entre o polegar e o indicador na mão ativa durante a animação `play_card`. O jogador e adversários transportam fisicamente a carta até o feltro no frame 26.
+  - **Imersão Táctil POV com Micro-Recuo:** FOV do POV calibrado em 54° para enquadrar mangas e mãos confortavelmente na borda de couro da mesa. Ao bater a carta no feltro em primeira pessoa, um micro-recuo táctil suave (`_tactileRecoilY` com transição `Back.Out`) é aplicado à câmera, transmitindo sensação física e firmeza de impacto.
+  - **Separação Anatômica Modular em 9 Partes (Blender 5.2):** 9 nós de malha independentes (`PelvisMesh`, `BodyMesh`, `HeadMesh`, `ArmLMesh`, `ArmRMesh`, `ForearmLMesh`, `ForearmRMesh`, `HandLMesh`, `HandRMesh`). Torso respira e se inclina sem distorcer pernas sentadas.
+  - **7 Animações Bezier por Modelo:** `idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish`, `play_card`.
+  - **Corte, Rodízio do Baralho e Câmera POV:** 100% automatizados com IA, rodízio e limites de pescoço (±48° yaw, ±12° pitch).
+  - **Validação de Testes Automatizados:** 155 asserções em `GameplayChecks.cs` aprovadas; suíte de câmera (`camera_smoke.gd`) 100% aprovada (`CAMERA_QA PASS []`); 24 capturas de tela e 21 ações aprovadas com 0 falhas em `visual_smoke.ps1`.
+  - **Executável Exportado:** `Game Hub.exe` e `Game Hub.pck` atualizados para Windows Desktop x86_64.
+
 Você está continuando a implementação do jogo **MultiGame**, um clube de cartas roguelike em Godot .NET/C#, com pôquer, truco e agora Fodinha. Responda em português brasileiro. O usuário quer execução prática, com poucas interrupções e sem pedidos repetidos de confirmação.
 
 Últimos pedidos, todos cumulativos:

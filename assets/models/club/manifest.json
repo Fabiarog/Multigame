@@ -16,7 +16,19 @@
     "truco",
     "victory",
     "boss_intro",
-    "flourish"
+    "flourish",
+    "play_card"
   ],
-  "style": "Stylized Triple-A high-fidelity character meshes, continuous organic anatomy, tailored clothing & PBR materials"
+  "articulated_groups": [
+    "Pelvis",
+    "Body",
+    "Head",
+    "ArmL",
+    "ArmR",
+    "ForearmL",
+    "ForearmR",
+    "HandL",
+    "HandR"
+  ],
+  "style": "Stylized Triple-A high-fidelity modular character meshes, 9 articulated anatomical groups, tailored clothing & PBR materials"
 }

@@ -64,19 +64,42 @@ public partial class TrucoUI : Control
 
     // ===== LIFECYCLE =====
 
-    public override void _Ready()
+    public override async void _Ready()
     {
         _game = GetNode<TrucoGameManager>("../../GameManager");
         Core.Systems.AudioManager.Instance?.PlayMusic("last-manilha");
         BuildUI();
         ConnectSignals();
-        _game.StartMatch();
+        if (_stage != null)
+        {
+            await _stage.PlayEntrance(false);
+        }
+        if (IsInsideTree()) _game.StartMatch();
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        if (_stage != null && _stage.IsPresenting) return;
         if (@event is InputEventKey key && key.Pressed && !key.Echo)
         {
+            if (key.Keycode == Key.Escape)
+            {
+                GetViewport().SetInputAsHandled();
+                _stage?.ToggleInGameSettings();
+                return;
+            }
+            if (key.Keycode == Key.M)
+            {
+                GetViewport().SetInputAsHandled();
+                _stage?.CycleNextRoomTheme();
+                return;
+            }
+            if (key.Keycode == Key.C)
+            {
+                GetViewport().SetInputAsHandled();
+                _stage?.ToggleCameraMode();
+                return;
+            }
             if ((key.Keycode == Key.Space || key.Keycode == Key.Enter) && _cutDeckBtn != null && _cutDeckBtn.Visible && !_cutDeckBtn.Disabled)
             {
                 GetViewport().SetInputAsHandled();
@@ -99,6 +122,7 @@ public partial class TrucoUI : Control
         _game.ScoreUpdated += OnScoreUpdated;
         _game.ViraRevealed += OnViraRevealed;
         _game.TrucoCalled += OnTrucoCalled;
+        _game.TrucoResponded += OnTrucoResponded;
         _game.CardPlayed += OnCardPlayed;
         _game.RoundResolved += OnRoundResolved;
         _game.HandEnded += OnHandEnded;
@@ -121,6 +145,7 @@ public partial class TrucoUI : Control
             _game.ScoreUpdated -= OnScoreUpdated;
             _game.ViraRevealed -= OnViraRevealed;
             _game.TrucoCalled -= OnTrucoCalled;
+            _game.TrucoResponded -= OnTrucoResponded;
             _game.CardPlayed -= OnCardPlayed;
             _game.RoundResolved -= OnRoundResolved;
             _game.HandEnded -= OnHandEnded;
@@ -134,156 +159,165 @@ public partial class TrucoUI : Control
     private void BuildUI()
     {
         Theme = ClubTheme.Create();
-        var backdrop = new ClubBackdrop { ShowTable = false };
-        backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        AddChild(backdrop);
 
-        var margin = new MarginContainer();
-        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 24);
-        margin.AddThemeConstantOverride("margin_right", 24);
-        margin.AddThemeConstantOverride("margin_top", 20);
-        margin.AddThemeConstantOverride("margin_bottom", 20);
-        AddChild(margin);
-        var main = Column(14);
-        margin.AddChild(main);
+        // 3D TableStage fills 100% of the screen directly as the immersive canvas
+        int playerChar = CharacterCatalog.Find(Core.Systems.SettingsManager.Instance?.CharacterId ?? "corvo");
+        int rival = (playerChar == 2) ? 6 : 2;
+        _stage = new TableStage { SeatCount = _game.TeamSize * 2, RivalIndex = rival };
+        _stage.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        _stage.MouseFilter = MouseFilterEnum.Pass;
+        AddChild(_stage);
 
-        var header = new HBoxContainer { CustomMinimumSize = new Vector2(0, 64) };
-        header.AddThemeConstantOverride("separation", 20);
-        main.AddChild(header);
-        var title = Column(0);
-        title.AddChild(ClubTheme.Label("MULTI GAME  /  CLUBE DE CARTAS", 12, Gold));
-        var gameTitle = ClubTheme.Label("Truco", 40, TextPrimary);
-        gameTitle.AddThemeFontOverride("font", ClubTheme.DisplayFont);
-        title.AddChild(gameTitle);
-        header.AddChild(title);
-        header.AddChild(CreateExpandSpacer());
-        var mode = Column(2);
-        mode.Alignment = BoxContainer.AlignmentMode.Center;
-        mode.AddChild(ClubTheme.Label($"MESA {_game.TeamSize} × {_game.TeamSize}", 17, TextPrimary));
-        mode.AddChild(ClubTheme.Label("A primeira equipe a 12 vence", 13, TextSecondary));
-        header.AddChild(mode);
-        var stakesPanel = NewPanel(new Color(0.18f, 0.19f, 0.12f), Gold, 16);
-        _stakesLabel = ClubTheme.Label("VALE 1 PONTO", 18, Gold);
-        _stakesLabel.VerticalAlignment = VerticalAlignment.Center;
-        stakesPanel.AddChild(_stakesLabel);
-        header.AddChild(stakesPanel);
-        var back = ClubTheme.Button("Voltar ao clube");
-        back.CustomMinimumSize = new Vector2(166, 44);
-        back.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        back.Pressed += () => GetTree().ChangeSceneToFile("res://hub/scenes/HubMain.tscn");
-        header.AddChild(back);
+        // Transparent HUD Overlay layer
+        var hud = new Control { Name = "HudOverlay", MouseFilter = MouseFilterEnum.Ignore };
+        hud.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        AddChild(hud);
 
-        var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        body.AddThemeConstantOverride("separation", 18);
-        main.AddChild(body);
+        // ==================== TOP LEFT: COMPACT SCOREBOARD ====================
+        var topLeft = new MarginContainer();
+        topLeft.SetAnchorsAndOffsetsPreset(LayoutPreset.TopLeft);
+        topLeft.OffsetLeft = 18; topLeft.OffsetTop = 16;
+        hud.AddChild(topLeft);
 
-        var scoreboard = NewPanel(PanelBg, ClubTheme.Border, 20);
-        scoreboard.CustomMinimumSize = new Vector2(226, 0);
-        body.AddChild(scoreboard);
-        var scoreBox = Column(12);
-        scoreboard.AddChild(scoreBox);
-        scoreBox.AddChild(ClubTheme.Label("PLACAR DA PARTIDA", 12, Gold));
-        var teamNames = new HBoxContainer();
-        teamNames.AddChild(ClubTheme.Label("NÓS", 14, SuccessGreen));
-        teamNames.AddChild(CreateExpandSpacer());
-        teamNames.AddChild(ClubTheme.Label("ELES", 14, Accent));
-        scoreBox.AddChild(teamNames);
-        _scoreLabel = ClubTheme.Label("00 : 00", 40, TextPrimary);
-        _scoreLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        var scorePanel = NewPanel(new Color(0.03f, 0.07f, 0.055f, 0.90f), ClubTheme.Border, 12);
+        scorePanel.CustomMinimumSize = new Vector2(230, 0);
+        topLeft.AddChild(scorePanel);
+        var scoreBox = Column(5);
+        scorePanel.AddChild(scoreBox);
+
+        var headerRow = new HBoxContainer();
+        headerRow.AddChild(ClubTheme.Label($"MESA {_game.TeamSize} × {_game.TeamSize}", 11, Gold));
+        headerRow.AddChild(CreateExpandSpacer());
+        headerRow.AddChild(ClubTheme.Label("META 12", 11, TextSecondary));
+        scoreBox.AddChild(headerRow);
+
+        var scoreRow = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        scoreRow.AddThemeConstantOverride("separation", 10);
+        scoreRow.AddChild(ClubTheme.Label("NÓS", 13, SuccessGreen));
+        _scoreLabel = ClubTheme.Label("00 : 00", 26, TextPrimary);
         _scoreLabel.AddThemeFontOverride("font", ClubTheme.MonoFont);
-        scoreBox.AddChild(_scoreLabel);
-        scoreBox.AddChild(ClubTheme.Label("META  /  12 PONTOS", 12, TextSecondary));
-        scoreBox.AddChild(new HSeparator());
-        scoreBox.AddChild(ClubTheme.Label("TOMBOS DA MÃO", 12, Gold));
-        _tombosContainer = new HBoxContainer();
-        _tombosContainer.AddThemeConstantOverride("separation", 12);
+        scoreRow.AddChild(_scoreLabel);
+        scoreRow.AddChild(ClubTheme.Label("ELES", 13, Accent));
+        scoreBox.AddChild(scoreRow);
+
+        var stakesRow = new HBoxContainer();
+        _stakesLabel = ClubTheme.Label("VALE 1 PONTO", 12, Gold);
+        stakesRow.AddChild(_stakesLabel);
+        stakesRow.AddChild(CreateExpandSpacer());
+        _roundLabel = ClubTheme.Label("TOMBO 01 / 03", 11, TextSecondary);
+        stakesRow.AddChild(_roundLabel);
+        scoreBox.AddChild(stakesRow);
+
+        _tombosContainer = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        _tombosContainer.AddThemeConstantOverride("separation", 8);
         for (int i = 0; i < 3; i++)
         {
-            var dot = ClubTheme.Label($"{i + 1} ○", 20, TextSecondary);
+            var dot = ClubTheme.Label($"{i + 1} ○", 15, TextSecondary);
             dot.Name = $"Tombo{i}";
             dot.MouseFilter = MouseFilterEnum.Pass;
             _tombosContainer.AddChild(dot);
         }
         scoreBox.AddChild(_tombosContainer);
-        _roundLabel = ClubTheme.Label("TOMBO 01 / 03", 12, Gold);
-        scoreBox.AddChild(_roundLabel);
-        _statusLabel = ClubTheme.Label("Preparando o baralho...", 15, TextPrimary);
-        _statusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        scoreBox.AddChild(_statusLabel);
-        scoreBox.AddChild(CreateExpandSpacer());
-        _dealerLabel = ClubTheme.Label("DISTRIBUIDOR\nVocê", 14, TextSecondary);
+
+        _dealerLabel = ClubTheme.Label("DISTRIBUI: Você · CORTA: Adv 2", 11, TextSecondary);
         _dealerLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         scoreBox.AddChild(_dealerLabel);
 
-        var tableSurface = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-        tableSurface.AddThemeStyleboxOverride("panel", ClubTheme.Box(Colors.Transparent, ClubTheme.Border, 18, 12));
-        _stage = new TableStage { SeatCount = _game.TeamSize * 2, RivalIndex = 1 };
-        tableSurface.AddChild(_stage);
+        // ==================== TOP RIGHT: COMPACT VIRA & MENU ====================
+        var topRight = new MarginContainer();
+        topRight.SetAnchorsAndOffsetsPreset(LayoutPreset.TopRight);
+        topRight.OffsetRight = -18; topRight.OffsetTop = 16;
+        topRight.GrowHorizontal = GrowDirection.Begin;
+        hud.AddChild(topRight);
 
-        // Status lives beside the table so the northern player's face stays visible.
-        body.AddChild(tableSurface);
+        var viraPanel = NewPanel(new Color(0.03f, 0.07f, 0.055f, 0.90f), ClubTheme.Border, 10);
+        topRight.AddChild(viraPanel);
+        var viraRow = new HBoxContainer();
+        viraRow.AddThemeConstantOverride("separation", 12);
+        viraPanel.AddChild(viraRow);
 
+        _viraCardContainer = new CenterContainer { CustomMinimumSize = new Vector2(64, 92) };
+        viraRow.AddChild(_viraCardContainer);
 
-        var viraPanel = NewPanel(PanelBg, ClubTheme.Border, 18);
-        viraPanel.CustomMinimumSize = new Vector2(210, 0);
-        body.AddChild(viraPanel);
-        var viraBox = Column(10);
-        viraPanel.AddChild(viraBox);
-        viraBox.AddChild(ClubTheme.Label("A CARTA DO TOMBO", 12, Gold));
-        _viraCardContainer = new CenterContainer();
-        _viraCardContainer.CustomMinimumSize = new Vector2(0, 144);
-        viraBox.AddChild(_viraCardContainer);
-        _viraLabel = ClubTheme.Label("Vira ainda fechada", 16, TextPrimary);
-        _viraLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        var viraInfo = Column(4);
+        viraInfo.Alignment = BoxContainer.AlignmentMode.Center;
+        viraRow.AddChild(viraInfo);
+
+        _viraLabel = ClubTheme.Label("Vira ainda fechada", 12, TextPrimary);
         _viraLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        _viraLabel.CustomMinimumSize = new Vector2(0, 50);
-        viraBox.AddChild(_viraLabel);
-        viraBox.AddChild(CreateExpandSpacer());
-        viraBox.AddChild(new HSeparator());
-        viraBox.AddChild(ClubTheme.Label("FORÇA DAS MANILHAS", 11, TextSecondary));
-        var order = ClubTheme.Label("♦  <  ♠  <  ♥  <  ♣", 21, Gold);
-        order.HorizontalAlignment = HorizontalAlignment.Center;
-        viraBox.AddChild(order);
-        var orderHint = ClubTheme.Label("Do ouros ao zap", 12, TextSecondary);
-        orderHint.HorizontalAlignment = HorizontalAlignment.Center;
-        viraBox.AddChild(orderHint);
+        _viraLabel.CustomMinimumSize = new Vector2(150, 0);
+        viraInfo.AddChild(_viraLabel);
 
-        var handPanel = NewPanel(PanelBg, ClubTheme.Border, 14);
-        handPanel.CustomMinimumSize = new Vector2(0, 184);
-        main.AddChild(handPanel);
-        var handRow = new HBoxContainer();
-        handRow.AddThemeConstantOverride("separation", 24);
-        handPanel.AddChild(handRow);
-        var handInfo = Column(8);
-        handInfo.CustomMinimumSize = new Vector2(206, 0);
-        handInfo.Alignment = BoxContainer.AlignmentMode.Center;
-        handRow.AddChild(handInfo);
-        handInfo.AddChild(ClubTheme.Label("SUA MÃO", 12, Gold));
-        _handCountLabel = ClubTheme.Label("O corte abre a mesa.", 17, TextPrimary);
-        handInfo.AddChild(_handCountLabel);
-        var handHint = ClubTheme.Label("Na sua vez, clique em uma carta para jogar.", 13, TextSecondary);
-        handHint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        handInfo.AddChild(handHint);
+        var order = ClubTheme.Label("♦  <  ♠  <  ♥  <  ♣", 13, Gold);
+        viraInfo.AddChild(order);
+        var orderHint = ClubTheme.Label("Do ouros ao zap", 10, TextSecondary);
+        viraInfo.AddChild(orderHint);
+
+        var back = ClubTheme.Button("Voltar ao clube");
+        back.CustomMinimumSize = new Vector2(140, 30);
+        back.Pressed += () => GetTree().ChangeSceneToFile("res://hub/scenes/HubMain.tscn");
+        viraInfo.AddChild(back);
+
+        // ==================== BOTTOM: POV HAND & STATUS MESSAGE ====================
+        var bottomMargin = new MarginContainer();
+        bottomMargin.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
+        bottomMargin.OffsetLeft = 20; bottomMargin.OffsetRight = -20; bottomMargin.OffsetBottom = -14;
+        bottomMargin.GrowVertical = GrowDirection.Begin;
+        hud.AddChild(bottomMargin);
+
+        var bottomRow = new HBoxContainer();
+        bottomRow.AddThemeConstantOverride("separation", 16);
+        bottomRow.Alignment = BoxContainer.AlignmentMode.Center;
+        bottomMargin.AddChild(bottomRow);
+
+        var dummyLeft = new Control { CustomMinimumSize = new Vector2(170, 0) };
+        bottomRow.AddChild(dummyLeft);
+
+        var handCol = Column(6);
+        handCol.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        handCol.Alignment = BoxContainer.AlignmentMode.Center;
+        bottomRow.AddChild(handCol);
+
         var handCenter = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        handRow.AddChild(handCenter);
-        _playerHandContainer = new HBoxContainer();
+        handCol.AddChild(handCenter);
+
+        _playerHandContainer = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         _playerHandContainer.AddThemeConstantOverride("separation", 14);
         handCenter.AddChild(_playerHandContainer);
-        var actions = Column(10);
-        actions.CustomMinimumSize = new Vector2(220, 0);
+
+        // Message directly below cards in the POV perspective
+        var statusBadge = new PanelContainer();
+        statusBadge.AddThemeStyleboxOverride("panel", ClubTheme.Box(new Color(0.02f, 0.06f, 0.045f, 0.90f), ClubTheme.Border, 10, 5));
+        var statusHBox = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        statusHBox.AddThemeConstantOverride("separation", 14);
+        statusBadge.AddChild(statusHBox);
+
+        _statusLabel = ClubTheme.Label("Preparando o baralho...", 14, Gold);
+        _statusLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        statusHBox.AddChild(_statusLabel);
+
+        _handCountLabel = ClubTheme.Label("3 cartas", 12, TextSecondary);
+        statusHBox.AddChild(_handCountLabel);
+        handCol.AddChild(statusBadge);
+
+        // Action controls (TRUCO / CORTAR)
+        var actions = Column(6);
+        actions.CustomMinimumSize = new Vector2(170, 0);
         actions.Alignment = BoxContainer.AlignmentMode.Center;
-        handRow.AddChild(actions);
+        bottomRow.AddChild(actions);
+
         _trucoBtn = ClubTheme.Button("TRUCO!", true);
-        _trucoBtn.CustomMinimumSize = new Vector2(220, 48);
+        _trucoBtn.CustomMinimumSize = new Vector2(170, 44);
         _trucoBtn.Pressed += () => _game.RequestTruco();
         actions.AddChild(_trucoBtn);
+
         _cutDeckBtn = ClubTheme.Button("Cortar o baralho", true);
-        _cutDeckBtn.CustomMinimumSize = new Vector2(220, 48);
+        _cutDeckBtn.CustomMinimumSize = new Vector2(170, 44);
         _cutDeckBtn.Pressed += () => _game.CutDeck();
         _cutDeckBtn.Visible = false;
         actions.AddChild(_cutDeckBtn);
-        var raiseHint = ClubTheme.Label("1 → 3 → 6 → 9 → 12", 13, TextSecondary);
+
+        var raiseHint = ClubTheme.Label("1 → 3 → 6 → 9 → 12", 11, TextSecondary);
         raiseHint.HorizontalAlignment = HorizontalAlignment.Center;
         actions.AddChild(raiseHint);
 
@@ -341,10 +375,10 @@ public partial class TrucoUI : Control
         content.AddChild(portraitFrame);
         _trucoPortrait = new TextureRect
         {
-            CustomMinimumSize = new Vector2(148, 148),
+            CustomMinimumSize = new Vector2(168, 168),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            Texture = ResourceLoader.Load<Texture2D>("res://assets/sprites/portraits/truco_player.jpg"),
+            Texture = CharacterCatalog.TrucoCallSprite(0, 3),
             MouseFilter = MouseFilterEnum.Ignore
         };
         portraitFrame.AddChild(_trucoPortrait);
@@ -450,13 +484,13 @@ public partial class TrucoUI : Control
     {
         ClearContainer(_viraCardContainer);
         var back = CreateAnimatedCardBack();
-        back.CustomMinimumSize = new Vector2(92, 132);
+        back.CustomMinimumSize = new Vector2(64, 92);
         _viraCardContainer.AddChild(back);
     }
 
     // ===== REFRESH =====
 
-    private void RefreshPlayerHand()
+    private void RefreshPlayerHand(bool animateDeal = false)
     {
         while (_playerHandContainer.GetChildCount() > 0)
         {
@@ -466,12 +500,26 @@ public partial class TrucoUI : Control
         }
         _cardPanels.Clear();
 
+        bool shouldAnimate = animateDeal && (Core.Systems.SettingsManager.Instance?.ReduceMotion != true);
         for (int i = 0; i < _game.PlayerHand.Count; i++)
         {
             var card = _game.PlayerHand[i];
             var panel = CreateCardPanel(card, i);
             _playerHandContainer.AddChild(panel);
             _cardPanels.Add(panel);
+
+            if (shouldAnimate)
+            {
+                panel.Modulate = new Color(1, 1, 1, 0);
+                panel.Scale = new Vector2(0.82f, 0.82f);
+                panel.PivotOffset = panel.CustomMinimumSize / 2f;
+                int cardOrder = i;
+                var tween = CreateTween();
+                tween.TweenInterval(cardOrder * 0.06f);
+                tween.TweenProperty(panel, "modulate:a", 1f, 0.20f);
+                tween.Parallel().TweenProperty(panel, "scale", Vector2.One, 0.24f)
+                    .SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            }
         }
         _handCountLabel.Text = _game.PlayerHand.Count == 1 ? "1 carta na mão" : $"{_game.PlayerHand.Count} cartas na mão";
     }
@@ -502,7 +550,7 @@ public partial class TrucoUI : Control
     {
         ClearDealAnimationLayer();
         _stakesLabel.Text = _game.CurrentStakes == 1 ? "VALE 1 PONTO" : $"VALE {_game.CurrentStakes} PONTOS";
-        RefreshPlayerHand();
+        RefreshPlayerHand(true);
         RefreshTableCards();
         RefreshTombos();
         _trucoOverlay.Visible = false;
@@ -522,12 +570,14 @@ public partial class TrucoUI : Control
         ClearContainer(_playerHandContainer);
         _cardPanels.Clear();
         _stage.ClearPlayedCards();
+        for (int seat = 0; seat < _game.TeamSize * 2; seat++) _stage.SetCardCount(seat, 0);
         RefreshTableCards();
         RefreshTombos();
         ShowClosedVira();
         _statusLabel.Text = $"{_game.GetSeatName(_game.DealerSeatIndex)} embaralhando…";
         _statusLabel.AddThemeColorOverride("font_color", Gold);
         _cutDeckBtn.Visible = false;
+        _stage?.PlayGesture(_game.DealerSeatIndex, "shuffle");
         AnimateShuffle();
     }
 
@@ -537,8 +587,8 @@ public partial class TrucoUI : Control
         _statusLabel.Text = $"{_game.GetSeatName(_game.CutterSeatIndex)} cortou o baralho.";
         _cutDeckBtn.Visible = false;
         _stage?.AnimateDeck(true);
-        _stage?.React(_game.CutterSeatIndex);
-        AnimateCut();
+        _stage?.PlayTableAction(_game.CutterSeatIndex);
+        _stage?.PlayGesture(_game.CutterSeatIndex, "cut_deck");
     }
 
     private void OnPenaAvailable(string recipient)
@@ -579,7 +629,8 @@ public partial class TrucoUI : Control
         _statusLabel.Text = penaKept
             ? "Pena guardada: o aliado receberá só mais 2 cartas."
             : $"{_game.GetSeatName(_game.DealerSeatIndex)} distribuindo 3 cartas para cada jogador…";
-        _stage?.React(_game.DealerSeatIndex);
+        _stage?.PlayTableAction(_game.DealerSeatIndex);
+        _stage?.PlayGesture(_game.DealerSeatIndex, "deal");
         AnimateDistribution(cardCount, penaRecipientSeat, penaKept);
     }
 
@@ -592,152 +643,36 @@ public partial class TrucoUI : Control
     private float MotionDuration(float regular) =>
         Core.Systems.SettingsManager.Instance?.ReduceMotion == true ? 0.01f : regular;
 
-    private async void AnimateShuffle()
+    private void AnimateShuffle()
     {
         _cutDeckBtn.Disabled = true;
-        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        if (!IsInsideTree() || _game.CurrentPhase != TrucoGameManager.TrucoPhase.Cutting) return;
         ClearDealAnimationLayer();
-        _stage?.AnimateDeck(false);
-        if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true)
-        {
-            _deckStackVisual = CreateAnimatedCardBack();
-            _deckStackVisual.Position = GetDeckScreenPosition() - _deckStackVisual.Size / 2f;
-            _dealAnimationLayer.AddChild(_deckStackVisual);
-            _cutDeckBtn.Visible = _game.CutterIsPlayer && _game.CurrentPhase == TrucoGameManager.TrucoPhase.Cutting;
-            _cutDeckBtn.Disabled = !_cutDeckBtn.Visible;
-            return;
-        }
-        _cutDeckBtn.Disabled = true;
-        Vector2 center = GetDeckScreenPosition();
-        for (int i = 0; i < 8; i++)
-        {
-            var card = CreateAnimatedCardBack();
-            card.Position = center - card.Size / 2f + new Vector2((i % 2 == 0 ? -1 : 1) * 72, -i * 1.5f);
-            card.Rotation = Mathf.DegToRad(i % 2 == 0 ? -12 : 12);
-            _dealAnimationLayer.AddChild(card);
-            var tween = CreateTween();
-            tween.SetParallel(true);
-            tween.TweenProperty(card, "position", center - card.Size / 2f + new Vector2(i * 0.7f, -i * 0.8f), MotionDuration(0.32f)).SetDelay(i * 0.035f);
-            tween.TweenProperty(card, "rotation", 0f, MotionDuration(0.32f)).SetDelay(i * 0.035f);
-        }
-
-        _deckStackVisual = CreateAnimatedCardBack();
-        _deckStackVisual.Position = center - _deckStackVisual.Size / 2f;
-        _deckStackVisual.Modulate = new Color(1, 1, 1, 0);
-        _dealAnimationLayer.AddChild(_deckStackVisual);
-        var finish = CreateTween();
-        finish.TweenInterval(MotionDuration(0.65f));
-        finish.TweenProperty(_deckStackVisual, "modulate:a", 1f, MotionDuration(0.1f));
-        finish.TweenCallback(Callable.From(() =>
-        {
-            foreach (var child in _dealAnimationLayer.GetChildren())
-                if (child != _deckStackVisual) child.QueueFree();
-            if (_game.CutterIsPlayer && _game.CurrentPhase == TrucoGameManager.TrucoPhase.Cutting)
-            {
-                _cutDeckBtn.Visible = true;
-                _cutDeckBtn.Disabled = false;
-                PulseControl(_cutDeckBtn);
-            }
-            else
-            {
-                _cutDeckBtn.Visible = false;
-                _cutDeckBtn.Disabled = true;
-            }
-        }));
-    }
-
-    private void AnimateCut()
-    {
-        if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true) return;
-        if (_deckStackVisual == null || !IsInstanceValid(_deckStackVisual)) return;
-        Vector2 basePosition = _deckStackVisual.Position;
-        var upperHalf = CreateAnimatedCardBack();
-        upperHalf.Position = basePosition;
-        _dealAnimationLayer.AddChild(upperHalf);
-        var tween = CreateTween();
-        tween.TweenProperty(upperHalf, "position", basePosition + new Vector2(65, -16), MotionDuration(0.18f)).SetTrans(Tween.TransitionType.Quad);
-        tween.TweenProperty(upperHalf, "position", basePosition + new Vector2(0, -5), MotionDuration(0.18f)).SetTrans(Tween.TransitionType.Quad);
-        tween.TweenCallback(Callable.From(upperHalf.QueueFree));
+        _stage.AnimateDeck(false);
+        _stage.PlayTableAction(_game.DealerSeatIndex);
     }
 
     private void AnimatePenaDelivery()
     {
-        if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true) return;
-        if (_game.PenaCard == null) return;
-        var card = CreateCardPanel(_game.PenaCard, -1);
-        card.MouseFilter = MouseFilterEnum.Ignore;
-        card.Size = card.CustomMinimumSize;
-        card.Position = GetDeckScreenPosition() - card.Size / 2f;
-        _dealAnimationLayer.AddChild(card);
-        var target = GetSeatScreenPosition(_game.PenaRecipientSeatIndex) - card.Size / 2f;
-        var tween = CreateTween();
-        tween.SetParallel(true);
-        tween.TweenProperty(card, "position", target, MotionDuration(0.38f)).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
-        tween.TweenProperty(card, "rotation", Mathf.DegToRad(-8), MotionDuration(0.38f));
+        _stage.AnimatePenaDelivery(_game.PenaRecipientSeatIndex);
     }
 
     private void AnimatePenaResolution(bool kept)
     {
-        if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true) return;
-        if (kept) return;
-        // A declined pena returns from the ally and settles at the vira/tombo.
-        var cards = _dealAnimationLayer.GetChildren();
-        if (cards.Count == 0) return;
-        if (cards[cards.Count - 1] is not Control card) return;
-        var target = _viraCardContainer.GetGlobalRect().GetCenter() - card.Size / 2f;
-        var tween = CreateTween();
-        tween.SetParallel(true);
-        tween.TweenProperty(card, "position", target, MotionDuration(0.4f)).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
-        tween.TweenProperty(card, "rotation", Mathf.DegToRad(7), MotionDuration(0.4f));
+        _stage.AnimatePenaResolution(_game.PenaRecipientSeatIndex, kept);
     }
 
     private void AnimateDistribution(int cardCount, int penaRecipientSeat, bool penaKept)
     {
-        if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true) return;
-        int totalSeats = _game.TeamSize * 2;
-        Vector2 deckPosition = GetDeckScreenPosition();
-        int emitted = 0;
-        for (int pass = 0; pass < 3; pass++)
-        {
-            for (int offset = 1; offset <= totalSeats && emitted < cardCount; offset++)
-            {
-                int seat = (_game.DealerSeatIndex + offset) % totalSeats;
-                if (penaKept && seat == penaRecipientSeat && pass == 2) continue;
-                var card = CreateAnimatedCardBack();
-                card.Position = deckPosition - card.Size / 2f;
-                card.Scale = new Vector2(0.78f, 0.78f);
-                _dealAnimationLayer.AddChild(card);
-                Vector2 target = GetSeatScreenPosition(seat) + new Vector2(pass * 10 - 10, pass * -2) - card.Size / 2f;
-                var tween = CreateTween();
-                tween.SetParallel(true);
-                float delay = emitted * 0.045f;
-                tween.TweenProperty(card, "position", target, MotionDuration(0.3f)).SetDelay(delay).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
-                tween.TweenProperty(card, "rotation", Mathf.DegToRad((pass - 1) * 5), MotionDuration(0.3f)).SetDelay(delay);
-                emitted++;
-            }
-        }
+        ClearDealAnimationLayer();
+        var counts = new int[_game.TeamSize * 2];
+        System.Array.Fill(counts, 3);
+        _stage.AnimateDeal(_game.DealerSeatIndex, counts, penaRecipientSeat, penaKept);
     }
 
     private void AnimateCleanupAndPass(int nextDealerSeat)
     {
-        if (Core.Systems.SettingsManager.Instance?.ReduceMotion == true)
-        {
-            ClearDealAnimationLayer();
-            return;
-        }
-        Vector2 center = GetDeckScreenPosition();
-        var pass = CreateTween();
-        pass.TweenInterval(MotionDuration(0.4f));
-        if (_deckStackVisual == null || !IsInstanceValid(_deckStackVisual))
-        {
-            _deckStackVisual = CreateAnimatedCardBack();
-            _deckStackVisual.Position = center - _deckStackVisual.Size / 2f;
-            _dealAnimationLayer.AddChild(_deckStackVisual);
-        }
-        pass.TweenProperty(_deckStackVisual, "position", GetSeatScreenPosition(nextDealerSeat) - _deckStackVisual.Size / 2f, MotionDuration(0.38f)).SetTrans(Tween.TransitionType.Cubic);
-        pass.TweenCallback(Callable.From(ClearDealAnimationLayer));
+        ClearDealAnimationLayer();
+        _stage.AnimateDeckPass(nextDealerSeat);
     }
 
     private PanelContainer CreateAnimatedCardBack()
@@ -787,7 +722,8 @@ public partial class TrucoUI : Control
         ClearContainer(_viraCardContainer);
         if (_game.ViraCard != null)
         {
-            var panel = CreateCardPanel(_game.ViraCard, -1);
+            var panel = CreateSmallCard(_game.ViraCard, false);
+            panel.CustomMinimumSize = new Vector2(64, 92);
             panel.MouseFilter = MouseFilterEnum.Ignore; // Vira card is not clickable
             _viraCardContainer.AddChild(panel);
         }
@@ -795,7 +731,10 @@ public partial class TrucoUI : Control
 
     private void OnTrucoCalled(int stakes, bool byPlayer)
     {
-        _stage.React(byPlayer ? 0 : 1);
+        int callingSeat = byPlayer ? 0 : 1;
+        int callingChar = _stage != null ? _stage.CharacterAt(callingSeat) : 0;
+        string trucoClip = CharacterProgress.TrucoClip(callingChar);
+        _stage?.PlayGesture(callingSeat, trucoClip);
         Core.Systems.AudioManager.Instance?.PlaySound("truco");
         _stakesLabel.Text = $"VALE {stakes} PONTOS";
         _trucoCallDescription.Text = byPlayer
@@ -811,6 +750,20 @@ public partial class TrucoUI : Control
             _ => "TRUCO!"
         };
         _trucoOverlayLabel.Text = label;
+
+        Color stakesColor = stakes switch
+        {
+            6 => new Color("#e67e22"),
+            9 => new Color("#e12d41"),
+            12 => new Color("#a550f0"),
+            _ => Gold
+        };
+        _trucoOverlayLabel.AddThemeColorOverride("font_color", stakesColor);
+
+        if (_trucoPortrait != null)
+        {
+            _trucoPortrait.Texture = CharacterCatalog.TrucoCallSprite(callingChar, stakes);
+        }
 
         if (!byPlayer)
         {
@@ -832,13 +785,24 @@ public partial class TrucoUI : Control
         _trucoOverlay.Visible = true;
     }
 
+    private void OnTrucoResponded(bool accepted, bool byPlayer)
+    {
+        int respondingSeat = byPlayer ? 0 : 1;
+        _stage?.PlayGesture(respondingSeat, accepted ? "accept_truco" : "decline_truco");
+        string responderName = byPlayer ? "Você" : "O adversário";
+        _statusLabel.Text = accepted
+            ? $"{responderName} aceitou o truco! A aposta subiu para {_game.CurrentStakes} pontos."
+            : $"{responderName} correu do truco.";
+        _statusLabel.AddThemeColorOverride("font_color", accepted ? Gold : Accent);
+    }
+
     private void OnCardPlayed(int who, string cardDisplay, int roundIdx)
     {
         RefreshTableCards();
         RefreshPlayerHand();
         Core.Systems.AudioManager.Instance?.PlaySound("play");
         int seat = _game.LastPlayedSeatIndex;
-        _stage.React(seat);
+        _stage.PlayTableAction(seat);
         _stage.SetCardCount(seat, _game.GetSeatCardCount(seat));
         string seatName = _game.GetSeatName(seat);
         string manilhaRankStr = _game.ManilhaRank switch
@@ -857,17 +821,26 @@ public partial class TrucoUI : Control
         RefreshTombos();
         string msg = winner switch
         {
-            0 => "Você ganhou o tombo!",
-            1 => "Oponente ganhou o tombo!",
-            _ => "Empate!"
+            0 => "Você fez o tombo! Ponto para a nossa equipe.",
+            1 => "Oponente fez o tombo!",
+            _ => "Tombo empatado!"
         };
         _statusLabel.Text = msg;
         _statusLabel.AddThemeColorOverride("font_color", winner == 0 ? SuccessGreen : (winner == 1 ? Accent : Gold));
+        if (winner == 0 || winner == 1)
+        {
+            _stage?.PlayGesture(winner, "trick_win");
+            int loser = winner == 0 ? 1 : 0;
+            _stage?.PlayGesture(loser, "trick_lose");
+        }
+        _ = _stage?.CollectRoundCardsToDiscard();
     }
 
     private void OnHandEnded(bool playerWon, int pointsGained)
     {
         if (playerWon) Core.Systems.AudioManager.Instance?.PlaySound("win");
+        _stage?.PlayGesture(playerWon ? 0 : 1, "big_win");
+        _stage?.PlayGesture(playerWon ? 1 : 0, "lose");
         _handOverlayEyebrow.Text = "FIM DA MÃO";
         _handOverlayTitle.Text = playerWon ? "Você ganhou!" : "Oponente ganhou!";
         _handOverlayTitle.AddThemeColorOverride("font_color", playerWon ? SuccessGreen : Accent);
@@ -908,6 +881,7 @@ public partial class TrucoUI : Control
         {
             _statusLabel.Text = $"{_game.GetSeatName(_game.ActiveSeatIndex)} pensando...";
             _statusLabel.AddThemeColorOverride("font_color", TextSecondary);
+            _stage?.PlayGesture(_game.ActiveSeatIndex, "think");
         }
 
         if (p != TrucoGameManager.TrucoPhase.TrucoRequested)

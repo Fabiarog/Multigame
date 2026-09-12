@@ -14,7 +14,8 @@ public enum HubState
     Lobby,
     Collectibles,
     Accessibility,
-    Tutorial
+    Tutorial,
+    Credits
 }
 
 /// <summary>
@@ -32,6 +33,7 @@ public partial class HubMain : Control
     private Control _lobbyPanel;
     private Control _collectiblesPanel;
     private Control _accessibilityPanel;
+    private Control _creditsPanel;
 
     // Settings controls
     private LineEdit _nicknameEdit;
@@ -56,6 +58,9 @@ public partial class HubMain : Control
     // Video controls (Módulo 1)
     private OptionButton _resolutionSelect;
     private OptionButton _displayModeSelect;
+    private OptionButton _roomThemeSelect;
+    private OptionButton _cameraModeSelect;
+    private OptionButton _outfitSelect;
     private HSlider _renderScaleSlider;
     private Label _renderScaleValueLabel;
     private CheckButton _vsyncToggle;
@@ -118,31 +123,45 @@ public partial class HubMain : Control
     private Control BuildSettingsPanel()
     {
         var margin = new MarginContainer { Name = "SettingsPanel" };
-        foreach (var edge in new[] { "left", "right", "top", "bottom" })
-            margin.AddThemeConstantOverride("margin_" + edge, 28);
-        var page = new VBoxContainer();
-        page.AddThemeConstantOverride("separation", 16);
+        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        foreach (var edge in new[] { "left", "right" })
+            margin.AddThemeConstantOverride("margin_" + edge, 24);
+        foreach (var edge in new[] { "top", "bottom" })
+            margin.AddThemeConstantOverride("margin_" + edge, 14);
+
+        var page = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        page.AddThemeConstantOverride("separation", 10);
         margin.AddChild(page);
-        var heading = ClubTheme.Label("Seu lugar à mesa", 40);
+
+        var heading = ClubTheme.Label("Seu lugar à mesa", 28);
         heading.AddThemeFontOverride("font", ClubTheme.DisplayFont);
         page.AddChild(heading);
-        page.AddChild(ClubTheme.Label("Ajuste seu perfil, o som e a janela do jogo.", 16, ClubTheme.Muted));
+        page.AddChild(ClubTheme.Label("Ajuste seu perfil, o som e a janela do jogo.", 13, ClubTheme.Muted));
 
-        var columns = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        columns.AddThemeConstantOverride("separation", 20);
-        page.AddChild(columns);
+        var scroll = new ScrollContainer
+        {
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
+        };
+        page.AddChild(scroll);
+
+        var columns = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        columns.AddThemeConstantOverride("separation", 16);
+        scroll.AddChild(columns);
+
         var profilePanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        profilePanel.AddThemeStyleboxOverride("panel", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Border, 18));
+        profilePanel.AddThemeStyleboxOverride("panel", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Border, 16));
         columns.AddChild(profilePanel);
         var profile = new VBoxContainer();
-        profile.AddThemeConstantOverride("separation", 10);
+        profile.AddThemeConstantOverride("separation", 8);
         profilePanel.AddChild(profile);
         profile.AddChild(ClubTheme.Label("PERFIL", 13, ClubTheme.Gold));
-        profile.AddChild(ClubTheme.Label("Apelido", 15));
+        profile.AddChild(ClubTheme.Label("Apelido", 14));
         _nicknameEdit = new LineEdit
         {
             Text = "Jogador", PlaceholderText = "Como você quer ser chamado?",
-            CustomMinimumSize = new Vector2(0, 40), SizeFlagsHorizontal = SizeFlags.ExpandFill
+            CustomMinimumSize = new Vector2(0, 38), SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         profile.AddChild(_nicknameEdit);
         profile.AddChild(CreateFixedSpacer(2));
@@ -154,34 +173,51 @@ public partial class HubMain : Control
         legacy.AddChild(CreateAvatarSelectorRow("Cabelo", out _hairSelect, "Padrão", "default_hair"));
         profile.AddChild(legacy);
         profile.AddChild(ClubTheme.Label("SEU PERSONAGEM", 13, Gold));
-        _characterSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 40) };
+        _characterSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 38) };
         for (int i = 0; i < CharacterCatalog.PlayableCount; i++) _characterSelect.AddItem(CharacterCatalog.Names[i]);
         profile.AddChild(_characterSelect);
-        var portrait = new TextureRect { Texture = CharacterCatalog.Portrait(0), CustomMinimumSize = new Vector2(0, 120),
-            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered };
-        profile.AddChild(portrait);
-        var characterNote = ClubTheme.Label(CharacterCatalog.Descriptions[0]+"\n"+CharacterProgress.MissionText(0), 13, TextSecondary);
+
+        var viewerContainer = new PanelContainer { CustomMinimumSize = new Vector2(0, 200) };
+        viewerContainer.AddThemeStyleboxOverride("panel", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Border, 4, 8));
+        var charViewer = new CharacterViewer3D { CustomMinimumSize = new Vector2(0, 190) };
+        viewerContainer.AddChild(charViewer);
+        profile.AddChild(viewerContainer);
+
+        profile.AddChild(ClubTheme.Label("TRAJE DO PERSONAGEM", 13, Gold));
+        _outfitSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 38) };
+        _outfitSelect.AddItem("Traje Nobre Clássico");
+        _outfitSelect.AddItem("Alta Noite (Tons Escuros)");
+        _outfitSelect.AddItem("Clube Vintage (Dourado & Veludo)");
+        profile.AddChild(_outfitSelect);
+
+        var characterNote = ClubTheme.Label(CharacterCatalog.Descriptions[0]+"\n"+CharacterProgress.MissionText(0), 12, TextSecondary);
         characterNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         profile.AddChild(characterNote);
-        _characterSelect.ItemSelected += index => { portrait.Texture = CharacterCatalog.Portrait((int)index); characterNote.Text = CharacterCatalog.Descriptions[(int)index]+"\n"+CharacterProgress.MissionText((int)index); };
-        var wardrobeNote = ClubTheme.Label("Personagens visuais · sem bônus de jogabilidade.", 13, ClubTheme.Muted);
+
+        _characterSelect.ItemSelected += index => {
+            charViewer.LoadCharacter((int)index);
+            characterNote.Text = CharacterCatalog.Descriptions[(int)index]+"\n"+CharacterProgress.MissionText((int)index);
+        };
+        _outfitSelect.ItemSelected += oIndex => {
+            charViewer.SetOutfit((int)oIndex);
+        };
+
+        var wardrobeNote = ClubTheme.Label("Personagens visuais · sem bônus de jogabilidade.", 12, ClubTheme.Muted);
         wardrobeNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         profile.AddChild(wardrobeNote);
 
         var devicePanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        devicePanel.AddThemeStyleboxOverride("panel", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Border, 18));
+        devicePanel.AddThemeStyleboxOverride("panel", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Border, 16));
         columns.AddChild(devicePanel);
-        var deviceScroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        deviceScroll.HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled;
-        devicePanel.AddChild(deviceScroll);
+
         var device = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        device.AddThemeConstantOverride("separation", 16);
-        deviceScroll.AddChild(device);
+        device.AddThemeConstantOverride("separation", 12);
+        devicePanel.AddChild(device);
         device.AddChild(ClubTheme.Label("SOM DA MESA", 13, ClubTheme.Gold));
         device.AddChild(CreateSliderRow("Geral", 0, 100, 100, out _masterSlider, out _masterValueLabel));
         device.AddChild(CreateSliderRow("Música", 0, 100, 80, out _musicSlider, out _musicValueLabel));
         device.AddChild(CreateSliderRow("Efeitos", 0, 100, 100, out _sfxSlider, out _sfxValueLabel));
-        _musicTrackSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 40) };
+        _musicTrackSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 38) };
         _musicTrackSelect.AddItem("Trilha da mesa (automática)");
         foreach (var name in AudioManager.TrackNames) _musicTrackSelect.AddItem(name);
         device.AddChild(_musicTrackSelect);
@@ -191,17 +227,17 @@ public partial class HubMain : Control
         device.AddChild(ClubTheme.Label("VÍDEO", 13, ClubTheme.Gold));
 
         // Legacy toggle (kept for backward compat; hidden if new manager is available)
-        _fullscreenToggle = new CheckButton { Text = "Tela cheia", ButtonPressed = true, CustomMinimumSize = new Vector2(0, 42), Visible = false };
+        _fullscreenToggle = new CheckButton { Text = "Tela cheia", ButtonPressed = true, CustomMinimumSize = new Vector2(0, 40), Visible = false };
         device.AddChild(_fullscreenToggle);
 
         // Resolution selector
-        device.AddChild(ClubTheme.Label("Resolução", 15));
-        _resolutionSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 40), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        device.AddChild(ClubTheme.Label("Resolução", 14));
+        _resolutionSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 38), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         device.AddChild(_resolutionSelect);
 
         // Display mode selector
-        device.AddChild(ClubTheme.Label("Modo de exibição", 15));
-        _displayModeSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 40), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        device.AddChild(ClubTheme.Label("Modo de exibição", 14));
+        _displayModeSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 38), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         _displayModeSelect.AddItem("Janela");
         _displayModeSelect.AddItem("Tela cheia exclusiva");
         _displayModeSelect.AddItem("Tela cheia sem bordas");
@@ -211,34 +247,50 @@ public partial class HubMain : Control
         device.AddChild(CreateSliderRow("Escala de render.", 50, 100, 100, out _renderScaleSlider, out _renderScaleValueLabel));
 
         // VSync toggle
-        _vsyncToggle = new CheckButton { Text = "VSync", ButtonPressed = true, CustomMinimumSize = new Vector2(0, 42) };
+        _vsyncToggle = new CheckButton { Text = "VSync", ButtonPressed = true, CustomMinimumSize = new Vector2(0, 38) };
         device.AddChild(_vsyncToggle);
 
-        device.AddChild(CreateFixedSpacer(6));
+        // Scenario / 3D Room theme selector
+        device.AddChild(ClubTheme.Label("Cenário da mesa (Salão 3D)", 14));
+        _roomThemeSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 38), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _roomThemeSelect.AddItem("Salão Clássico (Mogno e Veludo Verde)");
+        _roomThemeSelect.AddItem("Lounge Noturno do Barão (Púrpura e Ouro)");
+        _roomThemeSelect.AddItem("Salão da Dama (Escarlate e Champanhe)");
+        _roomThemeSelect.AddItem("Cassino Cyber (Neon Ciano e Magenta)");
+        device.AddChild(_roomThemeSelect);
+
+        // Camera default mode selector
+        device.AddChild(ClubTheme.Label("Câmera inicial da mesa", 14));
+        _cameraModeSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 38), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _cameraModeSelect.AddItem("Visão Geral da Mesa (Aérea)");
+        _cameraModeSelect.AddItem("Primeira Pessoa (POV Imersivo)");
+        device.AddChild(_cameraModeSelect);
+
+        device.AddChild(CreateFixedSpacer(4));
 
         // ── GRÁFICOS / RAY TRACING (Módulo 2) ────────────────────
         device.AddChild(ClubTheme.Label("GRÁFICOS", 13, ClubTheme.Gold));
 
         // GPU info
-        _gpuInfoLabel = ClubTheme.Label("GPU: detectando…", 13, ClubTheme.Muted);
+        _gpuInfoLabel = ClubTheme.Label("GPU: detectando…", 12, ClubTheme.Muted);
         _gpuInfoLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         device.AddChild(_gpuInfoLabel);
 
         // RT warning (hidden by default)
-        _rtWarningLabel = ClubTheme.Label("", 13, ClubTheme.Red);
+        _rtWarningLabel = ClubTheme.Label("", 12, ClubTheme.Red);
         _rtWarningLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _rtWarningLabel.Visible = false;
         device.AddChild(_rtWarningLabel);
 
         // RT master toggle
-        _rtMasterToggle = new CheckButton { Text = "Ray Tracing", ButtonPressed = false, CustomMinimumSize = new Vector2(0, 42) };
+        _rtMasterToggle = new CheckButton { Text = "Ray Tracing", ButtonPressed = false, CustomMinimumSize = new Vector2(0, 38) };
         _rtMasterToggle.Toggled += (pressed) => UpdateRtSubToggles(pressed);
         device.AddChild(_rtMasterToggle);
 
         // RTAO
         var rtaoRow = new HBoxContainer();
         rtaoRow.AddThemeConstantOverride("separation", 8);
-        _rtaoToggle = new CheckButton { Text = "Oclusão ambiente (AO)", ButtonPressed = false, CustomMinimumSize = new Vector2(0, 38), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _rtaoToggle = new CheckButton { Text = "Oclusão ambiente (AO)", ButtonPressed = false, CustomMinimumSize = new Vector2(0, 36), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         rtaoRow.AddChild(_rtaoToggle);
         _rtaoQualitySelect = CreateQualitySelector();
         rtaoRow.AddChild(_rtaoQualitySelect);
@@ -247,7 +299,7 @@ public partial class HubMain : Control
         // RT Reflections
         var reflRow = new HBoxContainer();
         reflRow.AddThemeConstantOverride("separation", 8);
-        _rtReflectionsToggle = new CheckButton { Text = "Reflexos", ButtonPressed = false, CustomMinimumSize = new Vector2(0, 38), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _rtReflectionsToggle = new CheckButton { Text = "Reflexos", ButtonPressed = false, CustomMinimumSize = new Vector2(0, 36), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         reflRow.AddChild(_rtReflectionsToggle);
         _rtReflectionsQualitySelect = CreateQualitySelector();
         reflRow.AddChild(_rtReflectionsQualitySelect);
@@ -256,7 +308,7 @@ public partial class HubMain : Control
         // RTGI
         var giRow = new HBoxContainer();
         giRow.AddThemeConstantOverride("separation", 8);
-        _rtgiToggle = new CheckButton { Text = "Iluminação global (GI)", ButtonPressed = false, CustomMinimumSize = new Vector2(0, 38), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        _rtgiToggle = new CheckButton { Text = "Iluminação global (GI)", ButtonPressed = false, CustomMinimumSize = new Vector2(0, 36), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         giRow.AddChild(_rtgiToggle);
         _rtgiQualitySelect = CreateQualitySelector();
         giRow.AddChild(_rtgiQualitySelect);
@@ -264,22 +316,22 @@ public partial class HubMain : Control
 
         device.AddChild(CreateFixedSpacer(4));
 
-        var accessNote = ClubTheme.Label("Filtros de cor e redução de movimento ficam no menu Acessibilidade.", 14, ClubTheme.Muted);
+        var accessNote = ClubTheme.Label("Filtros de cor e redução de movimento ficam no menu Acessibilidade.", 13, ClubTheme.Muted);
         accessNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         device.AddChild(accessNote);
 
-        var actions = new HBoxContainer();
+        var actions = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 44) };
         actions.AddThemeConstantOverride("separation", 12);
-        var feedback = ClubTheme.Label("As alterações serão aplicadas ao salvar.", 14, ClubTheme.Muted);
+        var feedback = ClubTheme.Label("As alterações serão aplicadas ao salvar.", 13, ClubTheme.Muted);
         feedback.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         feedback.VerticalAlignment = VerticalAlignment.Center;
         actions.AddChild(feedback);
         var back = ClubTheme.Button("Voltar");
-        back.CustomMinimumSize = new Vector2(120, 44);
+        back.CustomMinimumSize = new Vector2(120, 42);
         back.Pressed += () => ShowMenu(HubState.MainMenu);
         actions.AddChild(back);
         var save = ClubTheme.Button("Salvar alterações", true);
-        save.CustomMinimumSize = new Vector2(180, 44);
+        save.CustomMinimumSize = new Vector2(180, 42);
         save.Pressed += () =>
         {
             SaveSettings();
@@ -415,81 +467,245 @@ public partial class HubMain : Control
         return margin;
     }
 
+    private static readonly string[] ConceptLores = {
+        "Inventora vanguardista do Clube. Traje sob medida: colete em veludo verde-esmeralda com finos bordados barrocos a fio de ouro, cinto utilitário em couro com ferramentas de precisão, blusa em linho cru com mangas bufantes e botas de cano alto com amarração clássica.",
+        "Anfitrião e alma das noites do clube. Traje sob medida: colete de alfaiataria em bordô nobre com botões de latão esculpido, camisa clássica de linho cru com punhos arregaçados, suspensórios em couro legítimo e sapatos oxford artesanais polidos.",
+        "Mestre observador e estrategista implacável. Traje sob medida: fraque Regency em damasco verde-escuro com abas de penas midnight, colete vitoriano com corrente de ouro maciço, monóculo de armação fina e polainas aristocráticas sobre garras imponentes.",
+        "Veterana lendária das mesas altas. Traje sob medida: jaqueta em veludo rubi com arabescos dourados nas costas e mangas, espartilho estruturado, joias barrocas de rubi e ouro, calças de corte fino e cauda majestosa malhada em padrão de rosetas.",
+        "A dama da serenidade e blefes cirúrgicos. Traje sob medida: colete de seda verde-água sobre camisa de cetim marfim com gola alta, colar duplo de pérolas naturais, saia plissada em verde-oliva e a clássica flor de lótus rosa sobre a orelha.",
+        "A raposa malandra das jogadas audaciosas. Traje sob medida: chapéu fedora cinza clássico com fita de seda, colete azul-marinho com corrente dourada de relógio de bolso, calças risca de giz, sapatos bicolores wingtip e cauda felpuda com ponta branca.",
+        "A estrategista silenciosa das sombras. Traje sob medida: sobretudo tático em couro negro com acabamentos metálicos refinados, adagas de precisão ocultas sob a capa, colete reforçado e luvas de toque sensível para manipulação de cartas.",
+        "O magnata da noite e senhor das apostas máximas. Traje sob medida: smoking completo em veludo púrpura imperial, lapelas em cetim preto brilhante, colete violeta com botões de ouro, monóculo dourado com corrente, gravata borboleta e asas imponentes.",
+        "Rainha cobra e soberana dos blefes letais. Traje sob medida: coroa real cravejada de rubis e ouro, vestido vitoriano escarlate bordado a ouro que desce e se funde à majestosa cauda serpentina em escamas douradas, colar de rubi imperial e postura hipnótica.",
+        "A bruxa alquimista dos blefes arcanos. Traje sob medida: vestes cerimoniais em veludo sombrio com runas bordadas a fio de prata, chapéu pontiagudo com véu diáfano, orbes de clarividência e anéis mágicos encantados para ler o destino das cartas.",
+        "O temido devorador de fichas das profundezas. Traje sob medida: armadura grotesca forjada em ferro antigo com ossos entalhados, manto carcomido pelo tempo, correntes espectrais e olhos brilhantes que fitam a alma dos oponentes."
+    };
+
     private Control BuildCollectiblesPanel()
     {
         var margin = new MarginContainer();
         foreach (var edge in new[] { "left", "right", "top", "bottom" })
-            margin.AddThemeConstantOverride("margin_" + edge, 28);
+            margin.AddThemeConstantOverride("margin_" + edge, 24);
         var page = new VBoxContainer();
-        page.AddThemeConstantOverride("separation", 16);
+        page.AddThemeConstantOverride("separation", 12);
         margin.AddChild(page);
-        page.AddChild(ClubTheme.Label("ACERVO DO CLUBE", 12, ClubTheme.Gold));
-        var title = ClubTheme.Label("Peças da casa", 40);
-        title.AddThemeFontOverride("font", ClubTheme.DisplayFont);
-        page.AddChild(title);
-        page.AddChild(ClubTheme.Label("Uma amostra das cartas e ilustrações que dão vida às mesas.", 16, ClubTheme.Muted));
 
-        var gallery = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        gallery.AddThemeConstantOverride("separation", 18);
-        page.AddChild(gallery);
-        string[] titles = { "Papel & ouro", "Rostos da mesa", "Noites de neon" };
-        string[] labels = { "CARTAS EM USO", "ILUSTRAÇÃO DO ACERVO", "CENÁRIO DO ACERVO" };
-        string[] descriptions =
+        int selectedChar = 0;
+        int activeAngle = 0; // 0=Front, 1=3/4, 2=Side, 3=Back, 4=Sheet
+
+        var headerRow = new HBoxContainer();
+        var headBox = new VBoxContainer();
+        headBox.AddChild(ClubTheme.Label("COLEÇÃO DO CLUBE", 12, ClubTheme.Gold));
+        var title = ClubTheme.Label("Galeria & Artes Conceituais", 32);
+        title.AddThemeFontOverride("font", ClubTheme.DisplayFont);
+        headBox.AddChild(title);
+
+        var modeSwitcher = new HBoxContainer();
+        modeSwitcher.AddThemeConstantOverride("separation", 8);
+        var btnMode3D = ClubTheme.Button("🎮 Modelos 3D (Troféus)", true);
+        btnMode3D.CustomMinimumSize = new Vector2(170, 32);
+        var btnModeConcept = ClubTheme.Button("🎨 Artes Conceituais 360°");
+        btnModeConcept.CustomMinimumSize = new Vector2(190, 32);
+        modeSwitcher.AddChild(btnMode3D);
+        modeSwitcher.AddChild(btnModeConcept);
+        headBox.AddChild(modeSwitcher);
+
+        headerRow.AddChild(headBox);
+        headerRow.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        var backTopBtn = ClubTheme.Button("Voltar ao clube");
+        backTopBtn.CustomMinimumSize = new Vector2(160, 40);
+        backTopBtn.Pressed += () => ShowMenu(HubState.MainMenu);
+        headerRow.AddChild(backTopBtn);
+        page.AddChild(headerRow);
+
+        var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        body.AddThemeConstantOverride("separation", 16);
+        page.AddChild(body);
+
+        // Left side: Viewer Frame (holds either 3D Viewer or Concept Art Viewer)
+        var viewerFrame = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+        viewerFrame.AddThemeStyleboxOverride("panel", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Border, 4, 10));
+        body.AddChild(viewerFrame);
+
+        var charViewer = new CharacterViewer3D();
+        viewerFrame.AddChild(charViewer);
+
+        // Concept Art Viewer Box
+        var conceptBox = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill, Visible = false };
+        conceptBox.AddThemeConstantOverride("separation", 8);
+        viewerFrame.AddChild(conceptBox);
+
+        var conceptImage = new TextureRect
         {
-            "Faces legíveis e versos de feltro. O novo baralho acompanha as mesas de Pôquer e Truco.",
-            "O retrato do Truco faz parte das ilustrações existentes, junto dos sprites de personagens e chefes.",
-            "O salão neon permanece no acervo para futuras variações de ambiente e mesas temáticas."
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered
         };
-        for (int i = 0; i < titles.Length; i++)
+        conceptBox.AddChild(conceptImage);
+
+        var angleBar = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        angleBar.AddThemeConstantOverride("separation", 8);
+        conceptBox.AddChild(angleBar);
+
+        string[] angleNames = { "Frente (0°)", "3/4 Frontal (45°)", "Perfil (90°)", "Costas (180°)", "Prancha 360°" };
+        Button[] angleBtns = new Button[angleNames.Length];
+        for (int a = 0; a < angleNames.Length; a++)
         {
-            var card = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            card.AddThemeStyleboxOverride("panel", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Border, 18));
-            gallery.AddChild(card);
-            var box = new VBoxContainer();
-            box.AddThemeConstantOverride("separation", 12);
-            card.AddChild(box);
-            var artwork = new CenterContainer { CustomMinimumSize = new Vector2(0, 176) };
-            if (i == 0)
-            {
-                var cards = new HBoxContainer();
-                cards.AddThemeConstantOverride("separation", 12);
-                cards.AddChild(new PlayingCard { RankText = "A", SuitSymbol = "♠", CustomMinimumSize = new Vector2(82, 118) });
-                cards.AddChild(new PlayingCard { FaceDown = true, CustomMinimumSize = new Vector2(82, 118) });
-                artwork.AddChild(cards);
-            }
-            else
-            {
-                var picture = new TextureRect
-                {
-                    Texture = ResourceLoader.Load<Texture2D>(i == 1 ? "res://assets/sprites/portraits/truco_player.jpg" : "res://assets/sprites/backgrounds/neon_lounge.jpg"),
-                    CustomMinimumSize = new Vector2(244, 176),
-                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
-                    MouseFilter = MouseFilterEnum.Ignore
-                };
-                artwork.AddChild(picture);
-            }
-            box.AddChild(artwork);
-            box.AddChild(ClubTheme.Label(labels[i], 11, ClubTheme.Gold));
-            box.AddChild(ClubTheme.Label(titles[i], 23));
-            var description = ClubTheme.Label(descriptions[i], 14, ClubTheme.Muted);
-            description.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            description.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            box.AddChild(description);
+            int aIdx = a;
+            var aBtn = ClubTheme.Button(angleNames[a]);
+            aBtn.CustomMinimumSize = new Vector2(100, 30);
+            aBtn.Pressed += () => {
+                activeAngle = aIdx;
+                for (int b = 0; b < angleBtns.Length; b++)
+                    angleBtns[b].AddThemeStyleboxOverride("normal", ClubTheme.Box(b == aIdx ? ClubTheme.Green : ClubTheme.Panel, b == aIdx ? Gold : ClubTheme.Border, 6, 4));
+                UpdateConceptArtView(selectedChar, activeAngle, conceptImage);
+            };
+            angleBtns[a] = aBtn;
+            angleBar.AddChild(aBtn);
         }
-        var footer = new HBoxContainer();
-        footer.AddThemeConstantOverride("separation", 20);
-        var note = ClubTheme.Label("Este é o acervo atual. Coleções desbloqueáveis e recompensas persistentes estão previstas para uma próxima etapa.", 14, ClubTheme.Muted);
-        note.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        note.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        note.VerticalAlignment = VerticalAlignment.Center;
-        footer.AddChild(note);
-        var back = ClubTheme.Button("Voltar ao clube");
-        back.CustomMinimumSize = new Vector2(176, 44);
-        back.Pressed += () => ShowMenu(HubState.MainMenu);
-        footer.AddChild(back);
-        page.AddChild(footer);
+        angleBtns[0].AddThemeStyleboxOverride("normal", ClubTheme.Box(ClubTheme.Green, Gold, 6, 4));
+
+        // Right side: Character selection & details panel
+        var detailsPanel = new PanelContainer { CustomMinimumSize = new Vector2(430, 0), SizeFlagsVertical = SizeFlags.ExpandFill };
+        detailsPanel.AddThemeStyleboxOverride("panel", ClubTheme.Box(ClubTheme.Panel, ClubTheme.Border, 16, 10));
+        body.AddChild(detailsPanel);
+
+        var detailsScroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        detailsPanel.AddChild(detailsScroll);
+
+        var detailsBox = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        detailsBox.AddThemeConstantOverride("separation", 8);
+        detailsScroll.AddChild(detailsBox);
+
+        detailsBox.AddChild(ClubTheme.Label("SELECIONE O PERSONAGEM", 11, ClubTheme.Gold));
+
+        var grid = new GridContainer { Columns = 2 };
+        grid.AddThemeConstantOverride("h_separation", 6);
+        grid.AddThemeConstantOverride("v_separation", 6);
+        detailsBox.AddChild(grid);
+
+        var charNameLabel = ClubTheme.Label(CharacterCatalog.Names[0], 22, ClubTheme.Gold);
+        charNameLabel.AddThemeFontOverride("font", ClubTheme.DisplayFont);
+        var charRoleLabel = ClubTheme.Label(CharacterCatalog.Descriptions[0], 13, ClubTheme.Paper);
+        charRoleLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        var charMissionLabel = ClubTheme.Label(CharacterProgress.MissionText(0), 12, ClubTheme.Muted);
+        charMissionLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+
+        var conceptLoreBox = new VBoxContainer { Visible = false };
+        conceptLoreBox.AddThemeConstantOverride("separation", 4);
+        var loreHeader = ClubTheme.Label("DETALHES CONCEITUAIS & FIGURINO", 11, ClubTheme.Gold);
+        conceptLoreBox.AddChild(loreHeader);
+        var charLoreLabel = ClubTheme.Label(ConceptLores[0], 12, TextSecondary);
+        charLoreLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        conceptLoreBox.AddChild(charLoreLabel);
+
+        Button[] charButtons = new Button[CharacterCatalog.Ids.Length];
+        for (int i = 0; i < CharacterCatalog.Ids.Length; i++)
+        {
+            int idx = i;
+            bool isBoss = CharacterCatalog.IsBoss(idx);
+            string tag = isBoss ? "👑 " : "♠ ";
+            var btn = ClubTheme.Button(tag + CharacterCatalog.Names[idx]);
+            btn.CustomMinimumSize = new Vector2(180, 32);
+            btn.ClipText = true;
+            btn.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            btn.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            btn.Pressed += () => {
+                selectedChar = idx;
+                charViewer.LoadCharacter(idx);
+                UpdateConceptArtView(selectedChar, activeAngle, conceptImage);
+                charNameLabel.Text = (isBoss ? "👑 " : "") + CharacterCatalog.Names[idx];
+                charRoleLabel.Text = CharacterCatalog.Descriptions[idx];
+                charMissionLabel.Text = CharacterProgress.MissionText(idx);
+                charLoreLabel.Text = idx < ConceptLores.Length ? ConceptLores[idx] : "";
+                for (int b = 0; b < charButtons.Length; b++)
+                {
+                    charButtons[b].AddThemeStyleboxOverride("normal", ClubTheme.Box(b == idx ? ClubTheme.Green : ClubTheme.Panel, b == idx ? Gold : ClubTheme.Border, 8, 6));
+                }
+            };
+            charButtons[i] = btn;
+            grid.AddChild(btn);
+        }
+        charButtons[0].AddThemeStyleboxOverride("normal", ClubTheme.Box(ClubTheme.Green, Gold, 8, 6));
+
+        detailsBox.AddChild(new ColorRect { Color = ClubTheme.Border, CustomMinimumSize = new Vector2(0, 1) });
+        detailsBox.AddChild(charNameLabel);
+        detailsBox.AddChild(charRoleLabel);
+        detailsBox.AddChild(charMissionLabel);
+        detailsBox.AddChild(conceptLoreBox);
+
+        // Outfit variant selector (for 3D mode)
+        var outfitBox = new VBoxContainer();
+        outfitBox.AddThemeConstantOverride("separation", 4);
+        outfitBox.AddChild(ClubTheme.Label("VARIAÇÃO DE TRAJE", 11, ClubTheme.Gold));
+        var outfitSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 34) };
+        outfitSelect.AddItem("Traje Nobre Clássico");
+        outfitSelect.AddItem("Alta Noite (Tons Escuros)");
+        outfitSelect.AddItem("Clube Vintage (Dourado & Veludo)");
+        outfitSelect.ItemSelected += oIdx => charViewer.SetOutfit((int)oIdx);
+        outfitBox.AddChild(outfitSelect);
+        detailsBox.AddChild(outfitBox);
+
+        detailsBox.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill });
+        var hintFooter = ClubTheme.Label("Galeria 3D estilo troféu Batman Arkham. Gire 360° e use o zoom para inspecionar tecidos e feições.", 11, ClubTheme.Muted);
+        hintFooter.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        detailsBox.AddChild(hintFooter);
+
+        // Mode switcher handlers
+        btnMode3D.Pressed += () => {
+            btnMode3D.AddThemeStyleboxOverride("normal", ClubTheme.Box(ClubTheme.Green, Gold, 8, 6));
+            btnModeConcept.AddThemeStyleboxOverride("normal", ClubTheme.Box(ClubTheme.Panel, ClubTheme.Border, 8, 6));
+            charViewer.Visible = true;
+            conceptBox.Visible = false;
+            outfitBox.Visible = true;
+            conceptLoreBox.Visible = false;
+            charMissionLabel.Visible = true;
+            hintFooter.Text = "Galeria 3D estilo troféu Batman Arkham. Gire 360° e use o zoom para inspecionar tecidos e feições.";
+        };
+
+        btnModeConcept.Pressed += () => {
+            btnModeConcept.AddThemeStyleboxOverride("normal", ClubTheme.Box(ClubTheme.Green, Gold, 8, 6));
+            btnMode3D.AddThemeStyleboxOverride("normal", ClubTheme.Box(ClubTheme.Panel, ClubTheme.Border, 8, 6));
+            charViewer.Visible = false;
+            conceptBox.Visible = true;
+            outfitBox.Visible = false;
+            conceptLoreBox.Visible = true;
+            charMissionLabel.Visible = false;
+            hintFooter.Text = "Artes conceituais originais de corpo inteiro em estética vintage. Escolha os ângulos para inspecionar a rotação 360°.";
+            UpdateConceptArtView(selectedChar, activeAngle, conceptImage);
+        };
+
         return margin;
+    }
+
+    private static void UpdateConceptArtView(int charIdx, int angleIdx, TextureRect target)
+    {
+        if (charIdx < 0 || charIdx >= CharacterCatalog.Ids.Length || target == null) return;
+        string id = CharacterCatalog.Ids[charIdx];
+        string path = angleIdx switch
+        {
+            0 => $"res://assets/sprites/concept/{id}/0_front.png",
+            1 => $"res://assets/sprites/concept/{id}/1_three_quarter.png",
+            2 => $"res://assets/sprites/concept/{id}/2_side.png",
+            3 => $"res://assets/sprites/concept/{id}/3_back.png",
+            _ => $"res://assets/sprites/concept/{id}_sheet.png"
+        };
+        if (ResourceLoader.Exists(path))
+        {
+            target.Texture = GD.Load<Texture2D>(path);
+        }
+        else
+        {
+            string fallback = $"res://assets/sprites/concept/{id}_sheet.png";
+            if (ResourceLoader.Exists(fallback)) target.Texture = GD.Load<Texture2D>(fallback);
+        }
     }
 
     private Control BuildAccessibilityPanel()
@@ -521,7 +737,7 @@ public partial class HubMain : Control
         _screenShakeToggle = new CheckButton { Text = "Reduzir tremores de tela" };
         _screenShakeToggle.AddThemeFontSizeOverride("font_size", 16);
         box.AddChild(_screenShakeToggle);
-        _reduceMotionToggle = new CheckButton { Text = "Reduzir animações" };
+        _reduceMotionToggle = new CheckButton { Text = "Reduzir animações e encurtar esperas" };
         _reduceMotionToggle.AddThemeFontSizeOverride("font_size", 16);
         box.AddChild(_reduceMotionToggle);
 
@@ -559,6 +775,62 @@ public partial class HubMain : Control
         return center;
     }
 
+    private Control BuildCreditsPanel()
+    {
+        var margin = new MarginContainer { Name = "CreditsPanel" };
+        margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        foreach (var edge in new[] { "left", "right" })
+            margin.AddThemeConstantOverride("margin_" + edge, 36);
+        foreach (var edge in new[] { "top", "bottom" })
+            margin.AddThemeConstantOverride("margin_" + edge, 20);
+
+        var page = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        page.AddThemeConstantOverride("separation", 14);
+        margin.AddChild(page);
+
+        var heading = ClubTheme.Label("Créditos", 28);
+        heading.AddThemeFontOverride("font", ClubTheme.DisplayFont);
+        page.AddChild(heading);
+        page.AddChild(ClubTheme.Label("Conheça as pessoas e tecnologias por trás do MultiGame.", 13, ClubTheme.Muted));
+
+        var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        page.AddChild(scroll);
+
+        var card = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        card.AddThemeStyleboxOverride("panel", ClubTheme.Box(ClubTheme.Ink, ClubTheme.Border, 16));
+        scroll.AddChild(card);
+
+        var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        content.AddThemeConstantOverride("separation", 14);
+        card.AddChild(content);
+
+        content.AddChild(ClubTheme.Label("MULTIGAME · CLUBE DE CARTAS", 16, ClubTheme.Gold));
+        content.AddChild(ClubTheme.Label("Um ecossistema aristocrático de jogos clássicos com Pôquer Roguelike, Truco Paulista e Fodinha.", 14, ClubTheme.Paper));
+
+        content.AddChild(CreateFixedSpacer(4));
+        content.AddChild(ClubTheme.Label("DESENVOLVIMENTO & ENGENHARIA", 13, ClubTheme.Gold));
+        content.AddChild(ClubTheme.Label("• Arquitetura de Sistemas, Regras e Jogabilidade: Equipe MultiGame\n• Programação em C# (.NET 8 SDK / C# 12)\n• Pair Programming & IA: Google DeepMind Antigravity", 13, ClubTheme.Muted));
+
+        content.AddChild(CreateFixedSpacer(4));
+        content.AddChild(ClubTheme.Label("ARTE 3D, ANIMAÇÃO & AMBIENTES", 13, ClubTheme.Gold));
+        content.AddChild(ClubTheme.Label("• Modelagem 3D dos 8 Personagens: Blender 5.2 LTS\n• Arquitetura dos 4 Salões Únicos (Lareira Clássica, Lounge Gótico, Salão Belle Époque, Cassino Cyber)\n• Shaders de Feltro Normal, Cartas Físicas PBR e Efeitos Visuais", 13, ClubTheme.Muted));
+
+        content.AddChild(CreateFixedSpacer(4));
+        content.AddChild(ClubTheme.Label("TECNOLOGIAS & FERRAMENTAS", 13, ClubTheme.Gold));
+        content.AddChild(ClubTheme.Label("• Godot Engine v4.7.2 Mono (Windows Desktop 64-bit)\n• Protocolo MCP (Model Context Protocol)\n• Pipeline de Áudio Dinâmico e Recursos de Acessibilidade", 13, ClubTheme.Muted));
+
+        var actions = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 44) };
+        var spacer = new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        actions.AddChild(spacer);
+        var backBtn = ClubTheme.Button("Voltar");
+        backBtn.CustomMinimumSize = new Vector2(160, 42);
+        backBtn.Pressed += () => ShowMenu(HubState.MainMenu);
+        actions.AddChild(backBtn);
+        page.AddChild(actions);
+
+        return margin;
+    }
+
     // ==================== STATE MANAGEMENT ====================
 
     private void ShowMenu(HubState state)
@@ -569,16 +841,23 @@ public partial class HubMain : Control
         _lobbyPanel.Visible = state == HubState.Lobby;
         _collectiblesPanel.Visible = state == HubState.Collectibles;
         _accessibilityPanel.Visible = state == HubState.Accessibility;
+        if (_creditsPanel != null) _creditsPanel.Visible = state == HubState.Credits;
         var active = state switch
         {
             HubState.Settings => _settingsPanel, HubState.Lobby => _lobbyPanel,
             HubState.Collectibles => _collectiblesPanel, HubState.Accessibility => _accessibilityPanel,
+            HubState.Credits => _creditsPanel,
             _ => _mainMenuPanel
         };
-        if (SettingsManager.Instance?.ReduceMotion != true)
+        if (active != null && SettingsManager.Instance?.ReduceMotion != true)
         {
             active.Modulate = new Color(1, 1, 1, 0);
             CreateTween().TweenProperty(active, "modulate:a", 1f, .18f);
+        }
+
+        if (state == HubState.MainMenu)
+        {
+            SwitchToHomeMenu();
         }
 
         if (state == HubState.Settings)
@@ -622,6 +901,29 @@ public partial class HubMain : Control
         _sfxSlider.Value = SettingsManager.Instance.SfxVolume * 100;
         _fullscreenToggle.ButtonPressed = SettingsManager.Instance.IsFullscreen;
 
+        if (_roomThemeSelect != null)
+        {
+            int roomIdx = SettingsManager.Instance?.RoomTheme switch
+            {
+                "barao_lounge" => 1,
+                "dama_salon"   => 2,
+                "cyber_casino" => 3,
+                _              => 0
+            };
+            _roomThemeSelect.Select(roomIdx);
+        }
+
+        if (_cameraModeSelect != null)
+        {
+            _cameraModeSelect.Select(SettingsManager.Instance?.DefaultCameraMode == "pov" ? 1 : 0);
+        }
+
+        if (_outfitSelect != null)
+        {
+            _outfitSelect.Select(Mathf.Clamp(SettingsManager.Instance?.CharacterOutfit ?? 0, 0, 2));
+            _outfitSelect.EmitSignal(OptionButton.SignalName.ItemSelected, _outfitSelect.Selected);
+        }
+
         LoadVideoSettingsToUI();
         LoadGraphicsSettingsToUI();
     }
@@ -631,6 +933,10 @@ public partial class HubMain : Control
         if (SettingsManager.Instance == null) return;
         SettingsManager.Instance.PlayerNickname = string.IsNullOrWhiteSpace(_nicknameEdit.Text) ? "Jogador" : _nicknameEdit.Text.Trim();
         SettingsManager.Instance.CharacterId = CharacterCatalog.Ids[Mathf.Clamp(_characterSelect.Selected, 0, CharacterCatalog.PlayableCount - 1)];
+        if (_outfitSelect != null)
+        {
+            SettingsManager.Instance.CharacterOutfit = _outfitSelect.Selected;
+        }
         SettingsManager.Instance.MusicTrack = _musicTrackSelect.Selected;
         
         SettingsManager.Instance.AvatarBase = GetSelectedAvatarId(_baseSelect, "default_base");
@@ -642,6 +948,23 @@ public partial class HubMain : Control
         SettingsManager.Instance.MusicVolume = (float)_musicSlider.Value / 100f;
         SettingsManager.Instance.SfxVolume = (float)_sfxSlider.Value / 100f;
         SettingsManager.Instance.IsFullscreen = _fullscreenToggle.ButtonPressed;
+
+        if (_roomThemeSelect != null)
+        {
+            SettingsManager.Instance.RoomTheme = _roomThemeSelect.Selected switch
+            {
+                1 => "barao_lounge",
+                2 => "dama_salon",
+                3 => "cyber_casino",
+                _ => "classic_club"
+            };
+        }
+
+        if (_cameraModeSelect != null)
+        {
+            SettingsManager.Instance.DefaultCameraMode = _cameraModeSelect.Selected == 1 ? "pov" : "table";
+        }
+
         SettingsManager.Instance.SaveSettings();
         SettingsManager.Instance.ApplySettings();
 

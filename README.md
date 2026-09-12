@@ -9,14 +9,15 @@ Pôquer roguelike, truco e Fodinha em Godot .NET/C#, com mesas em **2.5D**, elen
 - **Pôquer roguelike solo:** seleção de cartas, prévia de pontuação, descartes, metas por rodada, relíquias, loja e tutorial. A apresentação dos rivais usa o novo elenco.
 - **Truco solo:** 1×1, 2×2 e 3×3 com os demais lugares controlados por IA. Cada participante joga sua própria mão; o resultado do tombo considera a melhor carta de cada equipe.
 - **Pena nas equipes:** o aliado que recebe a carta decide se fica com ela. A IA resolve sua própria decisão no solo; o jogador local recebe os botões quando é o destinatário.
-- **Apresentação:** mesa e personagens 3D em câmera ortográfica 2.5D, leques de cartas ocultas e animações de embaralhar, cortar, entregar a pena, distribuir, jogar e recolher no truco. O pôquer anima distribuição, seleção e pontuação.
-- **Elenco Blender:** seis jogáveis (Nina, Bento, Seu Corvo, Dona Onça, Iara e Zeca) e dois bosses exclusivos (Barão da Meia-Noite e Dama de Copas). Fontes `.blend`, exports GLB e cinco animações por modelo incluídos. Três vitórias com um personagem desbloqueiam seu floreio de truco.
+- **Apresentação:** mesa e personagens 3D em 2.5D ou POV, leques de cartas e animações de embaralhar, cortar, entregar a pena, distribuir, jogar e recolher no truco. A lógica aguarda a última carta pousar antes de liberar a próxima etapa; o pôquer também bloqueia a mão durante a entrega.
+- **Elenco Blender:** seis jogáveis (Nina, Bento, Seu Corvo, Dona Onça, Iara e Zeca) e dois bosses exclusivos (Barão da Meia-Noite e Dama de Copas). Os modelos têm sete clipes: repouso, entrada, truco, vitória, boss, floreio e jogar carta. Três vitórias com um personagem desbloqueiam seu floreio de truco.
 - **Refinamento MCP:** oito personagens com mais geometria e acabamento, preservando sua identidade; gestos próprios de Corvo, Onça, Barão e Dama, relógio de salão animado, poses de repouso corrigidas e opções de iluminação aplicadas à mesa. Histórico e reprodução no **Patch 8** do [registro cumulativo](AI_DEV_PATCH_NOTES.md).
 - **Pilhas e entradas:** cartas jogadas se acumulam sobre a mesa 3D; cutscenes apresentam os participantes e os bosses, com opção de pular. No truco, os resultados indicam a equipe vencedora.
 - **Áudio:** cinco loops originais sintetizados, efeitos de cartas e vinhetas de entrada; volumes de música/efeitos e seleção de faixa.
 - **Fodinha:** solo com três IAs, palpites antes das jogadas, cinco vidas e perda da diferença entre palpite e vitórias; nove mãos de 1→5→1 cartas, eliminação e resultado final. Regras completas no botão “Como jogar”.
 - **Vídeo:** mesa renderizada nos pixels reais de sua área na janela, inclusive 4K, com interface no tamanho original; escala 3D configurável, filtragem linear e sombras ajustadas. Mais detalhes nos rostos, molduras e poltronas via Blender MCP (Patch 9). Os efeitos gráficos continuam sendo rasterização, sem ray tracing por hardware.
-- **Ajustes:** perfil, áudio, opções visuais e acessibilidade, incluindo redução de movimento e modos de cor.
+- **Ajustes:** perfil, áudio, opções visuais e acessibilidade, incluindo redução de movimento e modos de cor. A opção de reduzir animações também encurta as esperas da partida; deixe-a desligada para o ritmo normal.
+- **Câmera:** no POV, arraste com o botão direito para olhar dentro do limite de pescoço, use `C` para alternar mesa/POV e `Centralizar` para voltar ao centro.
 
 ## Limites atuais
 

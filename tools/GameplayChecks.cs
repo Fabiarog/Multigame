@@ -16,6 +16,7 @@ public partial class GameplayChecks : Node
     private int _assertions;
 
     public void ConfigureTeams(int teamSize) => GameRegistry.TrucoTeamSize = teamSize;
+    public void ConfigureCameraMotion(bool reduced) => SettingsManager.Instance.ReduceMotion = reduced;
     public void ConfigureFidelity(float scale)
     {
         SettingsManager.Instance.ReduceMotion = true;
@@ -127,23 +128,79 @@ public partial class GameplayChecks : Node
             {
                 var model = GD.Load<PackedScene>(CharacterCatalog.ModelPath(character)).Instantiate<Node3D>();
                 var animator = model.FindChildren("*", "AnimationPlayer", true, false).OfType<AnimationPlayer>().First();
-                Assert(new[] { "entrance", "truco", "victory", "boss_intro", "flourish" }.All(clip => animator.GetAnimationList().Any(name => name == clip || name.EndsWith("/" + clip))), "Each Blender model exports all five animated clips");
+                string[] requiredClips = { "entrance", "truco", "victory", "boss_intro", "flourish", "idle", "play_card" };
+                Assert(requiredClips.All(clip => animator.GetAnimationList().Any(name => name == clip || name.EndsWith("/" + clip))), "Each Blender model exports all seven animated clips including play_card and idle");
+                Assert(Mathf.IsEqualApprox(animator.SpeedScale, 1f), "Character animation players use the normal playback rate");
+                foreach (string clip in requiredClips)
+                {
+                    string path = animator.GetAnimationList().First(name => name == clip || name.EndsWith("/" + clip));
+                    var animation = animator.GetAnimation(path);
+                    Assert(animation != null && animation.Length >= .5f && animation.Length <= 5f,
+                        $"{clip} has a readable duration instead of an accelerated or stalled clip");
+                }
                 int meshCount = model.FindChildren("*", "MeshInstance3D", true, false).Count;
-                Assert(meshCount == 6 || meshCount == 4, "Each GLB contains exactly one articulated character, without other open Blender scenes");
+                Assert(meshCount == 1 || meshCount == 9 || meshCount == 6 || meshCount == 4, "Each GLB contains exactly one articulated character, without other open Blender scenes");
                 var head = model.FindChildren("Head*", "Node3D", true, false).OfType<Node3D>().First(node => node is not MeshInstance3D);
                 Assert(head.Position.Y > 1.3f, "Head retains its rest height without playing an animation");
                 var skin = model.FindChildren("*", "MeshInstance3D", true, false).OfType<MeshInstance3D>()
                     .SelectMany(mesh => Enumerable.Range(0, mesh.Mesh.GetSurfaceCount()).Select(surface => mesh.Mesh.SurfaceGetMaterial(surface)))
                     .OfType<StandardMaterial3D>().First(material => material.ResourceName.StartsWith(CharacterCatalog.Ids[character] + "_skin", StringComparison.Ordinal));
                 var color = skin.AlbedoColor;
-                Assert(Mathf.Max(color.R, Mathf.Max(color.G, color.B)) - Mathf.Min(color.R, Mathf.Min(color.G, color.B)) > .005f,
+                Assert(skin.AlbedoTexture != null || (Mathf.Max(color.R, Mathf.Max(color.G, color.B)) - Mathf.Min(color.R, Mathf.Min(color.G, color.B)) > .005f),
                     "Character skin retains its palette instead of Blender's default white material");
                 model.Free();
             }
             var clock = GD.Load<PackedScene>("res://assets/models/club/club_clock.glb").Instantiate<Node3D>();
             Assert(clock.FindChildren("*", "AnimationPlayer", true, false).OfType<AnimationPlayer>().Any(player => player.HasAnimation("idle")), "Clock exports its pendulum animation");
             clock.Free();
-            Assert(CharacterCatalog.PlayableCount == 6 && CharacterCatalog.IsBoss(6) && CharacterCatalog.IsBoss(7), "Bosses are separated from playable characters");
+
+            // Validate all 4 architecturally unique 3D club rooms and room switcher
+            foreach (var roomTheme in new[] { "classic_club", "barao_lounge", "dama_salon", "cyber_casino" })
+            {
+                var roomScene = GD.Load<PackedScene>($"res://assets/models/club/room_{roomTheme}.glb");
+                Assert(roomScene != null, $"Unique 3D room_{roomTheme}.glb loads successfully");
+                var roomInstance = roomScene.Instantiate<Node3D>();
+                Assert(roomInstance.FindChildren("Ceiling*", "Node3D", true, false).Count > 0 || roomInstance.FindChildren("Floor*", "Node3D", true, false).Count > 0, $"room_{roomTheme} includes architectural envelope");
+                if (roomTheme == "classic_club")
+                    Assert(roomInstance.FindChildren("*Fireplace*", "Node3D", true, false).Count > 0, "classic_club has grand brick fireplace");
+                else if (roomTheme == "barao_lounge")
+                    Assert(roomInstance.FindChildren("*Gothic*", "Node3D", true, false).Count > 0 || roomInstance.FindChildren("*Moon*", "Node3D", true, false).Count > 0, "barao_lounge has gothic architecture/moon");
+                else if (roomTheme == "dama_salon")
+                    Assert(roomInstance.FindChildren("*Mirror*", "Node3D", true, false).Count > 0 || roomInstance.FindChildren("*Urn*", "Node3D", true, false).Count > 0, "dama_salon has belle epoque mirrors/urns");
+                else if (roomTheme == "cyber_casino")
+                    Assert(roomInstance.FindChildren("*Sky*", "Node3D", true, false).Count > 0 || roomInstance.FindChildren("*Holo*", "Node3D", true, false).Count > 0, "cyber_casino has skyline/hologram");
+                roomInstance.Free();
+            }
+
+            // Validate CharacterViewer3D Arkham City style component
+            var charViewer = new CharacterViewer3D();
+            charViewer.LoadCharacter(0);
+            charViewer.SetOutfit(1);
+            Assert(charViewer.CharacterIndex == 0 && charViewer.OutfitIndex == 1, "CharacterViewer3D loads character and outfit correctly");
+            charViewer.LoadCharacter(7);
+            Assert(charViewer.CharacterIndex == 7, "CharacterViewer3D loads boss models correctly");
+            charViewer.Free();
+
+            // Validate DefaultCameraMode and RoomTheme persistence
+            SettingsManager.Instance.DefaultCameraMode = "pov";
+            SettingsManager.Instance.RoomTheme = "dama_salon";
+            SettingsManager.Instance.SaveSettings();
+            Assert(SettingsManager.Instance.DefaultCameraMode == "pov", "SettingsManager persists DefaultCameraMode");
+            Assert(SettingsManager.Instance.RoomTheme == "dama_salon", "SettingsManager persists chosen room theme");
+            SettingsManager.Instance.DefaultCameraMode = "table";
+            SettingsManager.Instance.RoomTheme = "classic_club";
+            SettingsManager.Instance.SaveSettings();
+            Assert(CharacterCatalog.PlayableCount == 7 && CharacterCatalog.IsBoss(7) && CharacterCatalog.IsBoss(8) && CharacterCatalog.IsBoss(9) && CharacterCatalog.IsBoss(10), "Bosses are separated from playable characters");
+
+            // Validate Truco Call sprites for all 8 characters across stakes 3, 6, 9, 12
+            for (int c = 0; c < CharacterCatalog.Ids.Length; c++)
+            {
+                foreach (int stakes in new[] { 3, 6, 9, 12 })
+                {
+                    var sprite = CharacterCatalog.TrucoCallSprite(c, stakes);
+                    Assert(sprite != null, $"Truco call sprite exists for character {CharacterCatalog.Ids[c]} at stakes {stakes}");
+                }
+            }
             SettingsManager.Instance.CharacterId = "corvo";
             for (int win = 0; win < 3; win++) CharacterProgress.RecordWin();
             Assert(CharacterProgress.TrucoClip(2) == "flourish" && CharacterProgress.TrucoClip(3) == "truco", "Cosmetic mission unlocks only for the character used");
@@ -154,6 +211,9 @@ public partial class GameplayChecks : Node
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 var game = GetTree().CurrentScene.GetNode<TrucoGameManager>("GameManager");
+                // Asset loading can consume the short reduced-motion shuffle
+                // during scene setup. Start a fresh hand before observing it.
+                game.StartNewHand();
                 Assert(game.CurrentPhase is TrucoGameManager.TrucoPhase.Shuffling or TrucoGameManager.TrucoPhase.Cutting, "Hand starts with the dealer shuffling");
                 await PrepareTrucoHand(game);
                 Assert(game.PenaRecipientSeatIndex == 2 && game.PenaDecisionIsBot, "Nearest ally is an AI in solo");

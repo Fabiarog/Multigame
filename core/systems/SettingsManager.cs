@@ -32,7 +32,8 @@ public partial class SettingsManager : Node
 
     // -- Profile --
     public string PlayerNickname { get; set; } = "Player";
-    public string CharacterId { get; set; } = "nina";
+    public string CharacterId { get; set; } = "corvo";
+    public int CharacterOutfit { get; set; } = 0;
     public string AvatarBase { get; set; } = "default_base";
     public string AvatarShirt { get; set; } = "default_shirt";
     public string AvatarPants { get; set; } = "default_pants";
@@ -42,6 +43,8 @@ public partial class SettingsManager : Node
     public bool IsFullscreen { get; set; } = true;
     public float ResolutionScale { get; set; } = 1.0f;
     public bool VfxEnabled { get; set; } = true;
+    public string RoomTheme { get; set; } = "classic_club";
+    public string DefaultCameraMode { get; set; } = "pov";
 
     // -- Audio --
     public float MasterVolume { get; set; } = 1.0f;
@@ -77,6 +80,7 @@ public partial class SettingsManager : Node
             // Profile
             PlayerNickname = (string)_config.GetValue("Profile", "Nickname", PlayerNickname);
             CharacterId = (string)_config.GetValue("Profile", "CharacterId", CharacterId);
+            CharacterOutfit = (int)_config.GetValue("Profile", "CharacterOutfit", CharacterOutfit);
             AvatarBase = (string)_config.GetValue("Profile", "AvatarBase", AvatarBase);
             AvatarShirt = (string)_config.GetValue("Profile", "AvatarShirt", AvatarShirt);
             AvatarPants = (string)_config.GetValue("Profile", "AvatarPants", AvatarPants);
@@ -86,6 +90,8 @@ public partial class SettingsManager : Node
             IsFullscreen = (bool)_config.GetValue("Visuals", "Fullscreen", IsFullscreen);
             ResolutionScale = (float)_config.GetValue("Visuals", "ResolutionScale", ResolutionScale);
             VfxEnabled = (bool)_config.GetValue("Visuals", "VfxEnabled", VfxEnabled);
+            RoomTheme = (string)_config.GetValue("Visuals", "RoomTheme", RoomTheme);
+            DefaultCameraMode = (string)_config.GetValue("Visuals", "DefaultCameraMode", DefaultCameraMode);
 
             // Audio
             MasterVolume = (float)_config.GetValue("Audio", "MasterVolume", MasterVolume);
@@ -113,6 +119,7 @@ public partial class SettingsManager : Node
     {
         _config.SetValue("Profile", "Nickname", PlayerNickname);
         _config.SetValue("Profile", "CharacterId", CharacterId);
+        _config.SetValue("Profile", "CharacterOutfit", CharacterOutfit);
         _config.SetValue("Profile", "AvatarBase", AvatarBase);
         _config.SetValue("Profile", "AvatarShirt", AvatarShirt);
         _config.SetValue("Profile", "AvatarPants", AvatarPants);
@@ -121,12 +128,13 @@ public partial class SettingsManager : Node
         _config.SetValue("Visuals", "Fullscreen", IsFullscreen);
         _config.SetValue("Visuals", "ResolutionScale", ResolutionScale);
         _config.SetValue("Visuals", "VfxEnabled", VfxEnabled);
+        _config.SetValue("Visuals", "RoomTheme", RoomTheme);
+        _config.SetValue("Visuals", "DefaultCameraMode", DefaultCameraMode);
 
         _config.SetValue("Audio", "MasterVolume", MasterVolume);
         _config.SetValue("Audio", "MusicVolume", MusicVolume);
         _config.SetValue("Audio", "SfxVolume", SfxVolume);
         _config.SetValue("Audio", "MusicTrack", MusicTrack);
-
         _config.SetValue("Accessibility", "ScreenShake", ScreenShakeEnabled);
         _config.SetValue("Accessibility", "ReduceMotion", ReduceMotion);
         _config.SetValue("Accessibility", "ColorblindMode", ColorblindMode);

@@ -1,5 +1,132 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
 
+## Patch 29 — 13/09/2026 — Table Life System, Procedural Attention (SkeletonModifier3D) e Dynamic Match Director
+
+Base `8159a1e` (Patch 28), preservada no GitHub em Backup `8f73b34`. Resultado para review; main preservada. Missão orientada pela Fase 2 do Plano Diretor (`implementation_plan.md`), `docs/MISSAO_MODELOS_3D.md` e `AGENTS.md`.
+
+- **Módulo 2.1 — Table Life System (Vida na Mesa em `TableStage.cs`):**
+  - **Fichas com Empilhamento Orgânico:** Pilhas duplas de fichas agora possuem micro-offsets determinísticos e orgânicos ($X/Z \pm 1.8$mm, yaw $\pm 1.8^\circ$), eliminando o alinhamento matemático rígido e simulando pilhas organizadas manualmente por jogadores reais.
+  - **Microfísica Tátil de Cartas:** Aterrissagem com amortecimento elástico e settling bounce suave (overshoot de 12mm com decaimento elástico `Bounce.Out`/`Back.Out`), micro-variação angular orgânica de rotação ($\pm 1.8^\circ$ em Y, $\pm 0.3^\circ$ em X/Z) e sombra dinâmica proporcional à altura do arco de voo.
+  - **Impacto Físico Tátil na Mesa:** Novo método `TriggerChipVibration` faz com que fichas próximas à carta batida ou ao bater na mesa sofram sutil vibração de assentamento amortecida (deslocamento vertical de ~1mm com recuperação em 0.12s), respeitando `ReduceMotion`.
+  - **Memória Visual Temporária de Descarte:** Em `CollectRoundCardsToDiscard`, as cartas recolhidas mantêm micro-alinhamento orgânico sob o baralho, conferindo sensação de partida em andamento sem acúmulo caótico nem desaparecimento instantâneo estéril.
+
+- **Módulo 2.2 — Procedural Attention System (Personagens Vivos em `ProceduralAttentionModifier.cs` & `TableStage.cs`):**
+  - **SkeletonModifier3D Nativo:** Implementado `ProceduralAttentionModifier` derivado de `SkeletonModifier3D`, operando no pipeline nativo pós-animação do Godot 4 sem alterar ou corromper os 333 clipes autorados.
+  - **Cadeia Anatômica e Distribuição Cervical:** Look targets distribuídos organicamente: o pescoço absorve 30% da rotação e a cabeça absorve 70%, com clamp estrito em $\pm 48^\circ$ de yaw e $\pm 14^\circ$ de pitch, impedindo absolutamente torções não-naturais ou quebra de malha.
+  - **Microcomportamentos e Respiração:** Ciclo contínuo de respiração orgânica (~0.22 Hz com micro-oscilação de $\pm 0.35^\circ$ no pitch) e micro-sacadas oculares/cervicais aleatórias a cada 2.0 a 4.5 segundos.
+  - **7 Estados de Atenção Cognitiva:** `Relaxed`, `WatchingPlayer`, `WatchingCard`, `Thinking` (inclinação reflexiva para a mesa/mão), `Challenging` (olhar firme e focado no desafiante), `Celebrating` (queixo erguido e postura orgulhosa) e `Defeated` (olhar cabisbaixo).
+  - **Atenção Coordenada da Mesa:** Oponentes acompanham cartas em voo (`SetAllAttentionToCard`), voltam o olhar para o jogador ativo (`SetAllAttentionToSeat`), fixam os olhos no desafiante durante o Truco e sincronizam estados automaticamente durante gestos (`PlayGesture`).
+  - **Acessibilidade Plena:** Respeito absoluto a `SettingsManager.Instance.ReduceMotion`, decaindo suavemente para a rotação neutra sem estalos visuais.
+
+- **Módulo 2.3 — Dynamic Match Director (`MatchPresentationDirector.cs`):**
+  - **Escalação de Intensidade (Níveis 0 a 4):**
+    - *Nível 0 (Normal):* Ritmo limpo e fluido, som leve de carta.
+    - *Nível 1 (Boa Jogada):* Micro-pausa tátil, som de feltro com maior presença, aceno do vencedor da vaza.
+    - *Nível 2 (Manilha / Combinação Alta):* Contração sutil de FOV (-1.4° de aproximação dramática), realce de energia no lustre central, stinger sonoro (`score`/`last-manilha`) e foco visual de toda a mesa na carta decisiva.
+    - *Nível 3 (Chamada de Truco / Aumento):* Corte e pulso de FOV (-2.2°), ducking automático na trilha sonora (-6 dB) para destaque de vozes e impacto, toda a mesa trava a atenção no desafiante (`Challenging`).
+    - *Nível 4 (Match Point 11x11 / Clímax de Chefe):* Iluminação âmbar concentrada na mesa (arandelas periféricas diminuem para 0.45, lustre central aumenta +25%), enquadramento tenso e transição para trilha de tensão (`last-manilha`).
+  - **Ritmo e Cooldowns:** Intervalo mínimo de 2.4 segundos entre momentos dramáticos de Nível 2+ para evitar fadiga visual e manter as partidas ágeis.
+  - **Integração nas Telas de Jogo:** Conectado diretamente em `TrucoUI.cs`, `FodinhaUI.cs`, `PokerUI.cs` e `TableStage.cs`.
+
+- **Validação de QA Integral:**
+  - **Compilação C#:** 0 erros, 0 avisos (`dotnet build`).
+  - **Camera QA:** 100% aprovado (`CAMERA_QA PASS []`).
+  - **Gameplay QA:** 530 asserções de regras aprovadas com 100% de sucesso.
+  - **Visual Smoke QA:** 27 capturas de tela, 25 ações interativas, 0 falhas e 0 problemas de layout (`VISUAL_QA_RESULT PASS`).
+  - **Quality Audit:** 13 verificações PASS, 0 falhas, 1 not tested (network).
+
+---
+
+## Complemento visual 27 — 13/09/2026 — Comparação final e regressão da cena de referência
+
+Classic Club/Corvo: concluídas as medições e capturas da mesa modelada no Blender, carta arredondada, materiais, agrupamento do cenário e iluminação estática. Base anterior a1981dd preservada em Backup 8f73b34; integração chegou a review em b12c34f. A medição final foi isolada nessa base com material da carta corrigido, preservando alterações musicais paralelas de 8159a1e. Main preservada.
+
+- **Correções verificadas:** sombra do baralho fora da lista de cartas animadas; sombras de contato sem projetar outra sombra; cadeiras acompanham sala; acentos acompanham 2/4/6 participantes; intensidade do Cyber restaurada ao sair do Classic Club.
+- **Reflexos:** uma sonda Once, cenário na máscara 2, atores na máscara 4 para luzes de acento. Atlas de quatro entradas/128 pixels evita a alocação excessiva observada com o padrão. SSIL/SDFGI/VoxelGI comparados e não habilitados no jogo; LightmapGI ainda depende de UV2/bake no editor.
+- **Desempenho medido na RTX 3050:** 1080p baixo POV 5,402 → 4,167 ms; ultra mesa 9,592 → 9,126 ms. 4K ultra ficou cerca de 6% mais caro, mediana 28,6–29,1 ms, com P95 do POV de 42,167 ms. Não há garantia de 30 FPS estáveis nem ganho em todos os perfis.
+- **QA da base visual isolada:** compilação limpa; regras 532 verificações; interface 27 capturas/25 ações/0 falhas de layout; câmera PASS com 4K; regressão de sala/assentos/baralho PASS. Exportação Windows e inicialização do menu do pacote terminaram com saída 0. Avisos de objetos/texturas retidos no encerramento persistem.
+- **Precisão do escopo:** cadeira recebeu material, sem nova geometria; mesa tem frisos e bevel, sem entalhes esculpidos; carta tem espessura estilizada. Não houve novos mapas AO/normal, UV2 nem remodelagem do Corvo. Os resultados não auditam a geometria de Onça/Morgana nem o áudio novo.
+
+Evidências: [comparação antes/depois](docs/patch27/COMPARACAO.md), [validação e limites](docs/PATCH27_VALIDACAO.md), [plano](docs/PLANO_VISUAL27.md). Próximo passe: lareira, contato das cadeiras/postura, UV2/LightmapGI, estabilidade de memória e frame time; depois decidir expansão para outra sala.
+
+---
+
+## Patch 28 — 13/09/2026 — Integração Total do Acervo Musical, Motor de Áudio Multi-Formato e Autonomous Quality Auditor
+
+Base `b12c34f`, preservada no GitHub em Backup `8f73b34`. Resultado para review; main preservada. Missão orientada por `docs/PLANO_MUSICA.md`, `learning_proposal.md` e `AGENTS.md`.
+
+- **Integração Completa do Acervo Musical (`assets/Musics/` e `assets/audio/`):**
+  - **Suporte Polifônico Dinâmico Multi-Formato (`AudioManager.cs`):** O motor de áudio passou a carregar nativamente e de forma transparente streams em `.mp3`, `.wav` e `.ogg`, configurando automaticamente loops contínuos sem corte de silêncio artificial e cacheando streams em memória.
+  - **Catálogo Central de 10 Trilhas e Nivelamento Sonoro:**
+    - `menu`: *Tema do Clube* (`Musica Tema Menu.mp3`) $\rightarrow$ Tema oficial do Menu Principal, Hub e Lobby.
+    - `barao`: *Barão da Meia-Noite* (`Barao da meia noite.mp3`) $\rightarrow$ Trilha exclusiva do Lounge do Barão e Boss Barão da Meia-Noite.
+    - `dama`: *Dama de Copas* (`Dama de copas.mp3`) $\rightarrow$ Trilha exclusiva do Salão da Dama e Boss Dama de Copas.
+    - `madrid`: *Salón de Madrid* (`Madrid.mp3`) $\rightarrow$ Trilha nobre com violão espanhol e cordas castelhanas.
+    - `mexico`: *La Mesa de los Recuerdos* (`Mexico.mp3`) $\rightarrow$ Trilha acústica tradicional do Día de Muertos.
+    - `midnight-club`: Trilha vintage aristocrática do Classic Club.
+    - `velvet-table`: Trilha de concentração e cálculo do Pôquer Roguelike.
+    - `last-manilha`: Trilha de tensão de mão de 11 e Boss Madame Morgana.
+    - `copper-steps`: Trilha rítmica acústica do Fodinha.
+    - `midnight-baron`: Trilha de confronto sombrio e Boss Lorde Carniçal.
+  - **Conexão no Hub e Menus:** Integrado em `HubMain._Ready()` e na navegação de abas (a música continua suavemente sem reiniciar a cada troca de painel).
+  - **Ducking Procedural:** Implementado método `SetDucking(active, duckDb, duration)` em `AudioManager.cs` para atenuar a música (-6 dB) durante chamadas de Truco, introduções de chefes e efeitos críticos de mesa.
+  - **Música Contextual em Batalha de Bosses:** `TableStage.cs` e `PokerUI.cs` integrados para disparar dinamicamente a trilha do chefe correspondente (`PlayBossMusic`) e do ambiente (`PlayRoomMusic`).
+
+- **Autonomous Quality Auditor (`tools/quality_auditor.py`):**
+  - Sistema de auditoria e geração automática de relatórios por patch em `docs/quality/latest.json` e `docs/quality/latest.md`.
+  - 9 domínios auditados automaticamente: `BUILD`, `AUDIO`, `ASSETS`, `ANIMATION`, `GAMEPLAY`, `VISUAL`, `ACCESSIBILITY`, `PERFORMANCE` e `NETWORK`.
+  - Política de transparência estrita: reporte transparente de "NOT TESTED" para rede até implementação da Fase 5, sem falso-positivo.
+
+- **Estratégia Canônica de Assets 3D e Skill:**
+  - `AGENTS.md` atualizado com a hierarquia de integrações de assets (Sketchfab, PolyHaven, Poly Pizza, Hyper3D Rodin, Hunyuan3D).
+  - Criação da skill executável `.agents/skills/blender-asset-strategy/SKILL.md`.
+
+- **Validação de QA Integral:**
+  - **Compilação C#:** 0 erros, 0 avisos (`dotnet build`).
+  - **Camera QA:** 100% aprovado (`CAMERA_QA PASS []`).
+  - **Gameplay QA:** 531 asserções aprovadas com êxito.
+  - **Visual Smoke QA:** 27 capturas de tela, 25 ações interativas, 0 falhas e 0 problemas de layout (`VISUAL_QA_RESULT PASS`).
+  - **Quality Audit:** 13 verificações PASS, 0 warnings, 0 falhas, 1 not tested (network).
+
+---
+
+## Patch 27 — 13/09/2026 — Reconstrução de Dona Onça (Padrão Referência 2), Correção de Ombros de Chefes, Fidelidade Classic Club e Arquitetura Musical
+
+Base `a1981dd`, preservada no GitHub em Backup `8f73b34`. Resultado para review; main preservada. Missão orientada por `docs/MISSAO_MODELOS_3D.md`, `docs/MISSAO_VISUAL_PREMIUM.md` e `AGENTS.md`.
+
+- **Reconstrução completa de Dona Onça (`onca.glb`):**
+  - **Eliminação de marionete por primitivas cilíndricas (Classe C/D):** Dona Onça foi reconstruída a partir de escultura estilizada orgânica de alta fidelidade (23.535 vértices, 23.332 polígonos), elevando-a do patamar rudimentar (Referência 1) ao padrão comercial expressivo (Referência 2).
+  - **Anatomia felina e vestuário aristocrático:** Cabeça felina expressiva com rosetas, focinho modelado, olhos vivos e orelhas pontiagudas articuladas. Casaco aveludado bordô sob medida com filigranas douradas, blusa creme, espartilho estruturado, calças justas e cauda longa sinuosa totalmente articulada em 5 seções (`Tail.01..05`).
+  - **Mãos anatômicas de 5 dígitos:** Substituição das antigas pás cilíndricas por mãos articuladas em 5 dígitos com garras douradas retráteis, com separação bmesh limpa eliminando qualquer ponte poligonal ou clipping com o quadril.
+  - **Armature profissional unificado (26 bones):** Rig completo compatível com a hierarquia canônica de Corvo e Bento (`Root`, `Pelvis`, `Spine`, `Chest`, `Neck`, `Head`, `Ear.L/R`, `Shoulder.L/R`, `UpperArm.L/R`, `Forearm.L/R`, `Hand.L/R`, `CardSocket.R`, `Thigh.L/R`, `Shin.L/R`, `Foot.L/R`, `Tail.01..05`). Marcador empty `Head` em `(0, -0.05, 1.55)` para alinhamento automático da câmera POV em primeira pessoa (`Position.Y > 1.3f`).
+  - **Skinning suave com difusão laplaciana em memória:** Pesos calculados por particionamento zonal de influência óssea e suavização laplaciana rápida em Python, garantindo deformações anatômicas naturais nos ombros, cotovelos, joelhos e cauda.
+  - **9 Ações NLA com postura sentada nativa:** Clipes de ação Bezier (`idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish`, `play_card`, `idle_table_01`, `idle_table_02`) com postura sentada à mesa embutida nos keyframes esqueléticos (`Pelvis: -0.36m`, `Thigh: -1.52 rad`, `Shin: +1.48 rad`), compatíveis tanto com a posição ereta quanto à mesa.
+  - **Retratos 3D de estúdio:** Iluminação de estúdio em 3 pontos gerando retratos de alta definição em `assets/models/club/onca_3d.png` e `onca.png`.
+  - **Fontes editáveis preservadas:** Staging em `art/blender/patch26/onca_refined.glb` e master blend editável em `art/blender/patch26/onca_refined.blend`.
+
+- **Correção definitiva de deformação dos chefes (Morgana e Carniçal):**
+  - Repesagem refinada dos ombros e axilas no Blender MCP.
+  - Arestas anômalas com alongamento extremo na pose medida de vitória: Carniçal = 0, Morgana = 0 (reduzidas de 218 → 74 → 0).
+
+- **Evolução do cenário Classic Club e fidelidade visual (`TableStage.VisualTarget.cs`):**
+  - **Mobiliário de luxo:** Mesa premium (`club_table_premium.glb`) com borda de couro chanfrada, friso de latão e entalhes de madeira maciça. Poltronas de veludo aveludado (`club_chair_premium.glb`).
+  - **Cartas físicas com espessura realista:** Malha chanfrada com 1,8cm de espessura e sombras de contato calibradas (`club_card_blank.glb`).
+  - **Iluminação e reflexão avançadas:** Luzes de acento para cada assento ativo e sonda de reflexão estática (`ReflectionProbe`) com máscara isolando personagens e cartas móveis para reflexos nítidos no verniz da madeira e latão.
+
+- **Arquitetura de música dinâmica e identidade por cenário (`docs/PLANO_MUSICA.md`):**
+  - Especificação detalhada de trilhas para os 4 salões: Classic Club (aristocrático acústico), Barão Lounge (jazz noir), Dama Salon (bossa lounge) e Cyber Casino (dark synthwave).
+  - Leitmotivs temáticos para os 4 chefes (Barão da Meia-Noite, Dama de Copas, Madame Morgana e Lorde Carniçal).
+  - Sistema de 4 stems/camadas dinâmicas (Base, Tensão, Truco Decisivo, Clímax) com sincronização em C# e crossfades suaves.
+  - Músicas master integradas em `assets/Musics/`.
+
+- **Validação de QA integral:**
+  - **Compilação C#:** 0 erros, 0 avisos (`dotnet build`).
+  - **Gameplay QA (`gameplay_smoke.gd`):** 530 asserções aprovadas com êxito (solo 2v2, 3v3, rodízio de assentos, integridade do baralho e posse de penas da IA/humano).
+  - **Camera QA (`camera_smoke.gd`):** 100% aprovado (`CAMERA_QA PASS []`) incluindo limites cervicais, enquadramento POV e 4K.
+  - **Visual Smoke QA (`visual_smoke.gd`):** 27 capturas de tela, 25 ações interativas, 0 falhas e 0 problemas de layout (`VISUAL_QA_RESULT PASS`).
+
+---
+
 ## Patch 26 — 12/09/2026 — Primeiro passe de animação do elenco no Blender
 
 Base `10c4b4d`, preservada no GitHub em Backup `a4d12ea`. Resultado para review; main preservada. Missão original registrada em `docs/MISSAO_MODELOS_3D.md` e orientação em `AGENTS.md`.

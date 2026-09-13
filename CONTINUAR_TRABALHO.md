@@ -1,5 +1,116 @@
 # Prompt de continuidade — MultiGame
 
+## Continuidade da missão visual premium — comparação concluída em 13/09/2026
+
+Este bloco complementa os patches abaixo, sem reverter o trabalho musical ou os personagens recebidos em paralelo. Projeto principal: `C:/workspace/multigame`, review. Verificar Git antes de editar: houve commits simultâneos b12c34f e 8159a1e durante esta etapa. Backup remoto continua em 8f73b34, correspondente ao estado recebido a1981dd mais arquivos novos daquela ocasião; **não é backup integral das mudanças posteriores**. Main deve permanecer em 58b85b8.
+
+Leia `docs/MISSAO_VISUAL_PREMIUM.md`, `docs/PLANO_VISUAL27.md`, `docs/PATCH27_VALIDACAO.md` e `docs/patch27/COMPARACAO.md`. Primeiro alvo é Classic Club com Corvo. Mesa e carta modeladas no Blender MCP 9876, fontes em art/blender/patch27. Sala agrupada em seis zonas, paleta/rugosidade calibradas e probe estático Once. Não substituir outras salas por essa paleta. Não afirmar retopologia do Corvo, mapas novos ou bake LightmapGI: não foram feitos.
+
+Integração em `TableStage.VisualTarget.cs`; cartas físicas em `TableStage.cs`. Preserve a exclusão de DeckShadow nas animações de cortar/embaralhar/coletar, a troca de asset das cadeiras e atualização de acentos por assento. O atlas de reflexos é configurado em project.godot; a API ReflectionProbeSetResolution é obsoleta e não funciona em Godot 4.
+
+QA concluído em cópia isolada `C:/workspace/multigame-visual27-qa` de b12c34f com material da carta corrigido e verificações atualizadas: build limpo, regras 532, interface 27/25 sem falhas, câmera com 4K, regressão das quatro salas/2–6 assentos/baralho. `tools/golden_smoke.ps1 -Mode regression|scene|gi` reproduz os ensaios após build/importação; use Godot .NET 4.7.2 e SDK .NET 8 portátil. Os ensaios têm saves isolados. Evidências finais estão versionadas em docs/patch27. A cópia de QA tem arquivos .import regenerados locais: não copiar todo o seu status para a pasta principal.
+
+Benchmark: RTX 3050, 1080p ultra ~8,8–9,1 ms; 4K ultra ~28,6–29,1 ms. P95 4K POV 42,167 ms: investigar estabilidade antes de prometer 30 FPS. Memória do renderer aumentou cerca de 23 MiB sobre o anterior; não confundir com VRAM física. SSIL/SDFGI/VoxelGI experimentais rejeitados para esta configuração, LightmapGI não medido. Persistem avisos de 1–3 objetos e 7 texturas no encerramento dos testes/pacote, sem investigação de crescimento em partidas longas.
+
+Pacote isolado exportado em `C:/workspace/multigame/temp/patch27-build/MultiGame.exe`; exportação e abertura do menu em headless terminaram com 0. Não inclui as mudanças musicais posteriores a b12c34f. O executável principal foi preservado durante as edições simultâneas. Usar o SDK .NET 8 primeiro no PATH para exportação; modelos de exportação ficam no APPDATA real, portanto um APPDATA vazio provoca erro de templates ausentes.
+
+Próximo trabalho concreto: (1) revisar a emissão forte da lareira e contato/postura das cadeiras em movimento; (2) preparar UV2 e cena estática para comparar LightmapGI; (3) capturar partidas longas e perfilar CPU/memória/4K; (4) só então expandir a outra sala. Pergunta opcional de direção: Lounge do Barão ou Cassino Cyber depois do Classic Club? Antes de trabalhar nos personagens, conferir as mudanças de Onça/Morgana recebidas em paralelo e suas próprias evidências; não assumir que a comparação de dois Corvos valida o elenco inteiro.
+
+---
+
+## Estado mais recente - Patch 29 validado, 13/09/2026
+
+Priorize este bloco sobre os relatos historicos abaixo. Projeto `C:/workspace/multigame`; branch `review`, base `8159a1e` (Patch 28). Backup preservado no GitHub em `8f73b34`, preservando integralmente o estado recebido; main mantida intacta em `58b85b8`. Remoto `pc-casa` (`https://github.com/Fabiarog/Multigame.git`).
+
+Leia `AGENTS.md`, `docs/MISSAO_MODELOS_3D.md`, `docs/PLANO_MUSICA.md`, `learning_proposal.md` e `implementation_plan.md`.
+
+### O que foi implementado e validado no Patch 29 (Fase 2 do Plano Diretor):
+1. **Table Life System (`TableStage.cs`):**
+   - Fichas com empilhamento organico realista: pilhas com micro-offsets deterministicos e organicos (X/Z +-1.8mm e yaw +-1.8 deg) eliminando o aspecto artificial esteril.
+   - Microfisica de cartas batidas na mesa: landing arc com overshoot de 12mm e decaimento elastico (Bounce.Out/Back.Out), rotacao angular organica (+-1.8 deg em Y, +-0.3 deg em X/Z) e sombra de contato proporcional.
+   - Impacto fisico e micro-vibracao: metodo `TriggerChipVibration` sacode sutilmente as fichas proximas ao impacto de cartas ou batida na mesa com decaimento suave.
+   - Memoria visual do descarte: acumulo sob o baralho com micro-alinhamento organico sem popping ou sumico subito.
+2. **Procedural Attention System (`ProceduralAttentionModifier.cs` & `TableStage.cs`):**
+   - `SkeletonModifier3D` nativo do Godot 4 processando procedural look-at no pipeline de animacao sem corromper animacoes gravadas.
+   - Distribuicao cervical anatomica: Cabeca (70%) e Pescoco (30%) com clamp estrito em +-48 deg yaw e +-14 deg pitch.
+   - Microcomportamentos organicos: respiracao sinusoidal (~0.22 Hz) e micro-sacadas aleatorias a cada 2.0 a 4.5 segundos.
+   - 7 Estados cognitivos: Relaxed, WatchingPlayer, WatchingCard, Thinking, Challenging, Celebrating, Defeated.
+   - Coordenacao de foco: mesa olha para carta voando, jogador do turno, desafiante do Truco e vencedor da vaza.
+3. **Dynamic Match Director (`MatchPresentationDirector.cs`):**
+   - Escalacao de 5 niveis de intensidade (Nivel 0 Normal, Nivel 1 Boa Jogada, Nivel 2 Manilha/Combinacao, Nivel 3 Truco/Aumento, Nivel 4 Match Point 11x11/Chefe Critico).
+   - Enquadramentos de camera (pulsos de FOV de -1.4 deg a -2.2 deg), ducking de audio (-6 dB), realce de iluminacao no lustre e foco dramatico.
+   - Cooldowns inteligentes (minimo 2.4s entre momentos Nivel 2+) e respeito estrito a `ReduceMotion`.
+   - Conectado em `TrucoUI.cs`, `FodinhaUI.cs`, `PokerUI.cs` e `TableStage.cs`.
+4. **Validacao de QA (100% Aprovada):**
+   - `dotnet build`: 0 erros, 0 avisos.
+   - `visual_smoke.ps1 -CameraOnly`: `CAMERA_QA PASS []`.
+   - `visual_smoke.ps1`: `GAMEPLAY_QA PASS | 530 assertions passed`.
+   - `visual_smoke.ps1`: `VISUAL_QA_RESULT PASS | screenshots=27 actions=25 layout_issues=0 failures=0`.
+   - `python tools/quality_auditor.py`: 13 PASS, 0 FAIL, 1 NOT TESTED (rede).
+
+### Comandos de Reproducao e Auditoria:
+- **Auditor de Qualidade:** `python tools/quality_auditor.py`
+- **Build C#:** `dotnet build`
+- **Camera QA:** `powershell -ExecutionPolicy Bypass -File tools/visual_smoke.ps1 -CameraOnly`
+- **Gameplay e Visual QA:** `powershell -ExecutionPolicy Bypass -File tools/visual_smoke.ps1`
+
+### Proximos Passos (Fase 3 do Plano Diretor):
+1. **IA Comportamental ("Oponentes que Parecem Pessoas"):**
+   - Sistema de perfil comportamental orientado a dados (`CharacterAIProfile`: agressividade, prudencia, blefe, tolerancia ao risco, hesitacao).
+   - Decisoes sem trapaca: nenhum bot le cartas ocultas.
+2. **Boss Encounter 2.0:**
+   - 4 fases de chefe (Abertura, Leitura, Pressao, Critica) para Barao, Dama, Morgana e Carnical.
+3. **Sistema de Rivalidades & Meta-Progressao ("Livro do Clube"):**
+   - Historico de confrontos, falas e reacoes contextuais curtas, e catalogo unificado de prestigio e conquistas cosmeticas.
+
+
+---
+
+## Estado mais recente — Patch 27 validado, 13/09/2026
+
+Priorize este bloco sobre os relatos históricos abaixo. Projeto `C:/workspace/multigame`; branch `review`, base `a1981dd`. Backup preservado no GitHub em `8f73b34`, preservando integralmente o estado recebido; main mantida intacta em `58b85b8`. Remoto `pc-casa` (`https://github.com/Fabiarog/Multigame.git`).
+
+Leia `AGENTS.md`, `docs/MISSAO_MODELOS_3D.md` e `docs/MISSAO_VISUAL_PREMIUM.md`.
+
+### O que foi implementado e validado no Patch 27:
+1. **Dona Onça — Reconstrução Completa (Padrão Referência 2):**
+   - Eliminação do modelo legado de peças cilíndricas primitivas (Classe C/D).
+   - Reconstrução via escultura orgânica estilizada (23.535 vértices, 23.332 polígonos): cabeça felina expressiva com rosetas, orelhas pontiagudas, casaco aveludado bordô sob medida com filigranas douradas, blusa creme, espartilho estruturado, calças ajustadas e cauda longa articulada em 5 seções (`Tail.01..05`).
+   - Mãos anatômicas de 5 dígitos com garras douradas retráteis, pontes poligonais entre mãos e coxas completamente eliminadas via `bmesh`.
+   - Armature canônico unificado (26 bones) compatível com a hierarquia de Corvo e Bento (`Root`, `Pelvis`, `Spine`, `Chest`, `Neck`, `Head`, `Ear.L/R`, `Shoulder.L/R`, `UpperArm.L/R`, `Forearm.L/R`, `Hand.L/R`, `CardSocket.R`, `Thigh.L/R`, `Shin.L/R`, `Foot.L/R`, `Tail.01..05`).
+   - Marcador empty `Head` em `(0, -0.05, 1.55)` para conformidade estrita com a câmera POV em primeira pessoa (`Position.Y > 1.3f`).
+   - Skinning com particionamento zonal e suavização laplaciana rápida em memória.
+   - 9 Ações NLA com postura sentada nativa embutida nos keyframes esqueléticos (`idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish`, `play_card`, `idle_table_01`, `idle_table_02`).
+   - Retratos de estúdio 3D em alta resolução: `assets/models/club/onca_3d.png` e `onca.png`.
+   - Asset runtime exportado: `assets/models/club/onca.glb` (1 malha isolada, 26 bones, 9 ações). Staging em `art/blender/patch26/onca_refined.glb` e `.blend` master em `art/blender/patch26/onca_refined.blend`.
+2. **Correção Definitiva de Deformação dos Chefes (Morgana e Carniçal):**
+   - Vértices dos ombros e axilas repesados no Blender MCP.
+   - Arestas anômalas com estiramento excessivo na pose medida de vitória: Carniçal = 0, Morgana = 0 (reduzidas de 218 → 74 → 0).
+3. **Fidelidade Visual do Classic Club (`TableStage.VisualTarget.cs`):**
+   - Mesa de luxo (`club_table_premium.glb`) com borda chanfrada de couro, friso de latão e entalhes de madeira. Cadeiras de veludo (`club_chair_premium.glb`).
+   - Cartas físicas chanfradas com 1,8cm de espessura e sombras de contato (`club_card_blank.glb`).
+   - Iluminação calibrada e sonda de reflexão ambiente (`ReflectionProbe`) estática com máscara isolando personagens e cartas móveis.
+4. **Arquitetura Musical e Trilha Dinâmica (`docs/PLANO_MUSICA.md`):**
+   - Especificação de trilhas originais para os 4 salões (Classic Club, Barão Lounge, Dama Salon, Cyber Casino) e leitmotivs para os 4 chefes.
+   - Sistema de 4 stems/camadas dinâmicas (Base, Tensão, Truco, Clímax) sincronizadas em C# com crossfades.
+   - Faixas master de referência adicionadas em `assets/Musics/`.
+5. **Validação de QA (100% Aprovada):**
+   - `dotnet build`: 0 erros, 0 avisos.
+   - `visual_smoke.ps1 -CameraOnly`: `CAMERA_QA PASS []`.
+   - `visual_smoke.ps1`: `GAMEPLAY_QA PASS | 530 assertions passed: solo 2v2, 3v3, full seat turns, deck uniqueness, AI/human Pena ownership`.
+   - `visual_smoke.ps1`: `VISUAL_QA_RESULT PASS | screenshots=27 actions=25 layout_issues=0 failures=0`.
+
+### Comandos de Reprodução:
+- **Build C#:** `dotnet build`
+- **Camera QA:** `powershell -ExecutionPolicy Bypass -File tools/visual_smoke.ps1 -CameraOnly`
+- **Gameplay e Visual QA:** `powershell -ExecutionPolicy Bypass -File tools/visual_smoke.ps1`
+
+### Próximos Passos Recomendados:
+1. Reconstrução de Nina e Bento (os próximos personagens da Classe D com esqueleto por peças) seguindo a mesma pipeline de sucesso da Dona Onça (escultura estilizada orgânica, rig canônico de 26 bones, 9 ações NLA com postura sentada e retratos de estúdio).
+2. Expansão dos cenários do Lounge do Barão e Cassino Cyber com a mesma fidelidade da mesa e iluminação do Classic Club.
+
+---
+
 ## Estado mais recente — Patch 26 validado, 12/09/2026
 
 Priorize este bloco sobre os relatos históricos abaixo. Projeto `C:/workspace/multigame`; branch `review`, base `10c4b4d18ece647bd52cc42e3f50cad658ec8f5c`. Backup já publicado em `a4d12eac60cd8a2b340a90aa93bf6614000e3e74`, árvore idêntica à base; main preservada. Remoto `pc-casa`.

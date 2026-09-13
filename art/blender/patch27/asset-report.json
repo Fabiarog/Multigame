@@ -1,0 +1,20 @@
+[
+  {
+    "id": "room_classic_club",
+    "objects": 6,
+    "vertices": 30404,
+    "triangles": 15856
+  },
+  {
+    "id": "club_chair",
+    "objects": 13,
+    "vertices": 2952,
+    "triangles": 1564
+  },
+  {
+    "id": "club_table_premium",
+    "objects": 6,
+    "vertices": 8448,
+    "triangles": 16888
+  }
+]

@@ -10,11 +10,22 @@ param(
 # Godot 4.7.2 .NET console executable. No machine-wide installation is required.
 $ErrorActionPreference = 'Stop'
 $projectDirectory = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$taskTools = Join-Path $env:TEMP 'multigame-tools'
 if (-not $env:DOTNET_ROOT -or -not (Test-Path -LiteralPath (Join-Path $env:DOTNET_ROOT 'dotnet.exe'))) {
-    throw 'Set DOTNET_ROOT to the folder containing the .NET 8 SDK dotnet.exe.'
+    $fallbackDotnet = Join-Path $taskTools 'dotnet'
+    if (Test-Path -LiteralPath (Join-Path $fallbackDotnet 'dotnet.exe')) {
+        $env:DOTNET_ROOT = $fallbackDotnet
+    } else {
+        throw 'Set DOTNET_ROOT to the folder containing the .NET 8 SDK dotnet.exe.'
+    }
 }
 if (-not $env:GODOT_BIN -or -not (Test-Path -LiteralPath $env:GODOT_BIN)) {
-    throw 'Set GODOT_BIN to the Godot 4.7.2 .NET console executable.'
+    $fallbackGodot = Join-Path $taskTools 'godot\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe'
+    if (Test-Path -LiteralPath $fallbackGodot) {
+        $env:GODOT_BIN = $fallbackGodot
+    } else {
+        throw 'Set GODOT_BIN to the Godot 4.7.2 .NET console executable.'
+    }
 }
 if (-not $OutputDirectory) {
     $OutputDirectory = Join-Path $projectDirectory 'docs\screenshots'

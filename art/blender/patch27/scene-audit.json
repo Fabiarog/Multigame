@@ -1,0 +1,1561 @@
+[
+  {
+    "id": "room_classic_club",
+    "sha256": "ede1563978b38e813b1de826b99652804bc3dea14526eae0949566dcd7441bc9",
+    "meshes": 266,
+    "vertices": 30404,
+    "polygons": 15856,
+    "uv_layers": [
+      1
+    ],
+    "materials": [
+      {
+        "name": "BookOchre",
+        "base": [
+          0.699999988079071,
+          0.47999998927116394,
+          0.1599999964237213,
+          1.0
+        ],
+        "roughness": 0.550000011920929,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "classic_club_Wall",
+        "base": [
+          0.07000000029802322,
+          0.2199999988079071,
+          0.14000000059604645,
+          1.0
+        ],
+        "roughness": 0.7200000286102295,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "BottleEmerald",
+        "base": [
+          0.03999999910593033,
+          0.3799999952316284,
+          0.1599999964237213,
+          1.0
+        ],
+        "roughness": 0.11999999731779099,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "classic_club_RugBorder",
+        "base": [
+          0.14000000059604645,
+          0.10000000149011612,
+          0.05000000074505806,
+          1.0
+        ],
+        "roughness": 0.6499999761581421,
+        "metallic": 0.15000000596046448,
+        "textures": []
+      },
+      {
+        "name": "ClassicFireGlow",
+        "base": [
+          1.0,
+          0.44999998807907104,
+          0.05000000074505806,
+          1.0
+        ],
+        "roughness": 0.5,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "CartChrome",
+        "base": [
+          0.9200000166893005,
+          0.9399999976158142,
+          0.9599999785423279,
+          1.0
+        ],
+        "roughness": 0.11999999731779099,
+        "metallic": 0.9599999785423279,
+        "textures": []
+      },
+      {
+        "name": "BookGreen",
+        "base": [
+          0.05000000074505806,
+          0.3199999928474426,
+          0.14000000059604645,
+          1.0
+        ],
+        "roughness": 0.550000011920929,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "classic_club_Boiserie",
+        "base": [
+          0.18000000715255737,
+          0.10000000149011612,
+          0.05999999865889549,
+          1.0
+        ],
+        "roughness": 0.3499999940395355,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "classic_club_Sconce",
+        "base": [
+          1.0,
+          0.8999999761581421,
+          0.6000000238418579,
+          1.0
+        ],
+        "roughness": 0.10000000149011612,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "ClockDial",
+        "base": [
+          0.949999988079071,
+          0.9300000071525574,
+          0.8500000238418579,
+          1.0
+        ],
+        "roughness": 0.30000001192092896,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "OilPaintingKings",
+        "base": [
+          0.1599999964237213,
+          0.20000000298023224,
+          0.2800000011920929,
+          1.0
+        ],
+        "roughness": 0.6000000238418579,
+        "metallic": 0.05000000074505806,
+        "textures": []
+      },
+      {
+        "name": "BookRed",
+        "base": [
+          0.550000011920929,
+          0.07999999821186066,
+          0.10000000149011612,
+          1.0
+        ],
+        "roughness": 0.550000011920929,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "SmokeGlass",
+        "base": [
+          0.11999999731779099,
+          0.11999999731779099,
+          0.15000000596046448,
+          1.0
+        ],
+        "roughness": 0.07999999821186066,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "classic_club_RugMain",
+        "base": [
+          0.03999999910593033,
+          0.1599999964237213,
+          0.10000000149011612,
+          1.0
+        ],
+        "roughness": 0.8799999952316284,
+        "metallic": 0.019999999552965164,
+        "textures": []
+      },
+      {
+        "name": "classic_club_Floor",
+        "base": [
+          0.15000000596046448,
+          0.09000000357627869,
+          0.05000000074505806,
+          1.0
+        ],
+        "roughness": 0.2199999988079071,
+        "metallic": 0.019999999552965164,
+        "textures": []
+      },
+      {
+        "name": "CartBrass",
+        "base": [
+          0.8999999761581421,
+          0.7400000095367432,
+          0.25,
+          1.0
+        ],
+        "roughness": 0.20000000298023224,
+        "metallic": 0.9200000166893005,
+        "textures": []
+      },
+      {
+        "name": "BourbonLiquid",
+        "base": [
+          0.8500000238418579,
+          0.3799999952316284,
+          0.05999999865889549,
+          1.0
+        ],
+        "roughness": 0.15000000596046448,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "ClassicBrick",
+        "base": [
+          0.3799999952316284,
+          0.14000000059604645,
+          0.07999999821186066,
+          1.0
+        ],
+        "roughness": 0.8799999952316284,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "classic_club_Trim",
+        "base": [
+          0.8600000143051147,
+          0.7200000286102295,
+          0.25999999046325684,
+          1.0
+        ],
+        "roughness": 0.2199999988079071,
+        "metallic": 0.8799999952316284,
+        "textures": []
+      },
+      {
+        "name": "CutCrystal",
+        "base": [
+          0.8199999928474426,
+          0.8999999761581421,
+          0.949999988079071,
+          1.0
+        ],
+        "roughness": 0.05999999865889549,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "ClassicCharcoal",
+        "base": [
+          0.05000000074505806,
+          0.03999999910593033,
+          0.03999999910593033,
+          1.0
+        ],
+        "roughness": 0.949999988079071,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "BottleRuby",
+        "base": [
+          0.5,
+          0.05000000074505806,
+          0.10000000149011612,
+          1.0
+        ],
+        "roughness": 0.11999999731779099,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "BookNavy",
+        "base": [
+          0.07000000029802322,
+          0.14000000059604645,
+          0.41999998688697815,
+          1.0
+        ],
+        "roughness": 0.550000011920929,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "OilPaintingAce",
+        "base": [
+          0.2800000011920929,
+          0.18000000715255737,
+          0.10000000149011612,
+          1.0
+        ],
+        "roughness": 0.6000000238418579,
+        "metallic": 0.05000000074505806,
+        "textures": []
+      },
+      {
+        "name": "BottleAmber",
+        "base": [
+          0.800000011920929,
+          0.4000000059604645,
+          0.05000000074505806,
+          1.0
+        ],
+        "roughness": 0.11999999731779099,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "GoldSpineTooling",
+        "base": [
+          0.9200000166893005,
+          0.7799999713897705,
+          0.2800000011920929,
+          1.0
+        ],
+        "roughness": 0.25,
+        "metallic": 0.8799999952316284,
+        "textures": []
+      },
+      {
+        "name": "BlackMarble",
+        "base": [
+          0.05000000074505806,
+          0.05000000074505806,
+          0.05999999865889549,
+          1.0
+        ],
+        "roughness": 0.15000000596046448,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      }
+    ],
+    "objects": [
+      "BackWall_Classic",
+      "Baseboard",
+      "BookcaseBase_5.0",
+      "BookcaseBase_-5.0",
+      "BookcaseCol_5.0_1",
+      "BookcaseCol_5.0_-1",
+      "BookcaseCol_-5.0_1",
+      "BookcaseCol_-5.0_-1",
+      "BookcaseShelf_5.0_0",
+      "BookcaseShelf_5.0_1",
+      "BookcaseShelf_5.0_2",
+      "BookcaseShelf_5.0_3",
+      "BookcaseShelf_-5.0_0",
+      "BookcaseShelf_-5.0_1",
+      "BookcaseShelf_-5.0_2",
+      "BookcaseShelf_-5.0_3",
+      "BookcaseTop_5.0",
+      "BookcaseTop_-5.0",
+      "CeilingBeam_1.8",
+      "CeilingBeam_5.0",
+      "CeilingBeam_-1.8",
+      "CeilingBeam_-5.0",
+      "CeilingPlane",
+      "Cilindro",
+      "Cilindro.001",
+      "Cilindro.002",
+      "Cilindro.003",
+      "Cilindro.004",
+      "Cilindro.005",
+      "Cilindro.006",
+      "Cilindro.007",
+      "Cilindro.008",
+      "Cilindro.009",
+      "Cilindro.010",
+      "Cilindro.011",
+      "Cilindro.012",
+      "Cilindro.013",
+      "Cilindro.014",
+      "Cilindro.015",
+      "Cilindro.016",
+      "Cilindro.017",
+      "Cilindro.018",
+      "Cilindro.019",
+      "Cilindro.020",
+      "Cilindro.021",
+      "Cilindro.022",
+      "Cilindro.023",
+      "Cilindro.024",
+      "Cilindro.025",
+      "Cilindro.026",
+      "Cilindro.027",
+      "Cilindro.028",
+      "Cilindro.029",
+      "Cilindro.030",
+      "Cilindro.031",
+      "Cilindro.032",
+      "Cilindro.033",
+      "Cilindro.034",
+      "Cilindro.035",
+      "Cilindro.036",
+      "Cilindro.037",
+      "Cilindro.038",
+      "Cilindro.039",
+      "Cilindro.040",
+      "Cilindro.041",
+      "Cilindro.042",
+      "Cilindro.043",
+      "Cilindro.044",
+      "Cilindro.045",
+      "Cilindro.046",
+      "Cilindro.047",
+      "Cilindro.048",
+      "Cilindro.049",
+      "Cilindro.050",
+      "ClockDial",
+      "ClockPendulum",
+      "ClubRug_Inner",
+      "ClubRug_Outer",
+      "ClubRug_Stripe",
+      "Cone",
+      "Cone.001",
+      "Cubo",
+      "Cubo.001",
+      "Cubo.002",
+      "Cubo.003",
+      "Cubo.004",
+      "Cubo.005",
+      "Cubo.006",
+      "Cubo.007",
+      "Cubo.008",
+      "Cubo.009",
+      "Cubo.010",
+      "Cubo.011",
+      "Cubo.012",
+      "Cubo.013",
+      "Cubo.014",
+      "Cubo.015",
+      "Cubo.016",
+      "Cubo.017",
+      "Cubo.018",
+      "Cubo.019",
+      "Cubo.020",
+      "Cubo.021",
+      "Cubo.022",
+      "Cubo.023",
+      "Cubo.024",
+      "Cubo.025",
+      "Cubo.026",
+      "Cubo.027",
+      "Cubo.028",
+      "Cubo.029",
+      "Cubo.030",
+      "Cubo.031",
+      "Cubo.032",
+      "Cubo.033",
+      "Cubo.034",
+      "Cubo.035",
+      "Cubo.036",
+      "Cubo.037",
+      "Cubo.038",
+      "Cubo.039",
+      "Cubo.040",
+      "Cubo.041",
+      "Cubo.042",
+      "Cubo.043",
+      "Cubo.044",
+      "Cubo.045",
+      "Cubo.046",
+      "Cubo.047",
+      "Cubo.048",
+      "Cubo.049",
+      "Cubo.050",
+      "Cubo.051",
+      "Cubo.052",
+      "Cubo.053",
+      "Cubo.054",
+      "Cubo.055",
+      "Cubo.056",
+      "Cubo.057",
+      "Cubo.058",
+      "Cubo.059",
+      "Cubo.060",
+      "Cubo.061",
+      "Cubo.062",
+      "Cubo.063",
+      "Cubo.064",
+      "Cubo.065",
+      "Cubo.066",
+      "Cubo.067",
+      "Cubo.068",
+      "Cubo.069",
+      "Cubo.070",
+      "Cubo.071",
+      "Cubo.072",
+      "Cubo.073",
+      "Cubo.074",
+      "Cubo.075",
+      "Cubo.076",
+      "Cubo.077",
+      "Cubo.078",
+      "Cubo.079",
+      "Cubo.080",
+      "Cubo.081",
+      "Cubo.082",
+      "Cubo.083",
+      "Cubo.084",
+      "Cubo.085",
+      "Cubo.086",
+      "Cubo.087",
+      "Cubo.088",
+      "Cubo.089",
+      "Cubo.090",
+      "Cubo.091",
+      "Cubo.092",
+      "Cubo.093",
+      "Cubo.094",
+      "Cubo.095",
+      "Cubo.096",
+      "Cubo.097",
+      "Cubo.098",
+      "Cubo.099",
+      "Cubo.100",
+      "Cubo.101",
+      "Cubo.102",
+      "Cubo.103",
+      "Cubo.104",
+      "Cubo.105",
+      "Cubo.106",
+      "Cubo.107",
+      "Cubo.108",
+      "Cubo.109",
+      "Cubo.110",
+      "Cubo.111",
+      "Cubo.112",
+      "Cubo.113",
+      "Cubo.114",
+      "Cubo.115",
+      "Cubo.116",
+      "Cubo.117",
+      "Cubo.118",
+      "Cubo.119",
+      "Cubo.120",
+      "Cubo.121",
+      "Cubo.122",
+      "Cubo.123",
+      "Cubo.124",
+      "Cubo.125",
+      "Cubo.126",
+      "Cubo.127",
+      "Cubo.128",
+      "Cubo.129",
+      "Cubo.130",
+      "Cubo.131",
+      "Cubo.132",
+      "Cubo.133",
+      "Cubo.134",
+      "Cubo.135",
+      "Cubo.136",
+      "Cubo.137",
+      "Cubo.138",
+      "Cubo.139",
+      "Cubo.140",
+      "Cubo.141",
+      "Cubo.142",
+      "Cubo.143",
+      "Cubo.144",
+      "Cubo.145",
+      "Esfera icosa\u00e9drica.051",
+      "FireLog_0.0",
+      "FireLog_0.3",
+      "FireLog_-0.35",
+      "FireplaceCavity",
+      "FireplaceCol_1.65",
+      "FireplaceCol_-1.65",
+      "FireplaceHearth",
+      "FireplaceMantel",
+      "Floor",
+      "GrandfatherClockBase",
+      "GrandfatherClockHood",
+      "GrandfatherClockWaist",
+      "Painting_L_Canvas",
+      "Painting_L_Frame",
+      "Painting_R_Canvas",
+      "Painting_R_Frame",
+      "SideBoiserieFrame_Left_3.5",
+      "SideBoiserieFrame_Left_-1.5",
+      "SideBoiserieFrame_Left_-5.5",
+      "SideBoiserieFrame_Right_3.5",
+      "SideBoiserieFrame_Right_-1.5",
+      "SideBoiserieFrame_Right_-5.5",
+      "SideSconceLamp_Left_3.5",
+      "SideSconceLamp_Left_-1.5",
+      "SideSconceLamp_Left_-5.5",
+      "SideSconceLamp_Right_3.5",
+      "SideSconceLamp_Right_-1.5",
+      "SideSconceLamp_Right_-5.5",
+      "SideWall_Left",
+      "SideWall_Right",
+      "Tor\u00f3ide",
+      "Tor\u00f3ide.001",
+      "Tor\u00f3ide.002",
+      "Tor\u00f3ide.003",
+      "Tor\u00f3ide.004",
+      "Tor\u00f3ide.005",
+      "Tor\u00f3ide.006",
+      "Tor\u00f3ide.007"
+    ]
+  },
+  {
+    "id": "room_barao_lounge",
+    "sha256": "05bb8f69e70580de535be04924584748a3e83e1cb45f72ed445d732d67ad3898",
+    "meshes": 68,
+    "vertices": 10808,
+    "polygons": 5610,
+    "uv_layers": [
+      1
+    ],
+    "materials": [
+      {
+        "name": "barao_lounge_Trim",
+        "base": [
+          0.8999999761581421,
+          0.75,
+          0.2800000011920929,
+          1.0
+        ],
+        "roughness": 0.2199999988079071,
+        "metallic": 0.8500000238418579,
+        "textures": []
+      },
+      {
+        "name": "BaraoWroughtIron",
+        "base": [
+          0.05000000074505806,
+          0.05000000074505806,
+          0.05999999865889549,
+          1.0
+        ],
+        "roughness": 0.44999998807907104,
+        "metallic": 0.75,
+        "textures": []
+      },
+      {
+        "name": "barao_lounge_RugBorder",
+        "base": [
+          0.18000000715255737,
+          0.14000000059604645,
+          0.07999999821186066,
+          1.0
+        ],
+        "roughness": 0.6499999761581421,
+        "metallic": 0.15000000596046448,
+        "textures": []
+      },
+      {
+        "name": "BaraoMoonNight",
+        "base": [
+          0.03999999910593033,
+          0.05000000074505806,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.8999999761581421,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "BaraoMoonDisc",
+        "base": [
+          0.949999988079071,
+          0.949999988079071,
+          1.0,
+          1.0
+        ],
+        "roughness": 0.5,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "barao_lounge_Floor",
+        "base": [
+          0.07000000029802322,
+          0.05999999865889549,
+          0.10000000149011612,
+          1.0
+        ],
+        "roughness": 0.1599999964237213,
+        "metallic": 0.11999999731779099,
+        "textures": []
+      },
+      {
+        "name": "BaraoGothicStone",
+        "base": [
+          0.11999999731779099,
+          0.10000000149011612,
+          0.14000000059604645,
+          1.0
+        ],
+        "roughness": 0.75,
+        "metallic": 0.05000000074505806,
+        "textures": []
+      },
+      {
+        "name": "barao_lounge_RugMain",
+        "base": [
+          0.05999999865889549,
+          0.05000000074505806,
+          0.14000000059604645,
+          1.0
+        ],
+        "roughness": 0.8799999952316284,
+        "metallic": 0.019999999552965164,
+        "textures": []
+      },
+      {
+        "name": "BaraoVioletFlame",
+        "base": [
+          0.75,
+          0.25,
+          0.949999988079071,
+          1.0
+        ],
+        "roughness": 0.5,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "barao_lounge_Boiserie",
+        "base": [
+          0.10999999940395355,
+          0.07999999821186066,
+          0.15000000596046448,
+          1.0
+        ],
+        "roughness": 0.3499999940395355,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "barao_lounge_Sconce",
+        "base": [
+          0.9800000190734863,
+          0.8399999737739563,
+          0.5199999809265137,
+          1.0
+        ],
+        "roughness": 0.10000000149011612,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      }
+    ],
+    "objects": [
+      "BaronHeraldicShield",
+      "Baseboard",
+      "ClubRug_Inner",
+      "ClubRug_Outer",
+      "ClubRug_Stripe",
+      "Cone",
+      "Cone.001",
+      "Cone.002",
+      "Cone.003",
+      "Cone.004",
+      "Cone.005",
+      "Cube",
+      "Cube.001",
+      "Cube.002",
+      "Cube.003",
+      "Cube.004",
+      "Cube.005",
+      "Cube.006",
+      "Cube.007",
+      "Cube.008",
+      "Cube.009",
+      "Cylinder",
+      "Cylinder.001",
+      "Cylinder.002",
+      "Cylinder.003",
+      "Cylinder.004",
+      "Cylinder.005",
+      "Cylinder.006",
+      "Cylinder.007",
+      "Cylinder.008",
+      "Cylinder.009",
+      "Cylinder.010",
+      "Cylinder.011",
+      "Cylinder.012",
+      "Cylinder.013",
+      "Cylinder.014",
+      "Cylinder.015",
+      "Cylinder.016",
+      "Cylinder.017",
+      "Cylinder.018",
+      "Cylinder.019",
+      "Cylinder.020",
+      "Cylinder.021",
+      "Cylinder.022",
+      "Floor",
+      "GothicFireplace",
+      "GothicSkyBackdrop",
+      "Icosphere",
+      "Icosphere.001",
+      "MoonDisc",
+      "Plane",
+      "SideBoiserieFrame_Left_3.5",
+      "SideBoiserieFrame_Left_-1.5",
+      "SideBoiserieFrame_Left_-5.5",
+      "SideBoiserieFrame_Right_3.5",
+      "SideBoiserieFrame_Right_-1.5",
+      "SideBoiserieFrame_Right_-5.5",
+      "SideSconceLamp_Left_3.5",
+      "SideSconceLamp_Left_-1.5",
+      "SideSconceLamp_Left_-5.5",
+      "SideSconceLamp_Right_3.5",
+      "SideSconceLamp_Right_-1.5",
+      "SideSconceLamp_Right_-5.5",
+      "SideWall_Left",
+      "SideWall_Right",
+      "Torus",
+      "Torus.001",
+      "Torus.002"
+    ]
+  },
+  {
+    "id": "room_dama_salon",
+    "sha256": "2a4ecfb7a4cead38cd80ab4b4e573542025bc1271d9f5b8121ce154a484d704d",
+    "meshes": 64,
+    "vertices": 22696,
+    "polygons": 11572,
+    "uv_layers": [
+      1
+    ],
+    "materials": [
+      {
+        "name": "dama_salon_Boiserie",
+        "base": [
+          0.1899999976158142,
+          0.07000000029802322,
+          0.09000000357627869,
+          1.0
+        ],
+        "roughness": 0.3499999940395355,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "dama_salon_Trim",
+        "base": [
+          0.8999999761581421,
+          0.7300000190734863,
+          0.30000001192092896,
+          1.0
+        ],
+        "roughness": 0.2199999988079071,
+        "metallic": 0.8500000238418579,
+        "textures": []
+      },
+      {
+        "name": "DamaRedRoses",
+        "base": [
+          0.75,
+          0.03999999910593033,
+          0.11999999731779099,
+          1.0
+        ],
+        "roughness": 0.550000011920929,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "DamaWhiteMarble",
+        "base": [
+          0.949999988079071,
+          0.9399999976158142,
+          0.9200000166893005,
+          1.0
+        ],
+        "roughness": 0.11999999731779099,
+        "metallic": 0.07999999821186066,
+        "textures": []
+      },
+      {
+        "name": "dama_salon_Sconce",
+        "base": [
+          1.0,
+          0.8600000143051147,
+          0.6600000262260437,
+          1.0
+        ],
+        "roughness": 0.10000000149011612,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "dama_salon_Floor",
+        "base": [
+          0.1599999964237213,
+          0.05000000074505806,
+          0.07000000029802322,
+          1.0
+        ],
+        "roughness": 0.18000000715255737,
+        "metallic": 0.07999999821186066,
+        "textures": []
+      },
+      {
+        "name": "dama_salon_RugBorder",
+        "base": [
+          0.2199999988079071,
+          0.11999999731779099,
+          0.05999999865889549,
+          1.0
+        ],
+        "roughness": 0.6499999761581421,
+        "metallic": 0.15000000596046448,
+        "textures": []
+      },
+      {
+        "name": "DamaMirrorGlass",
+        "base": [
+          0.9200000166893005,
+          0.9399999976158142,
+          0.9800000190734863,
+          1.0
+        ],
+        "roughness": 0.03999999910593033,
+        "metallic": 0.949999988079071,
+        "textures": []
+      },
+      {
+        "name": "DamaChampagneBottle",
+        "base": [
+          0.10000000149011612,
+          0.2800000011920929,
+          0.14000000059604645,
+          1.0
+        ],
+        "roughness": 0.10000000149011612,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "DamaCrystalFlute",
+        "base": [
+          0.9200000166893005,
+          0.9599999785423279,
+          1.0,
+          1.0
+        ],
+        "roughness": 0.05000000074505806,
+        "metallic": 0.15000000596046448,
+        "textures": []
+      },
+      {
+        "name": "dama_salon_RugMain",
+        "base": [
+          0.20000000298023224,
+          0.03999999910593033,
+          0.07999999821186066,
+          1.0
+        ],
+        "roughness": 0.8799999952316284,
+        "metallic": 0.019999999552965164,
+        "textures": []
+      }
+    ],
+    "objects": [
+      "Baseboard",
+      "ClubRug_Inner",
+      "ClubRug_Outer",
+      "ClubRug_Stripe",
+      "Cone",
+      "Cone.001",
+      "Cube",
+      "Cube.001",
+      "Cylinder",
+      "Cylinder.001",
+      "Cylinder.002",
+      "Cylinder.003",
+      "Cylinder.004",
+      "Cylinder.005",
+      "Cylinder.006",
+      "Cylinder.007",
+      "Cylinder.008",
+      "Cylinder.009",
+      "Cylinder.010",
+      "Cylinder.011",
+      "Cylinder.012",
+      "Cylinder.013",
+      "Cylinder.014",
+      "Cylinder.015",
+      "Cylinder.016",
+      "Cylinder.017",
+      "Cylinder.018",
+      "Cylinder.019",
+      "Cylinder.020",
+      "Cylinder.021",
+      "Cylinder.022",
+      "Cylinder.023",
+      "Cylinder.024",
+      "Cylinder.025",
+      "Cylinder.026",
+      "Floor",
+      "Icosphere",
+      "Icosphere.001",
+      "OvalMirrorFrame_5.8",
+      "OvalMirrorFrame_-5.8",
+      "OvalMirrorGlass_5.8",
+      "OvalMirrorGlass_-5.8",
+      "Plane",
+      "SideBoiserieFrame_Left_3.5",
+      "SideBoiserieFrame_Left_-1.5",
+      "SideBoiserieFrame_Left_-5.5",
+      "SideBoiserieFrame_Right_3.5",
+      "SideBoiserieFrame_Right_-1.5",
+      "SideBoiserieFrame_Right_-5.5",
+      "SideSconceLamp_Left_3.5",
+      "SideSconceLamp_Left_-1.5",
+      "SideSconceLamp_Left_-5.5",
+      "SideSconceLamp_Right_3.5",
+      "SideSconceLamp_Right_-1.5",
+      "SideSconceLamp_Right_-5.5",
+      "SideWall_Left",
+      "SideWall_Right",
+      "Torus",
+      "Torus.001",
+      "Torus.002",
+      "Torus.003",
+      "Torus.004",
+      "Torus.005",
+      "Torus.006"
+    ]
+  },
+  {
+    "id": "room_cyber_casino",
+    "sha256": "ca83f381f0fd6c2c9bbe7633d80dce096ffb8a530f7a608e5a33e30a1c9ca485",
+    "meshes": 96,
+    "vertices": 6708,
+    "polygons": 3262,
+    "uv_layers": [
+      1
+    ],
+    "materials": [
+      {
+        "name": "CyberSkyDark",
+        "base": [
+          0.019999999552965164,
+          0.019999999552965164,
+          0.03999999910593033,
+          1.0
+        ],
+        "roughness": 0.949999988079071,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "cyber_casino_RugBorder",
+        "base": [
+          0.10000000149011612,
+          0.25,
+          0.30000001192092896,
+          1.0
+        ],
+        "roughness": 0.6499999761581421,
+        "metallic": 0.15000000596046448,
+        "textures": []
+      },
+      {
+        "name": "CyberWindowGlow",
+        "base": [
+          1.0,
+          0.8500000238418579,
+          0.30000001192092896,
+          1.0
+        ],
+        "roughness": 0.5,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "CyberNeonCyan",
+        "base": [
+          0.15000000596046448,
+          0.8999999761581421,
+          1.0,
+          1.0
+        ],
+        "roughness": 0.5,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "cyber_casino_RugMain",
+        "base": [
+          0.05000000074505806,
+          0.07000000029802322,
+          0.10000000149011612,
+          1.0
+        ],
+        "roughness": 0.8799999952316284,
+        "metallic": 0.019999999552965164,
+        "textures": []
+      },
+      {
+        "name": "CyberNeonMagenta",
+        "base": [
+          1.0,
+          0.15000000596046448,
+          0.75,
+          1.0
+        ],
+        "roughness": 0.5,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "CyberCarbon",
+        "base": [
+          0.05000000074505806,
+          0.05999999865889549,
+          0.07999999821186066,
+          1.0
+        ],
+        "roughness": 0.3499999940395355,
+        "metallic": 0.44999998807907104,
+        "textures": []
+      },
+      {
+        "name": "cyber_casino_Floor",
+        "base": [
+          0.03999999910593033,
+          0.05000000074505806,
+          0.07000000029802322,
+          1.0
+        ],
+        "roughness": 0.14000000059604645,
+        "metallic": 0.25,
+        "textures": []
+      },
+      {
+        "name": "cyber_casino_Sconce",
+        "base": [
+          0.18000000715255737,
+          0.8799999952316284,
+          0.9800000190734863,
+          1.0
+        ],
+        "roughness": 0.10000000149011612,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "CyberBuilding",
+        "base": [
+          0.029999999329447746,
+          0.03999999910593033,
+          0.05999999865889549,
+          1.0
+        ],
+        "roughness": 0.4000000059604645,
+        "metallic": 0.6000000238418579,
+        "textures": []
+      },
+      {
+        "name": "cyber_casino_Boiserie",
+        "base": [
+          0.05999999865889549,
+          0.07999999821186066,
+          0.10999999940395355,
+          1.0
+        ],
+        "roughness": 0.3499999940395355,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "cyber_casino_Trim",
+        "base": [
+          0.9200000166893005,
+          0.7799999713897705,
+          0.2800000011920929,
+          1.0
+        ],
+        "roughness": 0.2199999988079071,
+        "metallic": 0.8500000238418579,
+        "textures": []
+      }
+    ],
+    "objects": [
+      "Baseboard",
+      "ClubRug_Inner",
+      "ClubRug_Outer",
+      "ClubRug_Stripe",
+      "Cube",
+      "Cube.001",
+      "Cube.002",
+      "Cube.003",
+      "Cube.004",
+      "Cube.005",
+      "Cube.006",
+      "Cube.007",
+      "Cube.008",
+      "Cube.009",
+      "Cube.010",
+      "Cube.011",
+      "Cube.012",
+      "Cube.013",
+      "Cube.014",
+      "Cube.015",
+      "Cube.016",
+      "Cube.017",
+      "Cube.018",
+      "Cube.019",
+      "Cube.020",
+      "Cube.021",
+      "Cube.022",
+      "Cube.023",
+      "Cube.024",
+      "Cube.025",
+      "Cube.026",
+      "Cube.027",
+      "Cube.028",
+      "Cube.029",
+      "Cube.030",
+      "Cube.031",
+      "Cube.032",
+      "Cube.033",
+      "Cube.034",
+      "Cube.035",
+      "Cube.036",
+      "Cube.037",
+      "Cube.038",
+      "Cube.039",
+      "Cube.040",
+      "Cube.041",
+      "Cube.042",
+      "Cube.043",
+      "Cube.044",
+      "Cube.045",
+      "Cube.046",
+      "Cube.047",
+      "Cube.048",
+      "Cube.049",
+      "Cube.050",
+      "Cube.051",
+      "Cube.052",
+      "Cube.053",
+      "Cube.054",
+      "CyberSkylineBackdrop",
+      "Cylinder",
+      "Cylinder.001",
+      "Cylinder.002",
+      "Cylinder.003",
+      "Cylinder.004",
+      "Cylinder.005",
+      "Cylinder.006",
+      "Floor",
+      "HologramRing",
+      "Icosphere",
+      "Icosphere.001",
+      "Icosphere.002",
+      "Icosphere.003",
+      "Icosphere.004",
+      "Icosphere.005",
+      "Plane",
+      "SideBoiserieFrame_Left_3.5",
+      "SideBoiserieFrame_Left_-1.5",
+      "SideBoiserieFrame_Left_-5.5",
+      "SideBoiserieFrame_Right_3.5",
+      "SideBoiserieFrame_Right_-1.5",
+      "SideBoiserieFrame_Right_-5.5",
+      "SideSconceLamp_Left_3.5",
+      "SideSconceLamp_Left_-1.5",
+      "SideSconceLamp_Left_-5.5",
+      "SideSconceLamp_Right_3.5",
+      "SideSconceLamp_Right_-1.5",
+      "SideSconceLamp_Right_-5.5",
+      "SideWall_Left",
+      "SideWall_Right",
+      "SkyTower_1.5",
+      "SkyTower_5.5",
+      "SkyTower_9.0",
+      "SkyTower_-2.5",
+      "SkyTower_-6.0",
+      "SkyTower_-9.5"
+    ]
+  },
+  {
+    "id": "club_chair",
+    "sha256": "949d56cbd0da8c0736cf9e48eec39391c8f427edc64b147d852478027f2e34d6",
+    "meshes": 13,
+    "vertices": 2952,
+    "polygons": 1564,
+    "uv_layers": [
+      1
+    ],
+    "materials": [
+      {
+        "name": "ChairVelvet",
+        "base": [
+          0.07000000029802322,
+          0.2199999988079071,
+          0.15000000596046448,
+          1.0
+        ],
+        "roughness": 0.550000011920929,
+        "metallic": 0.03999999910593033,
+        "textures": []
+      },
+      {
+        "name": "ChairBrass",
+        "base": [
+          0.8399999737739563,
+          0.699999988079071,
+          0.25,
+          1.0
+        ],
+        "roughness": 0.25,
+        "metallic": 0.8799999952316284,
+        "textures": []
+      },
+      {
+        "name": "ChairWood",
+        "base": [
+          0.1599999964237213,
+          0.07999999821186066,
+          0.03999999910593033,
+          1.0
+        ],
+        "roughness": 0.3199999928474426,
+        "metallic": 0.0,
+        "textures": []
+      }
+    ],
+    "objects": [
+      "Armrest_L",
+      "Armrest_R",
+      "Backrest_Main",
+      "Ferrule_Leg_BL",
+      "Ferrule_Leg_BR",
+      "Ferrule_Leg_FL",
+      "Ferrule_Leg_FR",
+      "Leg_BL",
+      "Leg_BR",
+      "Leg_FL",
+      "Leg_FR",
+      "SeatBase",
+      "SeatCushion"
+    ]
+  },
+  {
+    "id": "club_bar_cart",
+    "sha256": "5f2facd7058ce519b29bb4384c8c2a4b099feb1bb7f09c6677216cbe3f3c26d5",
+    "meshes": 80,
+    "vertices": 17308,
+    "polygons": 9322,
+    "uv_layers": [
+      1
+    ],
+    "materials": [
+      {
+        "name": "CartBrass.001",
+        "base": [
+          0.8999999761581421,
+          0.7400000095367432,
+          0.25,
+          1.0
+        ],
+        "roughness": 0.20000000298023224,
+        "metallic": 0.9200000166893005,
+        "textures": []
+      },
+      {
+        "name": "BottleRuby.001",
+        "base": [
+          0.5,
+          0.05000000074505806,
+          0.10000000149011612,
+          1.0
+        ],
+        "roughness": 0.11999999731779099,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "SmokeGlass.001",
+        "base": [
+          0.11999999731779099,
+          0.11999999731779099,
+          0.15000000596046448,
+          1.0
+        ],
+        "roughness": 0.07999999821186066,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "CartWoodTrim",
+        "base": [
+          0.2199999988079071,
+          0.10000000149011612,
+          0.05000000074505806,
+          1.0
+        ],
+        "roughness": 0.30000001192092896,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "BottleAmber.001",
+        "base": [
+          0.800000011920929,
+          0.4000000059604645,
+          0.05000000074505806,
+          1.0
+        ],
+        "roughness": 0.11999999731779099,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "IceCubes",
+        "base": [
+          0.8799999952316284,
+          0.949999988079071,
+          1.0,
+          1.0
+        ],
+        "roughness": 0.10000000149011612,
+        "metallic": 0.05000000074505806,
+        "textures": []
+      },
+      {
+        "name": "BottleEmerald.001",
+        "base": [
+          0.03999999910593033,
+          0.3799999952316284,
+          0.1599999964237213,
+          1.0
+        ],
+        "roughness": 0.11999999731779099,
+        "metallic": 0.10000000149011612,
+        "textures": []
+      },
+      {
+        "name": "BottleLabelGold",
+        "base": [
+          0.9200000166893005,
+          0.8199999928474426,
+          0.44999998807907104,
+          1.0
+        ],
+        "roughness": 0.30000001192092896,
+        "metallic": 0.6000000238418579,
+        "textures": []
+      },
+      {
+        "name": "StudioFloor.001",
+        "base": [
+          0.10000000149011612,
+          0.05999999865889549,
+          0.03999999910593033,
+          1.0
+        ],
+        "roughness": 0.30000001192092896,
+        "metallic": 0.0,
+        "textures": []
+      },
+      {
+        "name": "CartChrome.001",
+        "base": [
+          0.9200000166893005,
+          0.9399999976158142,
+          0.9599999785423279,
+          1.0
+        ],
+        "roughness": 0.11999999731779099,
+        "metallic": 0.9599999785423279,
+        "textures": []
+      }
+    ],
+    "objects": [
+      "Cilindro",
+      "Cilindro.001",
+      "Cilindro.002",
+      "Cilindro.003",
+      "Cilindro.004",
+      "Cilindro.005",
+      "Cilindro.006",
+      "Cilindro.007",
+      "Cilindro.008",
+      "Cilindro.009",
+      "Cilindro.010",
+      "Cilindro.011",
+      "Cilindro.012",
+      "Cilindro.013",
+      "Cilindro.014",
+      "Cilindro.015",
+      "Cilindro.016",
+      "Cilindro.017",
+      "Cilindro.018",
+      "Cilindro.019",
+      "Cilindro.020",
+      "Cilindro.021",
+      "Cilindro.022",
+      "Cilindro.023",
+      "Cilindro.024",
+      "Cilindro.025",
+      "Cilindro.026",
+      "Cilindro.027",
+      "Cilindro.028",
+      "Cilindro.029",
+      "Cilindro.030",
+      "Cilindro.031",
+      "Cilindro.032",
+      "Cilindro.033",
+      "Cilindro.034",
+      "Cilindro.035",
+      "Cilindro.036",
+      "Cilindro.037",
+      "Cilindro.038",
+      "Cilindro.039",
+      "Cilindro.040",
+      "Cilindro.041",
+      "Cilindro.042",
+      "Cilindro.043",
+      "Cilindro.044",
+      "Cilindro.045",
+      "Cilindro.046",
+      "Cilindro.047",
+      "Cilindro.048",
+      "Cilindro.049",
+      "Cilindro.050",
+      "Cilindro.051",
+      "Cilindro.052",
+      "Cilindro.053",
+      "Cilindro.054",
+      "Cilindro.055",
+      "Cilindro.056",
+      "Cilindro.057",
+      "Cilindro.058",
+      "Cilindro.059",
+      "Cilindro.060",
+      "Cone",
+      "Cone.001",
+      "Cone.002",
+      "Cone.003",
+      "Cubo",
+      "Cubo.001",
+      "Cubo.002",
+      "Cubo.003",
+      "Cubo.004",
+      "Cubo.005",
+      "Cubo.006",
+      "Cubo.007",
+      "Cubo.008",
+      "Plano",
+      "Tor\u00f3ide.003",
+      "Tor\u00f3ide.004",
+      "Tor\u00f3ide.005",
+      "Tor\u00f3ide.006",
+      "Tor\u00f3ide.007"
+    ]
+  }
+]

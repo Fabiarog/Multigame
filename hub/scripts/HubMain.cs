@@ -104,6 +104,7 @@ public partial class HubMain : Control
     {
         BuildUI();
         ShowMenu(HubState.MainMenu);
+        AudioManager.Instance?.PlayMenuMusic();
         GD.Print("[HubMain] Hub initialized successfully.");
     }
 

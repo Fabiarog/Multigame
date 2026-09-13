@@ -1,5 +1,20 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
 
+## Patch 30 — 13/09/2026 — Lareira refinada no Blender e UV2 do Classic Club
+
+Base 87a7b98 preservada integralmente em Backup 18bdc3b antes das alterações; main preservada. Sistemas de atenção, direção de partida e áudio anteriores mantidos.
+
+- Troncos agora distinguem madeira carbonizada fosca e brasas nas pontas. Corrigida a sobreposição com o painel de fundo; troncos avançados 0,30 unidade e fundo fino reposicionado à frente da parede.
+- Bevel real em quatro peças da lareira após soldagem dos vértices coincidentes. Cenário passa de 15.856 para 16.560 triângulos de fonte (+704), mantendo seis grupos. Não foram adicionadas luzes nem efeitos de pós-processamento.
+- UV2 candidata criada no Blender após agrupamento e preservada nas 37 primitivas do GLB. Presença, formato e limites 0–1 verificados; densidade/margens e bake LightmapGI ainda pendentes.
+- Fontes de autoria/exportação em art/blender/patch30; original do Patch 27 preservado. Cena aberta do Blender restaurada. Nenhum asset externo, geração paga ou novo plugin usado.
+- QA: compilação limpa; regras PASS (531); interface PASS (27 capturas/25 ações/0 falhas de layout); regressão de sala/assentos/baralho PASS. Exportação Windows atualizada e menu do pacote iniciado, ambos com saída 0. Avisos de objetos/texturas retidos no encerramento persistem.
+- Benchmark desta sessão: ultra 1080p ~19,6–20,5 ms; ultra 4K ~58–58,8 ms. Não atende à meta de 33 ms em 4K e não é diretamente comparável à sessão do Patch 27. Resultados anteriores/atuais e limitações estão em docs/patch30/REVISAO.md; não afirmar otimização geral.
+
+[Antes/depois](docs/patch30/REVISAO.md) · [Plano e revisão dos candidatos](docs/PLANO_VISUAL30.md). Próximo trabalho: preparar e avaliar o bake LightmapGI com a UV2 candidata e investigar o custo de 4K em condição controlada.
+
+---
+
 ## Patch 29 — 13/09/2026 — Table Life System, Procedural Attention (SkeletonModifier3D) e Dynamic Match Director
 
 Base `8159a1e` (Patch 28), preservada no GitHub em Backup `8f73b34`. Resultado para review; main preservada. Missão orientada pela Fase 2 do Plano Diretor (`implementation_plan.md`), `docs/MISSAO_MODELOS_3D.md` e `AGENTS.md`.

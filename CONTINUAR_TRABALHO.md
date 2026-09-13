@@ -1,5 +1,43 @@
 # Prompt de continuidade — MultiGame
 
+## Estado mais recente — Patch 28 validado, 13/09/2026
+
+Priorize este bloco sobre os relatos históricos abaixo. Projeto `C:/workspace/multigame`; branch `review`, base `b12c34f`. Backup preservado no GitHub em `8f73b34`, preservando integralmente o estado recebido; main mantida intacta em `58b85b8`. Remoto `pc-casa` (`https://github.com/Fabiarog/Multigame.git`).
+
+Leia `AGENTS.md`, `docs/MISSAO_MODELOS_3D.md`, `docs/PLANO_MUSICA.md`, `learning_proposal.md` e `implementation_plan.md`.
+
+### O que foi implementado e validado no Patch 28:
+1. **Integração Total do Acervo Musical (`assets/Musics/` e `assets/audio/`):**
+   - Suporte polifônico dinâmico a `.mp3`, `.wav` e `.ogg` com detecção automática de formato e looping contínuo em `AudioManager.cs`.
+   - Mapeamento central das 10 faixas: `menu` (`Musica Tema Menu.mp3`), `barao` (`Barao da meia noite.mp3`), `dama` (`Dama de copas.mp3`), `madrid` (`Madrid.mp3`), `mexico` (`Mexico.mp3`), `midnight-club`, `velvet-table`, `last-manilha`, `copper-steps`, `midnight-baron`.
+   - Conexão do tema oficial do Menu Principal no Hub (`HubMain.cs`) com navegação suave sem reinício abrupto.
+   - Trilha sonora temática para cada chefe em `TableStage.cs` e `PokerUI.cs` (`PlayBossMusic`) e temas de salão (`PlayRoomMusic`).
+   - Ducking procedural (`SetDucking`) em chamadas de Truco, apresentações de chefe e ações críticas.
+2. **Autonomous Quality Auditor (`tools/quality_auditor.py`):**
+   - Auditoria automatizada permanente multi-domínio (`BUILD`, `AUDIO`, `ASSETS`, `ANIMATION`, `GAMEPLAY`, `VISUAL`, `ACCESSIBILITY`, `PERFORMANCE`, `NETWORK`).
+   - Geração transparente de relatórios em `docs/quality/latest.json` e `docs/quality/latest.md`.
+3. **Estratégia Canônica de Criação 3D no Blender:**
+   - Atualização normativa em `AGENTS.md` e criação de `.agents/skills/blender-asset-strategy/SKILL.md`.
+4. **Validação de QA (100% Aprovada):**
+   - `dotnet build`: 0 erros, 0 avisos.
+   - `visual_smoke.ps1 -CameraOnly`: `CAMERA_QA PASS []`.
+   - `visual_smoke.ps1`: `GAMEPLAY_QA PASS | 531 assertions passed`.
+   - `visual_smoke.ps1`: `VISUAL_QA_RESULT PASS | screenshots=27 actions=25 layout_issues=0 failures=0`.
+   - `python tools/quality_auditor.py`: 13 PASS, 0 FAIL, 1 NOT TESTED (rede).
+
+### Comandos de Reprodução e Auditoria:
+- **Auditor de Qualidade:** `python tools/quality_auditor.py`
+- **Build C#:** `dotnet build`
+- **Camera QA:** `powershell -ExecutionPolicy Bypass -File tools/visual_smoke.ps1 -CameraOnly`
+- **Gameplay e Visual QA:** `powershell -ExecutionPolicy Bypass -File tools/visual_smoke.ps1`
+
+### Próximos Passos (Fase 2 do Plano Diretor):
+1. **Table Life System:** Microfísica tátil da mesa (amortecimento elástico de cartas, leve jitter orgânico de fichas e foley sincronizado).
+2. **Procedural Attention:** Look targets e estados de atenção nos 11 personagens (olhos/cabeça acompanhando cartas e truco sem quebrar clipes).
+3. **Dynamic Match Director:** Intensidades 0 a 4, transições e cooldowns de câmeras.
+
+---
+
 ## Estado mais recente — Patch 27 validado, 13/09/2026
 
 Priorize este bloco sobre os relatos históricos abaixo. Projeto `C:/workspace/multigame`; branch `review`, base `a1981dd`. Backup preservado no GitHub em `8f73b34`, preservando integralmente o estado recebido; main mantida intacta em `58b85b8`. Remoto `pc-casa` (`https://github.com/Fabiarog/Multigame.git`).

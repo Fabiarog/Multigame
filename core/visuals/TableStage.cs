@@ -1975,7 +1975,8 @@ public partial class TableStage : Control
         {
             // ===== MODO PÔQUER / CHEFÃO =====
             // Trilha sonora de fundo e efeito de chegada dramática
-            AudioManager.Instance?.PlayMusic("midnight-baron");
+            int bossCharacterIndex = _cast.Count > rivalSeat ? _cast[rivalSeat] : RivalIndex;
+            AudioManager.Instance?.PlayBossMusic(bossCharacterIndex);
             AudioManager.Instance?.PlaySound("boss-arrival");
 
             for (int i = 0; i < _actors.Count; i++)
@@ -2045,6 +2046,7 @@ public partial class TableStage : Control
         else
         {
             // ===== MODO TRUCO / FODINHA =====
+            AudioManager.Instance?.PlayRoomMusic(_currentRoomTheme);
             AudioManager.Instance?.PlaySound("arrival");
 
             // Personagens sentando na cadeira: disparamos o gesto 'entrance' para todos

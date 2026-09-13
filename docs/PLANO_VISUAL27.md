@@ -45,3 +45,17 @@ Orçamento inicial da referência: até 2 luzes com sombra, até 2 probes Once; 
 Reflexo estático pode reter personagens se as máscaras forem erradas; oclusão excessiva pode esconder cartas; GI pode vazar em paredes finas; novos polígonos podem aumentar sombras/draw calls. Comparar e rejeitar alternativas sem ganho perceptível.
 
 Pergunta opcional para a próxima etapa: depois do Classic Club, priorizar o Lounge do Barão ou o Cassino Cyber? O trabalho no primeiro alvo independe dessa resposta.
+
+## Decisões do primeiro alvo — complemento de validação
+
+Implementado via Blender MCP: mesa oval com volume de couro, frisos contínuos, madeira com bevel e carta de cantos arredondados. A sala preserva a arquitetura e foi agrupada em seis zonas estáticas; os materiais dos livros, parede, tapete e cadeiras foram recalibrados. A geometria das cadeiras não foi reconstruída. O script contém uma tentativa de bevel em props selecionados, mas a contagem da sala permaneceu igual: não há evidência para afirmar aumento de geometria desses props.
+
+Corvo permanece como personagem de referência; este passe ajusta sua integração por luzes de acento, sem remodelar seu esqueleto. A reconstrução da Onça e as alterações de Morgana chegaram em paralelo no commit b12c34f e foram preservadas. Elas não constituem resultado medido pelo benchmark de dois Corvos.
+
+ReflectionProbe Once com máscara de cenário foi selecionada. Atlas limitado a quatro entradas de 128 pixels, suficiente para o único probe deste alvo. SSIL, SDFGI e VoxelGI foram capturados como experimentos incrementais em 1080p ultra; não ativados no jogo. LightmapGI continua pendente: a auditoria encontrou apenas UV1, e ainda falta preparar UV2 e uma cena estática para bake no editor. Não existe comparação LightmapGI concluída nem bake AO/normal novo neste passe.
+
+Correções de integração: cadeiras acompanham a troca de sala preservando posição/visibilidade; luzes de acento acompanham mudanças de número de assentos; o tema Cyber recupera sua intensidade própria. A seleção de cartas na animação de corte/embaralhamento/coleta exclui explicitamente DeckShadow; sombras de contato não projetam outra sombra.
+
+O próximo ciclo deve primeiro revisar a lareira (emissão ainda forte), o contato de pés/cadeiras e o bake LightmapGI. Só então decidir a expansão para outra sala. Não aplicar a paleta Classic Club automaticamente ao restante do jogo.
+
+Orçamentos por categoria: duas luzes com sombra; um probe Once; até seis acentos sem sombra; sala + mesa + seis cadeiras = 42.128 triângulos de fonte (sem carrinho e personagens); sem aumento deliberado de física. CPU e memória de sistema ainda precisam de perfil dedicado: o monitor TIME_PROCESS pontual não é uma medição confiável de custo exclusivo desta cena. Memória de render e frame time são publicados com suas limitações em PATCH27_VALIDACAO.md.

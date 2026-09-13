@@ -1015,10 +1015,10 @@ public partial class PokerUI : Control
         {
             string music = rival switch
             {
-                7 => "midnight-baron",
-                8 => "velvet-table",
-                9 => "saloon-swing",
-                10 => "cyber-tango",
+                7 => "barao",
+                8 => "dama",
+                9 => "last-manilha",
+                10 => "midnight-baron",
                 _ => "midnight-baron"
             };
             Core.Systems.AudioManager.Instance?.PlayMusic(music);

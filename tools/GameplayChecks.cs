@@ -31,12 +31,12 @@ public partial class GameplayChecks : Node
         var table = GetTree().CurrentScene.FindChildren("*", "Control", true, false).OfType<TableStage>().Single();
         var premium = (Node3D)table.FindChild("PremiumTable", true, false);
         Assert(premium.Visible == classic, "Premium table follows room selection");
-        var accents = table.FindChildren("*", "SpotLight3D", true, false).OfType<SpotLight3D>().Where(n => n.Name.ToString().StartsWith("TableBounceAccent")).ToArray();
-        Assert(accents.Length == seats && accents.All(n => n.Visible == classic && n.LightCullMask == 4), "Accent lights follow active seats and room");
+        var accents = table.FindChildren("*", "SpotLight3D", true, false).OfType<SpotLight3D>().Where(n => n.LightCullMask == 4).ToArray();
+        Assert(accents.Length == seats && accents.All(n => n.Visible == classic), $"Accent lights follow active seats and room: expected {seats}/{classic}, found {accents.Length}");
         var probes = table.FindChildren("*", "ReflectionProbe", true, false).OfType<ReflectionProbe>().ToArray();
         Assert(probes.Length == (classic ? 1 : 0) && probes.All(n => n.CullMask == 2), "Static probe excludes animated actors/cards");
-        var chair = (Node3D)table.FindChild("Chair0", true, false);
-        Assert(chair.SceneFilePath.Contains("premium") == classic, "Chair asset follows room selection");
+        var chairs = table.FindChildren("*", "Node3D", true, false).OfType<Node3D>().Where(n => n.SceneFilePath.EndsWith("/club_chair.glb") || n.SceneFilePath.EndsWith("/club_chair_premium.glb")).ToArray();
+        Assert(chairs.Length == seats && chairs.All(n => n.SceneFilePath.Contains("premium") == classic), "Chair asset follows room selection");
         var deck = table.FindChild("DeckPile", true, false);
         var shadow = (MeshInstance3D)deck.GetNode("DeckShadow");
         Assert(shadow.CastShadow == GeometryInstance3D.ShadowCastingSetting.Off && shadow.Position.IsEqualApprox(new Vector3(-1.85f,.076f,.2f)), "Deck shadow stays fixed and does not cast another shadow");

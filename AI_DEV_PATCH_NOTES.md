@@ -1,5 +1,44 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
 
+## Patch 28 — 13/09/2026 — Integração Total do Acervo Musical, Motor de Áudio Multi-Formato e Autonomous Quality Auditor
+
+Base `b12c34f`, preservada no GitHub em Backup `8f73b34`. Resultado para review; main preservada. Missão orientada por `docs/PLANO_MUSICA.md`, `learning_proposal.md` e `AGENTS.md`.
+
+- **Integração Completa do Acervo Musical (`assets/Musics/` e `assets/audio/`):**
+  - **Suporte Polifônico Dinâmico Multi-Formato (`AudioManager.cs`):** O motor de áudio passou a carregar nativamente e de forma transparente streams em `.mp3`, `.wav` e `.ogg`, configurando automaticamente loops contínuos sem corte de silêncio artificial e cacheando streams em memória.
+  - **Catálogo Central de 10 Trilhas e Nivelamento Sonoro:**
+    - `menu`: *Tema do Clube* (`Musica Tema Menu.mp3`) $\rightarrow$ Tema oficial do Menu Principal, Hub e Lobby.
+    - `barao`: *Barão da Meia-Noite* (`Barao da meia noite.mp3`) $\rightarrow$ Trilha exclusiva do Lounge do Barão e Boss Barão da Meia-Noite.
+    - `dama`: *Dama de Copas* (`Dama de copas.mp3`) $\rightarrow$ Trilha exclusiva do Salão da Dama e Boss Dama de Copas.
+    - `madrid`: *Salón de Madrid* (`Madrid.mp3`) $\rightarrow$ Trilha nobre com violão espanhol e cordas castelhanas.
+    - `mexico`: *La Mesa de los Recuerdos* (`Mexico.mp3`) $\rightarrow$ Trilha acústica tradicional do Día de Muertos.
+    - `midnight-club`: Trilha vintage aristocrática do Classic Club.
+    - `velvet-table`: Trilha de concentração e cálculo do Pôquer Roguelike.
+    - `last-manilha`: Trilha de tensão de mão de 11 e Boss Madame Morgana.
+    - `copper-steps`: Trilha rítmica acústica do Fodinha.
+    - `midnight-baron`: Trilha de confronto sombrio e Boss Lorde Carniçal.
+  - **Conexão no Hub e Menus:** Integrado em `HubMain._Ready()` e na navegação de abas (a música continua suavemente sem reiniciar a cada troca de painel).
+  - **Ducking Procedural:** Implementado método `SetDucking(active, duckDb, duration)` em `AudioManager.cs` para atenuar a música (-6 dB) durante chamadas de Truco, introduções de chefes e efeitos críticos de mesa.
+  - **Música Contextual em Batalha de Bosses:** `TableStage.cs` e `PokerUI.cs` integrados para disparar dinamicamente a trilha do chefe correspondente (`PlayBossMusic`) e do ambiente (`PlayRoomMusic`).
+
+- **Autonomous Quality Auditor (`tools/quality_auditor.py`):**
+  - Sistema de auditoria e geração automática de relatórios por patch em `docs/quality/latest.json` e `docs/quality/latest.md`.
+  - 9 domínios auditados automaticamente: `BUILD`, `AUDIO`, `ASSETS`, `ANIMATION`, `GAMEPLAY`, `VISUAL`, `ACCESSIBILITY`, `PERFORMANCE` e `NETWORK`.
+  - Política de transparência estrita: reporte transparente de "NOT TESTED" para rede até implementação da Fase 5, sem falso-positivo.
+
+- **Estratégia Canônica de Assets 3D e Skill:**
+  - `AGENTS.md` atualizado com a hierarquia de integrações de assets (Sketchfab, PolyHaven, Poly Pizza, Hyper3D Rodin, Hunyuan3D).
+  - Criação da skill executável `.agents/skills/blender-asset-strategy/SKILL.md`.
+
+- **Validação de QA Integral:**
+  - **Compilação C#:** 0 erros, 0 avisos (`dotnet build`).
+  - **Camera QA:** 100% aprovado (`CAMERA_QA PASS []`).
+  - **Gameplay QA:** 531 asserções aprovadas com êxito.
+  - **Visual Smoke QA:** 27 capturas de tela, 25 ações interativas, 0 falhas e 0 problemas de layout (`VISUAL_QA_RESULT PASS`).
+  - **Quality Audit:** 13 verificações PASS, 0 warnings, 0 falhas, 1 not tested (network).
+
+---
+
 ## Patch 27 — 13/09/2026 — Reconstrução de Dona Onça (Padrão Referência 2), Correção de Ombros de Chefes, Fidelidade Classic Club e Arquitetura Musical
 
 Base `a1981dd`, preservada no GitHub em Backup `8f73b34`. Resultado para review; main preservada. Missão orientada por `docs/MISSAO_MODELOS_3D.md`, `docs/MISSAO_VISUAL_PREMIUM.md` e `AGENTS.md`.

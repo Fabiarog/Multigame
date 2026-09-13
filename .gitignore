@@ -31,3 +31,7 @@ temp/patch26-*
 art/blender/patch26/*_original.glb
 art/blender/patch26/*_refined.glb
 art/blender/patch26/*.png
+
+# Patch 27 local captures/staging; reviewed evidence lives in docs/patch27.
+temp/patch27-*
+art/blender/patch27/*.glb

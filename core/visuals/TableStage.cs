@@ -439,6 +439,7 @@ public partial class TableStage : Control
         var deckShadow = new MeshInstance3D
         {
             Name = "DeckShadow",
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
             Mesh = new QuadMesh { Size = new Vector2(0.68f, 0.92f) },
             RotationDegrees = new Vector3(-90, 0, 0),
             Position = new Vector3(-1.85f, 0.076f, 0.2f),
@@ -458,7 +459,7 @@ public partial class TableStage : Control
             float jitterRot = (i % 5 - 2) * 0.012f;
             var deckCard = new MeshInstance3D
             {
-                Mesh = new BoxMesh { Size = new Vector3(.58f, .018f, .82f) },
+                Mesh = PhysicalCardMesh(),
                 Position = new Vector3(-1.85f + jitterX, .082f + i * .018f, .2f + jitterZ),
                 Rotation = new Vector3(0, jitterRot, 0),
                 MaterialOverride = StageMaterial(i == 11 ? ClubTheme.Panel : ClubTheme.Paper)
@@ -519,6 +520,8 @@ public partial class TableStage : Control
         _fireplaceLight = null;
 
         string roomPath = $"res://assets/models/club/room_{themeId}.glb";
+        if (themeId == "classic_club" && ResourceLoader.Exists("res://assets/models/club/room_classic_club_premium.glb"))
+            roomPath = "res://assets/models/club/room_classic_club_premium.glb";
         if (!ResourceLoader.Exists(roomPath))
             roomPath = "res://assets/models/club/room_classic_club.glb";
 
@@ -623,6 +626,12 @@ public partial class TableStage : Control
             };
             _rimLight.LightEnergy = themeId == "cyber_casino" ? 0.95f : 0.75f;
         }
+        if (_key != null)
+        {
+            if (_tableReflection != null) { _tableReflection.QueueFree(); _tableReflection = null; }
+            RefreshChairTheme();
+            ApplyLighting();
+        }
     }
 
     public void CycleNextRoomTheme()
@@ -685,6 +694,7 @@ public partial class TableStage : Control
         var pic = GetNodeOrNull<TextureRect>("TablePicture");
         if (pic != null && _vignetteMaterial != null)
             pic.Material = enhanced ? _vignetteMaterial : null;
+        ApplyVisualTarget(forward, detailed);
     }
 
     public void AnimateDeck(bool cutting)
@@ -693,7 +703,7 @@ public partial class TableStage : Control
         var cards = new List<MeshInstance3D>();
         foreach (Node3D child in _deckPile.GetChildren())
         {
-            if (child is MeshInstance3D mi && mi.Mesh is BoxMesh) cards.Add(mi);
+            if (child is MeshInstance3D mi && mi.Name != "DeckShadow") cards.Add(mi);
         }
         if (cards.Count == 0) return;
 
@@ -947,7 +957,7 @@ public partial class TableStage : Control
                   };
 
         PackedScene chairScene = null;
-        try { chairScene = GD.Load<PackedScene>("res://assets/models/club/club_chair.glb"); }
+        try { chairScene = GD.Load<PackedScene>(ChairAssetPath); }
         catch (Exception ex) { GD.PushWarning($"[TableStage] Failed to load chair: {ex.Message}"); }
 
         for (int seat = 0; seat < SeatCount; seat++)
@@ -978,6 +988,8 @@ public partial class TableStage : Control
             _world.AddChild(actor);
             var model = GD.Load<PackedScene>(CharacterCatalog.ModelPath(character)).Instantiate<Node3D>();
             actor.AddChild(model);
+            foreach (var child in model.FindChildren("*", "MeshInstance3D", true, false))
+                ((MeshInstance3D)child).Layers |= 4;
             AnimationPlayer animator = null;
             foreach (var node in model.FindChildren("*", "AnimationPlayer", true, false)) { animator = (AnimationPlayer)node; break; }
             _actors.Add(actor); _animators.Add(animator); _positions.Add(actor.Position); _cast.Add(character);
@@ -1006,6 +1018,7 @@ public partial class TableStage : Control
             _world.AddChild(hand); _hands.Add(hand); SetCardCount(seat, 3);
         }
         UpdateCameraPosition();
+        if (_key != null) ApplyLighting();
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -1392,6 +1405,7 @@ public partial class TableStage : Control
         var shadow = new MeshInstance3D
         {
             Name = "CardShadow",
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
             Mesh = new QuadMesh { Size = new Vector2(0.64f, 0.88f) },
             RotationDegrees = new Vector3(-90, 0, 0),
             Position = new Vector3(0, -0.012f, 0),
@@ -1406,12 +1420,7 @@ public partial class TableStage : Control
         card.AddChild(shadow);
 
         // Outer card body with realistic thickness matching deck proportions (0.58m x 0.82m)
-        var bodyMesh = new BoxMesh
-        {
-            Size = new Vector3(0.58f, .018f, 0.82f),
-            SubdivideWidth = 2,
-            SubdivideDepth = 2
-        };
+        var bodyMesh = PhysicalCardMesh();
         var body = new MeshInstance3D
         {
             Mesh = bodyMesh,
@@ -1635,7 +1644,7 @@ public partial class TableStage : Control
         {
             foreach (Node3D child in _deckPile.GetChildren())
             {
-                if (child is MeshInstance3D mi && mi.Mesh is BoxMesh) deckCards.Add(mi);
+                if (child is MeshInstance3D mi && mi.Name != "DeckShadow") deckCards.Add(mi);
             }
         }
 
@@ -2173,7 +2182,7 @@ public partial class TableStage : Control
             if (_fireplaceLight != null && IsInstanceValid(_fireplaceLight))
             {
                 float fireFlicker = Mathf.Sin(_time * 7.5f) * 0.18f + Mathf.Sin(_time * 16.3f) * 0.10f;
-                _fireplaceLight.LightEnergy = 2.2f + fireFlicker;
+                _fireplaceLight.LightEnergy = .85f + fireFlicker * .35f;
             }
         }
         if (_intro) return;

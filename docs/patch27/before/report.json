@@ -1,0 +1,89 @@
+{
+	"gpu": "NVIDIA GeForce RTX 3050",
+	"measurements": [
+		{
+			"draw_calls": 831.0,
+			"label": "1920-baixo-pov",
+			"median_ms": 5.402,
+			"p95_ms": 5.929,
+			"primitives": 292868.0,
+			"process_ms": 22.437,
+			"render_memory_bytes": 270205120.0
+		},
+		{
+			"draw_calls": 804.0,
+			"label": "1920-baixo-mesa",
+			"median_ms": 4.751,
+			"p95_ms": 5.508,
+			"primitives": 466012.0,
+			"process_ms": 6.135,
+			"render_memory_bytes": 270205120.0
+		},
+		{
+			"draw_calls": 1301.0,
+			"label": "1920-ultra-pov",
+			"median_ms": 8.836,
+			"p95_ms": 9.38,
+			"primitives": 571596.0,
+			"process_ms": 10.508,
+			"render_memory_bytes": 515750752.0
+		},
+		{
+			"draw_calls": 1214.0,
+			"label": "1920-ultra-mesa",
+			"median_ms": 9.592,
+			"p95_ms": 11.562,
+			"primitives": 929154.0,
+			"process_ms": 12.574,
+			"render_memory_bytes": 515750752.0
+		},
+		{
+			"draw_calls": 831.0,
+			"label": "3840-baixo-pov",
+			"median_ms": 15.405,
+			"p95_ms": 16.102,
+			"primitives": 467372.0,
+			"process_ms": 16.085,
+			"render_memory_bytes": 752505984.0
+		},
+		{
+			"draw_calls": 804.0,
+			"label": "3840-baixo-mesa",
+			"median_ms": 15.604,
+			"p95_ms": 16.494,
+			"primitives": 825536.0,
+			"process_ms": 17.055,
+			"render_memory_bytes": 752505984.0
+		},
+		{
+			"draw_calls": 831.0,
+			"label": "3840-ultra-pov",
+			"median_ms": 27.0,
+			"p95_ms": 31.375,
+			"primitives": 467372.0,
+			"process_ms": 27.459,
+			"render_memory_bytes": 1446993536.0
+		},
+		{
+			"draw_calls": 804.0,
+			"label": "3840-ultra-mesa",
+			"median_ms": 27.454,
+			"p95_ms": 28.523,
+			"primitives": 825536.0,
+			"process_ms": 28.238,
+			"render_memory_bytes": 1446993536.0
+		}
+	],
+	"renderer": "forward_plus",
+	"version": {
+		"build": "official",
+		"hash": "ed1daf0bf001b61586d9930840f2f1394092c079",
+		"hex": 263938,
+		"major": 4,
+		"minor": 7,
+		"patch": 2,
+		"status": "stable",
+		"string": "4.7.2-stable (official)",
+		"timestamp": 0
+	}
+}

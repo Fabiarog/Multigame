@@ -1,5 +1,42 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
 
+## Patch 27 — 13/09/2026 — Reconstrução de Dona Onça (Padrão Referência 2), Correção de Ombros de Chefes, Fidelidade Classic Club e Arquitetura Musical
+
+Base `a1981dd`, preservada no GitHub em Backup `8f73b34`. Resultado para review; main preservada. Missão orientada por `docs/MISSAO_MODELOS_3D.md`, `docs/MISSAO_VISUAL_PREMIUM.md` e `AGENTS.md`.
+
+- **Reconstrução completa de Dona Onça (`onca.glb`):**
+  - **Eliminação de marionete por primitivas cilíndricas (Classe C/D):** Dona Onça foi reconstruída a partir de escultura estilizada orgânica de alta fidelidade (23.535 vértices, 23.332 polígonos), elevando-a do patamar rudimentar (Referência 1) ao padrão comercial expressivo (Referência 2).
+  - **Anatomia felina e vestuário aristocrático:** Cabeça felina expressiva com rosetas, focinho modelado, olhos vivos e orelhas pontiagudas articuladas. Casaco aveludado bordô sob medida com filigranas douradas, blusa creme, espartilho estruturado, calças justas e cauda longa sinuosa totalmente articulada em 5 seções (`Tail.01..05`).
+  - **Mãos anatômicas de 5 dígitos:** Substituição das antigas pás cilíndricas por mãos articuladas em 5 dígitos com garras douradas retráteis, com separação bmesh limpa eliminando qualquer ponte poligonal ou clipping com o quadril.
+  - **Armature profissional unificado (26 bones):** Rig completo compatível com a hierarquia canônica de Corvo e Bento (`Root`, `Pelvis`, `Spine`, `Chest`, `Neck`, `Head`, `Ear.L/R`, `Shoulder.L/R`, `UpperArm.L/R`, `Forearm.L/R`, `Hand.L/R`, `CardSocket.R`, `Thigh.L/R`, `Shin.L/R`, `Foot.L/R`, `Tail.01..05`). Marcador empty `Head` em `(0, -0.05, 1.55)` para alinhamento automático da câmera POV em primeira pessoa (`Position.Y > 1.3f`).
+  - **Skinning suave com difusão laplaciana em memória:** Pesos calculados por particionamento zonal de influência óssea e suavização laplaciana rápida em Python, garantindo deformações anatômicas naturais nos ombros, cotovelos, joelhos e cauda.
+  - **9 Ações NLA com postura sentada nativa:** Clipes de ação Bezier (`idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish`, `play_card`, `idle_table_01`, `idle_table_02`) com postura sentada à mesa embutida nos keyframes esqueléticos (`Pelvis: -0.36m`, `Thigh: -1.52 rad`, `Shin: +1.48 rad`), compatíveis tanto com a posição ereta quanto à mesa.
+  - **Retratos 3D de estúdio:** Iluminação de estúdio em 3 pontos gerando retratos de alta definição em `assets/models/club/onca_3d.png` e `onca.png`.
+  - **Fontes editáveis preservadas:** Staging em `art/blender/patch26/onca_refined.glb` e master blend editável em `art/blender/patch26/onca_refined.blend`.
+
+- **Correção definitiva de deformação dos chefes (Morgana e Carniçal):**
+  - Repesagem refinada dos ombros e axilas no Blender MCP.
+  - Arestas anômalas com alongamento extremo na pose medida de vitória: Carniçal = 0, Morgana = 0 (reduzidas de 218 → 74 → 0).
+
+- **Evolução do cenário Classic Club e fidelidade visual (`TableStage.VisualTarget.cs`):**
+  - **Mobiliário de luxo:** Mesa premium (`club_table_premium.glb`) com borda de couro chanfrada, friso de latão e entalhes de madeira maciça. Poltronas de veludo aveludado (`club_chair_premium.glb`).
+  - **Cartas físicas com espessura realista:** Malha chanfrada com 1,8cm de espessura e sombras de contato calibradas (`club_card_blank.glb`).
+  - **Iluminação e reflexão avançadas:** Luzes de acento para cada assento ativo e sonda de reflexão estática (`ReflectionProbe`) com máscara isolando personagens e cartas móveis para reflexos nítidos no verniz da madeira e latão.
+
+- **Arquitetura de música dinâmica e identidade por cenário (`docs/PLANO_MUSICA.md`):**
+  - Especificação detalhada de trilhas para os 4 salões: Classic Club (aristocrático acústico), Barão Lounge (jazz noir), Dama Salon (bossa lounge) e Cyber Casino (dark synthwave).
+  - Leitmotivs temáticos para os 4 chefes (Barão da Meia-Noite, Dama de Copas, Madame Morgana e Lorde Carniçal).
+  - Sistema de 4 stems/camadas dinâmicas (Base, Tensão, Truco Decisivo, Clímax) com sincronização em C# e crossfades suaves.
+  - Músicas master integradas em `assets/Musics/`.
+
+- **Validação de QA integral:**
+  - **Compilação C#:** 0 erros, 0 avisos (`dotnet build`).
+  - **Gameplay QA (`gameplay_smoke.gd`):** 530 asserções aprovadas com êxito (solo 2v2, 3v3, rodízio de assentos, integridade do baralho e posse de penas da IA/humano).
+  - **Camera QA (`camera_smoke.gd`):** 100% aprovado (`CAMERA_QA PASS []`) incluindo limites cervicais, enquadramento POV e 4K.
+  - **Visual Smoke QA (`visual_smoke.gd`):** 27 capturas de tela, 25 ações interativas, 0 falhas e 0 problemas de layout (`VISUAL_QA_RESULT PASS`).
+
+---
+
 ## Patch 26 — 12/09/2026 — Primeiro passe de animação do elenco no Blender
 
 Base `10c4b4d`, preservada no GitHub em Backup `a4d12ea`. Resultado para review; main preservada. Missão original registrada em `docs/MISSAO_MODELOS_3D.md` e orientação em `AGENTS.md`.

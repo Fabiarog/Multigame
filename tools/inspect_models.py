@@ -1,27 +1,36 @@
 import bpy
+import os
 
-for name in ["nina", "dama", "morgana", "aki"]:
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    filepath = f"assets/models/club/{name}.glb"
-    bpy.ops.import_scene.gltf(filepath=filepath)
-    print(f"=== {name.upper()}.GLB ===")
-    arm = next((o for o in bpy.data.objects if o.type == 'ARMATURE'), None)
-    if arm:
-        print(f"  Armature: {arm.name}, rot: {arm.rotation_euler}, bones: {len(arm.data.bones)}")
-        if arm.animation_data:
-            print(f"  NLA tracks ({len(arm.animation_data.nla_tracks)}): {[t.name for t in arm.animation_data.nla_tracks]}")
-    meshes = [o for o in bpy.data.objects if o.type == 'MESH']
-    for m in meshes:
-        print(f"  Mesh: {m.name}, verts: {len(m.data.vertices)}, rot: {m.rotation_euler}, loc: {m.location}")
-        for mat in m.data.materials:
-            if mat:
-                base_color = None
-                tex = None
-                if mat.node_tree:
-                    bsdf = next((n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
-                    if bsdf:
-                        if 'Base Color' in bsdf.inputs:
-                            base_color = bsdf.inputs['Base Color'].default_value[:]
-                            if bsdf.inputs['Base Color'].is_linked:
-                                tex = bsdf.inputs['Base Color'].links[0].from_node.name
-                print(f"    Material: {mat.name}, color: {base_color}, tex: {tex}")
+orig_scene = bpy.context.window.scene
+temp_scene = bpy.data.scenes.new("InspectScene")
+bpy.context.window.scene = temp_scene
+
+try:
+    for name in ["zeca.glb", "corvo.glb", "iara.glb", "barao.glb"]:
+        p = os.path.abspath(os.path.join("assets", "models", "club", name))
+        if not os.path.exists(p):
+            continue
+        print(f"=== {name} ===")
+        # clear temp_scene
+        for obj in list(temp_scene.objects):
+            bpy.data.objects.remove(obj, do_unlink=True)
+        bpy.ops.import_scene.gltf(filepath=p)
+        for obj in temp_scene.objects:
+            if obj.type == "ARMATURE":
+                print(f"  ARMATURE: {obj.name}, bones={len(obj.data.bones)}")
+                print(f"    Bones: {[b.name for b in obj.data.bones[:10]]}...")
+            elif obj.type == "MESH":
+                print(f"  MESH: {obj.name}, verts={len(obj.data.vertices)}, polys={len(obj.data.polygons)}")
+                for slot in obj.material_slots:
+                    if slot.material:
+                        print(f"    Material: {slot.material.name}")
+                        if slot.material.use_nodes:
+                            for node in slot.material.node_tree.nodes:
+                                if node.type == "TEX_IMAGE" and node.image:
+                                    print(f"      Texture: {node.image.name} ({node.image.size[0]}x{node.image.size[1]})")
+finally:
+    for obj in list(temp_scene.objects):
+        bpy.data.objects.remove(obj, do_unlink=True)
+    bpy.context.window.scene = orig_scene
+    bpy.data.scenes.remove(temp_scene)
+    print("Inspection complete.")

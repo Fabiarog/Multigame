@@ -1,5 +1,50 @@
 # Prompt de continuidade — MultiGame
 
+## Estado mais recente — Patch 27 validado, 13/09/2026
+
+Priorize este bloco sobre os relatos históricos abaixo. Projeto `C:/workspace/multigame`; branch `review`, base `a1981dd`. Backup preservado no GitHub em `8f73b34`, preservando integralmente o estado recebido; main mantida intacta em `58b85b8`. Remoto `pc-casa` (`https://github.com/Fabiarog/Multigame.git`).
+
+Leia `AGENTS.md`, `docs/MISSAO_MODELOS_3D.md` e `docs/MISSAO_VISUAL_PREMIUM.md`.
+
+### O que foi implementado e validado no Patch 27:
+1. **Dona Onça — Reconstrução Completa (Padrão Referência 2):**
+   - Eliminação do modelo legado de peças cilíndricas primitivas (Classe C/D).
+   - Reconstrução via escultura orgânica estilizada (23.535 vértices, 23.332 polígonos): cabeça felina expressiva com rosetas, orelhas pontiagudas, casaco aveludado bordô sob medida com filigranas douradas, blusa creme, espartilho estruturado, calças ajustadas e cauda longa articulada em 5 seções (`Tail.01..05`).
+   - Mãos anatômicas de 5 dígitos com garras douradas retráteis, pontes poligonais entre mãos e coxas completamente eliminadas via `bmesh`.
+   - Armature canônico unificado (26 bones) compatível com a hierarquia de Corvo e Bento (`Root`, `Pelvis`, `Spine`, `Chest`, `Neck`, `Head`, `Ear.L/R`, `Shoulder.L/R`, `UpperArm.L/R`, `Forearm.L/R`, `Hand.L/R`, `CardSocket.R`, `Thigh.L/R`, `Shin.L/R`, `Foot.L/R`, `Tail.01..05`).
+   - Marcador empty `Head` em `(0, -0.05, 1.55)` para conformidade estrita com a câmera POV em primeira pessoa (`Position.Y > 1.3f`).
+   - Skinning com particionamento zonal e suavização laplaciana rápida em memória.
+   - 9 Ações NLA com postura sentada nativa embutida nos keyframes esqueléticos (`idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish`, `play_card`, `idle_table_01`, `idle_table_02`).
+   - Retratos de estúdio 3D em alta resolução: `assets/models/club/onca_3d.png` e `onca.png`.
+   - Asset runtime exportado: `assets/models/club/onca.glb` (1 malha isolada, 26 bones, 9 ações). Staging em `art/blender/patch26/onca_refined.glb` e `.blend` master em `art/blender/patch26/onca_refined.blend`.
+2. **Correção Definitiva de Deformação dos Chefes (Morgana e Carniçal):**
+   - Vértices dos ombros e axilas repesados no Blender MCP.
+   - Arestas anômalas com estiramento excessivo na pose medida de vitória: Carniçal = 0, Morgana = 0 (reduzidas de 218 → 74 → 0).
+3. **Fidelidade Visual do Classic Club (`TableStage.VisualTarget.cs`):**
+   - Mesa de luxo (`club_table_premium.glb`) com borda chanfrada de couro, friso de latão e entalhes de madeira. Cadeiras de veludo (`club_chair_premium.glb`).
+   - Cartas físicas chanfradas com 1,8cm de espessura e sombras de contato (`club_card_blank.glb`).
+   - Iluminação calibrada e sonda de reflexão ambiente (`ReflectionProbe`) estática com máscara isolando personagens e cartas móveis.
+4. **Arquitetura Musical e Trilha Dinâmica (`docs/PLANO_MUSICA.md`):**
+   - Especificação de trilhas originais para os 4 salões (Classic Club, Barão Lounge, Dama Salon, Cyber Casino) e leitmotivs para os 4 chefes.
+   - Sistema de 4 stems/camadas dinâmicas (Base, Tensão, Truco, Clímax) sincronizadas em C# com crossfades.
+   - Faixas master de referência adicionadas em `assets/Musics/`.
+5. **Validação de QA (100% Aprovada):**
+   - `dotnet build`: 0 erros, 0 avisos.
+   - `visual_smoke.ps1 -CameraOnly`: `CAMERA_QA PASS []`.
+   - `visual_smoke.ps1`: `GAMEPLAY_QA PASS | 530 assertions passed: solo 2v2, 3v3, full seat turns, deck uniqueness, AI/human Pena ownership`.
+   - `visual_smoke.ps1`: `VISUAL_QA_RESULT PASS | screenshots=27 actions=25 layout_issues=0 failures=0`.
+
+### Comandos de Reprodução:
+- **Build C#:** `dotnet build`
+- **Camera QA:** `powershell -ExecutionPolicy Bypass -File tools/visual_smoke.ps1 -CameraOnly`
+- **Gameplay e Visual QA:** `powershell -ExecutionPolicy Bypass -File tools/visual_smoke.ps1`
+
+### Próximos Passos Recomendados:
+1. Reconstrução de Nina e Bento (os próximos personagens da Classe D com esqueleto por peças) seguindo a mesma pipeline de sucesso da Dona Onça (escultura estilizada orgânica, rig canônico de 26 bones, 9 ações NLA com postura sentada e retratos de estúdio).
+2. Expansão dos cenários do Lounge do Barão e Cassino Cyber com a mesma fidelidade da mesa e iluminação do Classic Club.
+
+---
+
 ## Estado mais recente — Patch 26 validado, 12/09/2026
 
 Priorize este bloco sobre os relatos históricos abaixo. Projeto `C:/workspace/multigame`; branch `review`, base `10c4b4d18ece647bd52cc42e3f50cad658ec8f5c`. Backup já publicado em `a4d12eac60cd8a2b340a90aa93bf6614000e3e74`, árvore idêntica à base; main preservada. Remoto `pc-casa`.

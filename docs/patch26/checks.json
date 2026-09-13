@@ -1,0 +1,40 @@
+{
+  "patch": 26,
+  "baseline": "10c4b4d18ece647bd52cc42e3f50cad658ec8f5c",
+  "backup": "a4d12eac60cd8a2b340a90aa93bf6614000e3e74",
+  "characters": 11,
+  "clips": 333,
+  "blender_bounds_samples": 1895,
+  "gameplay_assertions": 531,
+  "visual_screenshots": 27,
+  "visual_actions": 25,
+  "visual_failures": 0,
+  "layout_issues": 0,
+  "camera": "PASS",
+  "export_exit": 0,
+  "package_headless_exit": 0,
+  "known_limitations": [
+    "ObjectDB exit warnings",
+    "No new organic topology; local weights repaired on two characters",
+    "Authoring IK defaults to zero and is not validated for runtime",
+    "No two-machine multiplayer test",
+    "Morgana shoulder transition still has 74 extreme edges in sampled victory pose"
+  ],
+  "weight_repair_vertices": {
+    "morgana": 236,
+    "carnical": 175
+  },
+  "victory_extreme_edges": {
+    "morgana": {
+      "before": 218,
+      "after": 74
+    },
+    "carnical": {
+      "before": 300,
+      "after": 0
+    }
+  },
+  "deformation_regression": "PASS",
+  "runtime_hashes_match_candidates": true,
+  "export_method": "Godot main executable (console wrapper stalled; direct repeat exited 0)"
+}

@@ -1,6 +1,6 @@
 # Plano simples de evolução — MultiGame
 
-Atualizado em 12/09/2026. Base: 11 personagens, quatro salas, pôquer roguelike, truco com equipes de IA, Fodinha solo e mesa 2.5D/POV. Patch 25 implementa o primeiro passe de estabilidade e materiais; a nova arquitetura e revisão de pesos ainda são próximas etapas.
+Atualizado em 12/09/2026. Base: 11 personagens, quatro salas, pôquer roguelike, truco com equipes de IA, Fodinha solo e mesa 2.5D/POV. Patch 25 corrigiu ritmo/estabilidade e Patch 26 integrou um primeiro passe de animação em 11 personagens via Blender, preservando 333 clipes. Nova arquitetura, retopologia e revisão de pesos continuam próximas etapas.
 
 ## Agora: ritmo e estabilidade
 
@@ -9,11 +9,17 @@ Atualizado em 12/09/2026. Base: 11 personagens, quatro salas, pôquer roguelike,
 - **Implementado:** reduzir movimentos preserva os tempos de leitura e decisão. Aceleração de regras existe somente no teste isolado.
 - Testar pôquer, truco 1x1/2x2/3x3 e Fodinha em janela e 4K, registrando imagens e falhas no log de atualização.
 
+## Entregue no Patch 26
+
+- Repouso de 4 segundos, microanimações, antecipação e acomodação dos gestos; reações mais legíveis sem acelerar as regras.
+- Fontes Blender editáveis dos 11 personagens e controles IK de autoria em oito deles. Auditoria e comparações em `docs/PATCH26_VALIDACAO.md`.
+- Testes de regras, interface, câmera/4K e exportação Windows aprovados. Não houve aumento de geometria.
+
 ## Próximo passe de personagens
 
-- Usar como referência os cinco modelos detalhados já prontos: Corvo, Barão, Dama, Iara e Zeca.
+- Priorizar Onça, conforme a preferência já expressa, usando Corvo e os demais modelos detalhados como referência. Depois migrar Nina e Bento sem perder sua identidade.
 - Consolidar pesos e esqueleto deles antes de migrar Nina, Bento e Onça: raiz sem deformação, coluna/peito sem translação agressiva, clavículas sustentando os braços e poses sem atravessar o tórax.
-- Garantir sete clipes por personagem: `idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish` e `play_card`.
+- Preservar os 333 clipes existentes e garantir os sete clipes básicos por personagem: `idle`, `entrance`, `truco`, `victory`, `boss_intro`, `flourish` e `play_card`.
 - Fazer uma revisão visual por clipe antes de substituir qualquer modelo jogável. Os arquivos base dos três que ainda não têm fonte detalhada devem continuar preservados.
 
 ## Cenário e apresentação
@@ -31,5 +37,5 @@ Atualizado em 12/09/2026. Base: 11 personagens, quatro salas, pôquer roguelike,
 ## Perguntas curtas para a próxima decisão
 
 1. Você quer que o ritmo normal tenha mais clima de mesa real (mais pausado) ou de jogo rápido, mas sem sobreposição? Vou manter um meio-termo até sua resposta.
-2. Para o próximo modelo detalhado, você prefere priorizar **Onça**, **Nina** ou **Bento**? Hoje Corvo, Barão, Dama, Iara e Zeca são a base mais avançada.
+2. Na evolução da Onça, prefere manter roupa e acessórios atuais ou dar mais destaque aos detalhes felinos? Até uma resposta, preservar o figurino e trabalhar primeiro proporções/articulações.
 3. No Fodinha, você quer que a campanha roguelike comece com relíquias/modificadores simples ou primeiro com mais personagens e chefes?

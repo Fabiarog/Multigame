@@ -1,0 +1,22 @@
+{
+  "patch": 26,
+  "baseline": "10c4b4d18ece647bd52cc42e3f50cad658ec8f5c",
+  "backup": "a4d12eac60cd8a2b340a90aa93bf6614000e3e74",
+  "characters": 11,
+  "clips": 333,
+  "blender_bounds_samples": 1895,
+  "gameplay_assertions": 533,
+  "visual_screenshots": 27,
+  "visual_actions": 25,
+  "visual_failures": 0,
+  "layout_issues": 0,
+  "camera": "PASS",
+  "export_exit": 0,
+  "package_headless_exit": 0,
+  "known_limitations": [
+    "ObjectDB exit warnings",
+    "No new organic topology or weights",
+    "Authoring IK defaults to zero and is not validated for runtime",
+    "No two-machine multiplayer test"
+  ]
+}

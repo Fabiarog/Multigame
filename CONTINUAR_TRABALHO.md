@@ -1,5 +1,21 @@
 # Prompt de continuidade — MultiGame
 
+## Estado mais recente — Patch 26 validado, 12/09/2026
+
+Priorize este bloco sobre os relatos históricos abaixo. Projeto `C:/workspace/multigame`; branch `review`, base `10c4b4d18ece647bd52cc42e3f50cad658ec8f5c`. Backup já publicado em `a4d12eac60cd8a2b340a90aa93bf6614000e3e74`, árvore idêntica à base; main preservada. Remoto `pc-casa`.
+
+Leia `AGENTS.md` e `docs/MISSAO_MODELOS_3D.md`. A missão mais recente pede personagens estilizados, leves e reconhecíveis, com prioridade para animação; não é uma conversão automática para AAA realista. Blender 5.2.1 via MCP em 127.0.0.1:9876 obrigatório para o trabalho 3D. Reiniciado nesta retomada com `tools/start_blender_mcp.py`. Não fechar nem substituir cenas do usuário.
+
+Implementação: os 11 candidatos foram gerados no Blender e integrados nos GLBs do jogo. Repouso de 4 segundos com microanimação de cabeça/peito/partes secundárias, antecipação e atraso por canal, acomodação ao final dos gestos, reações de aproximadamente 2,2 segundos. Contatos de jogar/embaralhar/cortar/distribuir mantêm duração aproximada. Preservados 333 clipes, malhas, texturas e ossos deformadores. Ajuste discreto na altura da cabeça dos três modelos por peças e rugosidade de tecidos sem textura de rugosidade. Oito fontes Blender receberam controles de autoria IK com influência zero: não são IK validado em execução.
+
+A conversão experimental de Nina/Bento/Onça para esqueleto falhou na comparação após exportação (peças giravam/se separavam), foi rejeitada e removida do script de produção. Esses três preservam os pivôs antigos. Não afirmar que houve retopologia, novos pesos orgânicos ou teste de todas as poses extremas. A missão completa ainda requer trabalho específico nessas áreas.
+
+Fontes editáveis comprimidas e relatórios: `art/blender/patch26`. As cópias locais `_original.glb` e `_refined.glb` são staging ignorado pelo Git. `refine_all_cast26_mcp.py` usa a base Git fixa acima, evitando aplicar novamente o refinamento sobre o resultado. Rodar via `blender_bridge.py execute_code --code-file tools/refine_all_cast26_mcp.py --timeout 300`; depois `tools/validate_cast26.py` e a prévia via `tools/preview_all_cast26_mcp.py --timeout 600`. Nunca executar duas tarefas MCP simultaneamente. Conferir status interno do JSON, além do código de saída.
+
+Evidência já obtida: compatibilidade de 11 personagens/333 clipes; 1.895 amostras de limites de poses exportadas (cinco fases por clipe, originais Corvo/Onça incluídos). Renderizações de idle/truco/victory para todos. Comparações em `docs/patch26`. Regras Godot PASS com 533 verificações; interface PASS (27 capturas/25 ações, zero falhas/layout), câmera PASS incluindo 4K nos três modos. Windows exportado; pacote iniciou menu em headless com saída 0. Documentação pronta; conferir publicação no remoto review com `git status` e `git ls-remote` antes de reportar. A missão completa de modelagem não está encerrada: continuar por Onça, validando nova estrutura por poses extremas e comparação após exportação, antes de migrar Nina/Bento.
+
+Para QA/exportar, usar SDK .NET 8 portátil em `C:/Users/Lucas/AppData/Local/Temp/multigame-tools/dotnet` em DOTNET_ROOT **e primeiro no PATH**; Godot console em `C:/Users/Lucas/AppData/Local/Temp/multigame-tools/godot/Godot_v4.7.2-stable_mono_win64/Godot_v4.7.2-stable_mono_win64_console.exe`. `tools/visual_smoke.ps1` isola saves. Logs atuais `temp/patch26-*`. Um aviso de objeto retido ao encerrar o teste de regras persiste; não confundir com falha de partida.
+
 ## Estado mais recente — 12/09/2026, Patch 25
 
 Trabalhe em `C:/workspace/multigame`. Leia este bloco antes dos relatos históricos abaixo. A base recebida é `1f30bf0` (review), com 11 personagens e quatro salas; não recrie as correções da Aki nem do mascote. Backup no GitHub: `43e7f9a`, árvore idêntica à base recebida, preservando também a história anterior de Backup. Main não deve ser alterada. Remoto: pc-casa, https://github.com/Fabiarog/Multigame.git.

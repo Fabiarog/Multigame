@@ -1,5 +1,21 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
 
+## Patch 26 — 12/09/2026 — Primeiro passe de animação do elenco no Blender
+
+Base `10c4b4d`, preservada no GitHub em Backup `a4d12ea`. Resultado para review; main preservada. Missão original registrada em `docs/MISSAO_MODELOS_3D.md` e orientação em `AGENTS.md`.
+
+- **11 personagens / 333 clipes:** refinados via Blender MCP na porta 9876, com repouso de aproximadamente 4 segundos, microanimação de cabeça/peito/partes secundárias, antecipação e atraso por canal, reações de aproximadamente 2,2 segundos e acomodação ao final dos gestos.
+- **Compatibilidade:** preservados nomes, malhas, texturas e ossos deformadores. Ações de contato com cartas mantêm duração aproximada. Nenhuma subdivisão indiscriminada. Arquivos GLB somados cresceram 1,29% por reamostragem.
+- **Fontes editáveis:** 11 arquivos Blender comprimidos, auditoria por personagem, hashes e relatórios em `art/blender/patch26`. Oito fontes receberam controles IK de autoria com influência zero; precisam de ajuste/validação antes de animar e não representam IK em execução.
+- **Legados:** ajuste discreto de proporção da cabeça de Nina/Bento/Onça. Preservada articulação por peças; conversão experimental para esqueleto rejeitada após apresentar desalinhamento no GLB reimportado. Não foram integrados candidatos com esse defeito.
+- **Materiais:** rugosidade de casacos/cetim ajustada somente em canais sem textura. Cenários existentes preservados neste passe.
+- **Validação:** compatibilidade 11/333; 1.895 amostras de limites de poses e renders de idle/truco/vitória; compilação/importação aprovadas; regras PASS (533 verificações), interface PASS (27 capturas/25 ações, zero falhas/layout), câmera PASS incluindo 4K nos três modos. Exportação Windows concluída e pacote inicializou o menu em teste headless, saída 0.
+- **Limites:** não houve retopologia orgânica nem pintura nova de pesos. Testes de poses extremas, ajuste confiável de IK, evolução maior dos três modelos legados e multiplayer entre máquinas continuam pendentes. Avisos de objetos retidos ao encerrar QA/pacote persistem.
+
+Evidências: [PATCH26_VALIDACAO.md](docs/PATCH26_VALIDACAO.md). Plano e prompt de continuidade atualizados. Este é um primeiro passe integrado de animação, não a conclusão de toda a missão de modelagem.
+
+---
+
 ## Patch 25 — 12/09/2026 — Ritmo, transições e polimento de imagem
 
 Base recebida `1f30bf0`; preservada no GitHub em Backup `43e7f9a` antes das alterações. Trabalho destinado a review; main preservada.

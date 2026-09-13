@@ -1,6 +1,33 @@
 # Prompt de continuidade — MultiGame
 
-## Estado mais recente — Patch 31, Salón de Madrid ("Club de la Villa"), 13/09/2026
+## Estado mais recente — Patch 32, La Mesa de los Recuerdos ("Día de Muertos"), 13/09/2026
+
+Priorize este bloco. Projeto C:/workspace/multigame, branch `review`. Base recebida preservada em Backup `18bdc3b`, main preservada em `58b85b8`. Remoto `pc-casa`.
+
+Concluído no Blender MCP (127.0.0.1:9876):
+- Cenário 3D completo e autoral `assets/models/club/room_mexico_recuerdos.glb` (513 KB, 100% PBR, zero vazamento de objetos).
+- Arquitetura colonial de hacienda rural mexicana durante o Día de Muertos: pátio interno em pedra laja com frisos de adobe; tapete serape artesanal em tons carmesim, ocre e turquesa sob a mesa; caminho guiado de pétalas de cempasúchil conduzindo da entrada à mesa e ao altar.
+- Hero Asset Altar de Ofrendas: 3 patamares com toalhas de renda branca rendilhada, arco superior de cempasúchil, dezenas de velas votivas artesanais em degradê com chamas emissivas quentes, molduras coloniais com retratos memoriais fictícios, incensário de copal (sahumador), pratos de barro negro com pan de muerto e vasos de Talavera com flores.
+- Guirlandas de papel picado rendilhado em magenta, roxo, amarelo dourado e turquesa estendidas em diagonais com catenária natural.
+- Alpendre lateral esquerdo com colunas rústicas sobre pedestais de pedra e violão acústico mexicano apoiado contra a parede.
+- Arcos laterais direitos revelando o céu noturno azul-cobalto e a lua cheia prateada iluminando a silhueta dos telhados do pueblo.
+- Script de geração paramétrica preservado em `tools/build_mexico_recuerdos.py`.
+
+Integração Godot 4.7.2 (`TableStage.cs`, `TableStage.VisualTarget.cs`, `AudioManager.cs`):
+- Tema `"mexico_recuerdos"` ("La Mesa de los Recuerdos") adicionado ao ciclo de cenários ([M]).
+- Iluminação dedicada com arandelas e lanterna central em tom âmbar de vela (`#ff9830`), realce de borda noturno azulado (`#4068a0`), luz do altar (`AltarOfrendaGlow`), alpendre com violão (`PorchLanternGlow`) e luar noturno do pátio (`CourtyardMoonlight`).
+- Trilha sonora autêntica mexicana `assets/Musics/Mexico.mp3` (*La Mesa de los Recuerdos*) ativada automaticamente.
+
+QA e Validação:
+- `dotnet build`: 0 erros, 0 avisos.
+- Camera QA: 100% PASS (`CAMERA_QA PASS []`).
+- Gameplay QA: 531 asserções de regras PASS.
+- Visual Smoke QA: 27 capturas de tela, 25 ações interativas, 0 falhas e 0 problemas de layout (`VISUAL_QA_RESULT PASS`).
+- Quality Auditor: 14 verificações PASS, 6 cenários GLB validados no catálogo (`python tools/quality_auditor.py`).
+
+---
+
+## Estado anterior — Patch 31, Salón de Madrid ("Club de la Villa"), 13/09/2026
 
 Priorize este bloco. Projeto C:/workspace/multigame, branch `review`. Base recebida preservada em Backup `18bdc3b`, main preservada em `58b85b8`. Remoto `pc-casa`.
 

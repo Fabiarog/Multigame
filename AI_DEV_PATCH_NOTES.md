@@ -1,5 +1,35 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
 
+## Patch 32 — 13/09/2026 — Novo Mapa "La Mesa de los Recuerdos" (Día de Muertos no Interior Mexicano)
+
+Base 5e55829 preservada; main preservada em 58b85b8; Backup preservado. Desenvolvimento estritamente em review.
+Ambiente 3D autoral modelado no Blender 5.2 via MCP local (127.0.0.1:9876) e integrado à runtime Godot 4.7.2.
+
+- **Arquitetura Colonial de Hacienda & Día de Muertos:**
+  - Modelado e exportado `assets/models/club/room_mexico_recuerdos.glb` (513 KB, 100% PBR, zero vazamento de objetos).
+  - Pátio interno com piso de lajes rústicas de pedra (*piedra laja*) e frisos perimetrais de tijolos de barro cozido (*adobe/barro rojo*).
+  - Sob a mesa central, tapete têxtil artesanal tradicional mexicano (*rebozo/serape*) em tons carmesim, ocre e turquesa com franjas douradas.
+  - Caminho guiado de pétalas de calêndula (*camino de cempasúchil*) conduzindo da entrada até a mesa de jogo e em direção ao altar de oferendas.
+  - **Hero Asset — Grande Altar de Ofrendas:** Estrutura escalonada em 3 níveis com toalheiros rendilhados brancos, grande arco superior recoberto de cempasúchil, dezenas de velas votivas artesanais em degradê de alturas com chamas emissivas quentes, molduras coloniais em madeira com retratos memoriais fictícios, incensário cerimonial de copal (*sahumador*), pratos de barro negro com pão dos mortos (*pan de muerto*) e vasos de Talavera com flores.
+  - Paredes de estuque rústico em terracota e amarelo ocre colonial, vigas mestras de madeira de pino rústico e beirais de telhas coloniais de barro vermelho curvo (*tejas*).
+  - Guirlandas de papel picado rendilhado em magenta, roxo, amarelo dourado e turquesa estendidas pelo pátio com suave curvatura catenária natural.
+  - Alpendre lateral esquerdo com colunas de madeira rústica sobre pedestais de pedra talhada, floreiras e violão acústico clássico mexicano apoiado com respeito contra a parede.
+  - Arcos laterais direitos abertos revelando a vista noturna serena do pueblo mexicano sob o céu noturno azul-cobalto e a lua cheia prateada.
+  - Grande lanterna central de ferro forjado e vidro âmbar de 6 faces suspensa sobre a mesa.
+- **Iluminação & Integração em Runtime (`TableStage.cs`, `TableStage.VisualTarget.cs`, `AudioManager.cs`):**
+  - Adicionado `mexico_recuerdos` ("La Mesa de los Recuerdos") ao ciclo de temas ([M]).
+  - Paleta de iluminação dedicada: arandelas e lanterna central em tom âmbar de vela (`#ff9830`, energia 1.20 / 1.40) e realce de borda noturno azulado suave (`#4068a0`, energia 0.80).
+  - Luzes pontuais exclusivas do Día de Muertos: luz espiritual do altar (`AltarOfrendaGlow`, `#ff851b`, alcance 6.5m), luz acolhedora do alpendre com violão (`PorchLanternGlow`, `#ffaa33`, alcance 5.5m) e luz difusa noturna do pátio (`CourtyardMoonlight`, `#1a3366`, alcance 7.5m).
+  - Integração automática da trilha sonora autêntica mexicana `assets/Musics/Mexico.mp3` (*La Mesa de los Recuerdos*), ativada ao entrar no cenário.
+- **Auditoria de Qualidade e QA Integral:**
+  - `dotnet build`: 0 erros, 0 avisos.
+  - Camera QA: 100% aprovado (`CAMERA_QA PASS []`).
+  - Gameplay QA: 531 asserções de regras aprovadas com 100% de sucesso.
+  - Visual Smoke QA: 27 capturas de tela, 25 ações interativas, 0 falhas e 0 problemas de layout (`VISUAL_QA_RESULT PASS`).
+  - Quality Auditor: 14 verificações PASS, 6 cenários GLB validados no catálogo de salas (`quality_auditor.py`).
+
+---
+
 ## Patch 31 — 13/09/2026 — Novo Mapa "Salón de Madrid" (Club de la Villa)
 
 Base 87a7b98 preservada integralmente em Backup 18bdc3b antes das alterações; main preservada em 58b85b8. Desenvolvimento estritamente em review.

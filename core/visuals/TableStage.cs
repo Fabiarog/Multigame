@@ -57,8 +57,8 @@ public partial class TableStage : Control
     private Tween _pendantPulseTween;
     private Node3D _roomInstance;
     private string _currentRoomTheme = "classic_club";
-    private static readonly string[] RoomThemeIds = new[] { "classic_club", "barao_lounge", "dama_salon", "cyber_casino", "madrid_salon" };
-    private static readonly string[] RoomThemeNames = new[] { "Salão Clássico", "Lounge do Barão", "Salão da Dama", "Cassino Cyber", "Salón de Madrid" };
+    private static readonly string[] RoomThemeIds = new[] { "classic_club", "barao_lounge", "dama_salon", "cyber_casino", "madrid_salon", "mexico_recuerdos" };
+    private static readonly string[] RoomThemeNames = new[] { "Salão Clássico", "Lounge do Barão", "Salão da Dama", "Cassino Cyber", "Salón de Madrid", "La Mesa de los Recuerdos" };
     private Button _roomThemeButton;
     private Control _inGameSettingsModal;
     private CanvasLayer _inGameSettingsCanvas;
@@ -578,13 +578,14 @@ public partial class TableStage : Control
 
                 Color sconceColor = themeId switch
                 {
-                    "barao_lounge" => new Color("#d4a840"),
-                    "dama_salon"   => new Color("#ffaa66"),
-                    "cyber_casino" => new Color("#44d4ea"),
-                    "madrid_salon" => new Color("#f5a236"),
-                    _              => new Color("#ffdf90")
+                    "barao_lounge"     => new Color("#d4a840"),
+                    "dama_salon"       => new Color("#ffaa66"),
+                    "cyber_casino"     => new Color("#44d4ea"),
+                    "madrid_salon"     => new Color("#f5a236"),
+                    "mexico_recuerdos" => new Color("#ff9830"),
+                    _                  => new Color("#ffdf90")
                 };
-                float sconceEnergy = themeId == "cyber_casino" ? 1.4f : themeId == "madrid_salon" ? 1.25f : 1.1f;
+                float sconceEnergy = themeId == "cyber_casino" ? 1.4f : themeId == "madrid_salon" ? 1.25f : themeId == "mexico_recuerdos" ? 1.20f : 1.1f;
 
                 // Back Wall Sconces
                 foreach (float sx in new[] { -3.8f, 0.0f, 3.8f })
@@ -607,7 +608,7 @@ public partial class TableStage : Control
                 {
                     Position = new Vector3(0.0f, 4.8f, 0.0f),
                     LightColor = sconceColor,
-                    LightEnergy = themeId == "cyber_casino" ? 1.55f : themeId == "madrid_salon" ? 1.45f : 1.25f,
+                    LightEnergy = themeId == "cyber_casino" ? 1.55f : themeId == "madrid_salon" ? 1.45f : themeId == "mexico_recuerdos" ? 1.40f : 1.25f,
                     OmniRange = 9.0f,
                     OmniAttenuation = 1.15f,
                     ShadowEnabled = false
@@ -696,6 +697,52 @@ public partial class TableStage : Control
 
                     AudioManager.Instance?.PlayRoomMusic("madrid_salon");
                 }
+                else if (themeId == "mexico_recuerdos")
+                {
+                    // Altar de Ofrendas warm spiritual amber glow
+                    var altarGlow = new OmniLight3D
+                    {
+                        Name = "AltarOfrendaGlow",
+                        Position = new Vector3(0.0f, 2.2f, -6.2f),
+                        LightColor = new Color("#ff851b"),
+                        LightEnergy = 1.40f,
+                        OmniRange = 6.5f,
+                        OmniAttenuation = 1.2f,
+                        ShadowEnabled = false
+                    };
+                    _world.AddChild(altarGlow);
+                    _sconceLights.Add(altarGlow);
+
+                    // Porch lantern warm illumination (left wall with guitar)
+                    var porchGlow = new OmniLight3D
+                    {
+                        Name = "PorchLanternGlow",
+                        Position = new Vector3(-8.5f, 2.4f, 0.0f),
+                        LightColor = new Color("#ffaa33"),
+                        LightEnergy = 1.10f,
+                        OmniRange = 5.5f,
+                        OmniAttenuation = 1.3f,
+                        ShadowEnabled = false
+                    };
+                    _world.AddChild(porchGlow);
+                    _sconceLights.Add(porchGlow);
+
+                    // Courtyard moonlight fill from right archways
+                    var courtyardMoon = new OmniLight3D
+                    {
+                        Name = "CourtyardMoonlight",
+                        Position = new Vector3(8.5f, 3.2f, 0.0f),
+                        LightColor = new Color("#1a3366"),
+                        LightEnergy = 0.85f,
+                        OmniRange = 7.5f,
+                        OmniAttenuation = 1.4f,
+                        ShadowEnabled = false
+                    };
+                    _world.AddChild(courtyardMoon);
+                    _sconceLights.Add(courtyardMoon);
+
+                    AudioManager.Instance?.PlayRoomMusic("mexico_recuerdos");
+                }
             }
         }
         catch (Exception ex)
@@ -708,13 +755,14 @@ public partial class TableStage : Control
         {
             _rimLight.LightColor = themeId switch
             {
-                "cyber_casino" => new Color("#00d4ff"),
-                "barao_lounge" => new Color("#f0b830"),
-                "dama_salon"   => new Color("#ff6688"),
-                "madrid_salon" => new Color("#ff9838"),
-                _              => new Color("#6ea8a4")
+                "cyber_casino"     => new Color("#00d4ff"),
+                "barao_lounge"     => new Color("#f0b830"),
+                "dama_salon"       => new Color("#ff6688"),
+                "madrid_salon"     => new Color("#ff9838"),
+                "mexico_recuerdos" => new Color("#4068a0"),
+                _                  => new Color("#6ea8a4")
             };
-            _rimLight.LightEnergy = themeId == "cyber_casino" ? 0.95f : themeId == "madrid_salon" ? 0.85f : 0.75f;
+            _rimLight.LightEnergy = themeId == "cyber_casino" ? 0.95f : themeId == "madrid_salon" ? 0.85f : themeId == "mexico_recuerdos" ? 0.80f : 0.75f;
         }
         if (_key != null)
         {
@@ -738,7 +786,7 @@ public partial class TableStage : Control
         int idx = Array.IndexOf(RoomThemeIds, _currentRoomTheme);
         string name = idx >= 0 ? RoomThemeNames[idx] : "Salão Clássico";
         _roomThemeButton.Text = $"Cenário: {name} [M]";
-        _roomThemeButton.TooltipText = "M alterna o cenário (Salão Clássico, Lounge do Barão, Salão da Dama, Cassino Cyber, Salón de Madrid).";
+        _roomThemeButton.TooltipText = "M alterna o cenário (Salão Clássico, Lounge do Barão, Salão da Dama, Cassino Cyber, Salón de Madrid, La Mesa de los Recuerdos).";
     }
 
     public void ApplyLighting()

@@ -283,8 +283,8 @@
       }
     },
     "after": {
-      "sha256": "f7f0da9c21e9ab53d1bc6da99a4b80d7103d3e77e6f43fea45486c7b18a21c13",
-      "bytes": 25041384,
+      "sha256": "16f56894b207243088197a86831c973be8eafff47ec78597f3a7d0a41bdef58b",
+      "bytes": 25041392,
       "meshes": 1,
       "vertices": 26376,
       "joints": 21,
@@ -679,8 +679,8 @@
       }
     },
     "after": {
-      "sha256": "674d46d163c0b894d4d8a52a2eda3a53493faf303976710d3e56adc287a9c3a5",
-      "bytes": 6384128,
+      "sha256": "a7f88e4c7da4dffa4c7a07d7a517cb3f61c765c44b49eef992ed91507098b4e2",
+      "bytes": 6384140,
       "meshes": 1,
       "vertices": 42997,
       "joints": 21,

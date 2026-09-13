@@ -36,17 +36,27 @@ Vértices abaixo são contados após a importação no Blender; podem diferir do
 - Compatibilidade estática: 11 personagens, 333 clipes, mesmos números de malhas e juntas; sem crescimento de geometria. GLBs somados: 93.435.060 → 94.637.548 bytes (+1,29%). O crescimento vem principalmente da reamostragem de animação.
 - Blender: 1.895 amostras de limites espaciais, em cinco fases de cada clipe, incluindo os originais de Corvo e Onça. Isso detecta explosões/valores inválidos, mas não comprova boa deformação em todas as articulações.
 - Inspeção visual: renders de idle, truco e vitória dos 11 personagens. Comparação original/candidato de Corvo e Onça. [Elenco](patch26/elenco-truco.jpg) e [comparação](patch26/comparacao-corvo-onca.jpg).
-- Godot: compilação sem erros/avisos e importação sem erros. Regras PASS, 533 verificações; interface PASS, 27 capturas, 25 ações, zero falhas/layout. [Relatório visual](patch26/visual-report.json).
+- Godot: compilação sem erros/avisos e importação sem erros. Regras PASS, 531 verificações na execução final; interface PASS, 27 capturas, 25 ações, zero falhas/layout. [Relatório visual](patch26/visual-report.json).
 - Câmera PASS nos três modos, incluindo densidade 4K, limites do pescoço e alternância de visão. [Relatório](patch26/camera-report.json). [Mesa](patch26/truco-mesa.png) e [POV](patch26/truco-pov.png).
 - Exportação Windows concluída (`Game Hub.exe` e `Game Hub.pck` locais); pacote iniciou o menu no teste headless, saída 0. O PCK é artefato local ignorado pelo Git, conforme a configuração existente.
+
+## Correção adicional de deformação — Morgana e Carniçal
+
+A comparação ampliada da pose de vitória revelou vértices dos braços vinculados rigidamente ao peito/pélvis nos GLBs originais. Arestas de poucos milímetros se alongavam 0,6–0,94 m, formando pontas visíveis.
+
+O Blender corrigiu os pesos de 236 vértices de Morgana e 175 de Carniçal, interpolando pesos existentes dos braços próximos. O reparo é limitado à região distal dos braços desses dois modelos; não altera a geometria, as texturas nem cria ossos. A geração parte sempre da base imutável.
+
+Na pose de vitória reimportada, a contagem de arestas com comprimento maior que 8 cm e alongamento acima de 5× caiu de 300 para **zero** no Carniçal e de 218 para **74** na Morgana. As pontas grandes desapareceram na comparação visual; a transição dos ombros da Morgana ainda precisa de revisão. Essa medição é específica à pose amostrada, não uma garantia para todo movimento possível. `tools/inspect_cast26_deformation_mcp.py` reproduz a medição e protege o ganho com verificações para o candidato.
+
+[Comparação antes/depois](patch26/correcao-pesos-bosses.jpg). Relatórios `deformation-original.json` e `deformation-refined.json` nas fontes Blender. Após o reparo, importação, regras (531 verificações), interface (27 capturas/25 ações), regressão de deformação e exportação foram repetidas com sucesso. O wrapper console ficou preso após gravar o pacote; o executável principal concluiu a nova exportação com saída 0, e o pacote também iniciou o menu com saída 0.
 
 ## Limites e trabalho pendente
 
 A tentativa de converter Nina/Bento/Onça de pivôs para esqueleto foi rejeitada: o GLB reimportado apresentou peças desalinhadas, apesar de matrizes próximas no Blender. O código experimental não faz parte do gerador de produção; nenhum candidato com essa falha foi integrado.
 
-Não houve retopologia orgânica, pintura nova de pesos, dedos novos, novo sistema facial ou reconstrução de cenário neste passe. Os controles IK são preparação para autoria e precisam de ajuste de alvos/polos e validação em poses extremas antes de uso. Não afirmar que são IK de pernas com contato confiável no chão ou IK em execução. Os 333 clipes preservados não equivalem a 333 atuações novas.
+Não houve retopologia orgânica, repintura completa do elenco, dedos novos, novo sistema facial ou reconstrução de cenário neste passe. Houve correção localizada de pesos em Morgana e Carniçal, descrita acima. Os controles IK são preparação para autoria e precisam de ajuste de alvos/polos e validação em poses extremas antes de uso. Não afirmar que são IK de pernas com contato confiável no chão ou IK em execução. Os 333 clipes preservados não equivalem a 333 atuações novas.
 
-Persistem avisos de 1–2 objetos retidos ao encerrar os processos de QA. Multiplayer entre duas máquinas, desempenho comparativo e novas poses extremas não foram validados nesta etapa. Os testes não garantem ausência de todos os bugs.
+Persistem avisos de 1–2 objetos retidos ao encerrar os processos de QA e três no teste final do pacote. Multiplayer entre duas máquinas, desempenho comparativo e novas poses extremas não foram validados nesta etapa. Os testes não garantem ausência de todos os bugs.
 
 ## Reprodução e fontes
 

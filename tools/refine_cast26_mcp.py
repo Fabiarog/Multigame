@@ -4,6 +4,7 @@ Run through blender_bridge.py. Candidate files never replace runtime files here.
 import bpy, math, json, subprocess, hashlib
 from pathlib import Path
 from mathutils import Vector, Quaternion
+from mathutils.kdtree import KDTree
 
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'art/blender/patch26'
@@ -12,6 +13,37 @@ BASELINE='10c4b4d18ece647bd52cc42e3f50cad658ec8f5c'
 CAST=globals().get('CAST_IDS', ['onca'])
 original=bpy.context.window.scene
 report=[]
+
+def repair_limb_fallback_weights(objects, ident):
+    """Repair unmapped source twist/finger weights assigned rigidly to the torso.
+
+    Limit transfer to distal arm regions in these two audited rest meshes;
+    interpolate nearby existing limb weights, never fabricate new skin groups.
+    """
+    if ident not in ('morgana','carnical'):return 0
+    changed=0
+    for obj in objects:
+        if obj.type!='MESH' or not obj.vertex_groups:continue
+        weights=[{obj.vertex_groups[g.group].name:g.weight for g in v.groups if g.weight>1e-6} for v in obj.data.vertices]
+        seeds=[i for i,w in enumerate(weights) if sum(v for n,v in w.items() if n.startswith(('Hand.','Forearm.','UpperArm.')))>.95]
+        if not seeds:continue
+        tree=KDTree(len(seeds))
+        for i in seeds:tree.insert(obj.data.vertices[i].co,i)
+        tree.balance()
+        for vertex in obj.data.vertices:
+            w=weights[vertex.index]
+            if abs(vertex.co.x)<.25 or vertex.co.z<.70:continue
+            if sum(v for n,v in w.items() if n in ('Root','Pelvis','Spine','Chest'))<.999:continue
+            near=[(i,d) for co,i,d in tree.find_n(vertex.co,6) if d<.08]
+            if not near:continue
+            total=sum(1/max(d,.001)**2 for i,d in near);new={}
+            for i,d in near:
+                factor=(1/max(d,.001)**2)/total
+                for name,value in weights[i].items():new[name]=new.get(name,0)+value*factor
+            for group in list(vertex.groups):obj.vertex_groups[group.group].remove([vertex.index])
+            for name,value in new.items():obj.vertex_groups[name].add([vertex.index],value,'REPLACE')
+            changed+=1
+    return changed
 
 def curves(action):
     result=[]
@@ -139,6 +171,7 @@ try:
         scene.render.fps=30
         bpy.ops.import_scene.gltf(filepath=str(source))
         objects=list(scene.objects)
+        repaired_weights=repair_limb_fallback_weights(objects,ident)
         # Compact the legacy neck gap without adding any geometry or changing faces.
         if ident in ('nina','bento','onca'):
             head=next(o for o in objects if o.type=='EMPTY' and o.name.split('.')[0]=='Head')
@@ -172,10 +205,13 @@ try:
             export_animations=True,export_animation_mode='NLA_TRACKS',export_force_sampling=True,export_frame_range=False,export_def_bones=True)
         bpy.data.libraries.write(str(OUT/(ident+'_refined.blend')),{scene},fake_user=True,compress=True)
         report.append({'id':ident,'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'candidate_sha256':hashlib.sha256(destination.read_bytes()).hexdigest(),
-            'vertices':sum(len(o.data.vertices) for o in export_objects if o.type=='MESH'),'authoring_controls':authoring_controls,'rigs':[{'name':o.name,'bones':len(o.data.bones)} for o in export_objects if o.type=='ARMATURE'],'changes':changes})
+            'vertices':sum(len(o.data.vertices) for o in export_objects if o.type=='MESH'),'repaired_weight_vertices':repaired_weights,'authoring_controls':authoring_controls,'rigs':[{'name':o.name,'bones':len(o.data.bones)} for o in export_objects if o.type=='ARMATURE'],'changes':changes})
         bpy.context.window.scene=original
         for o in list(scene.objects):bpy.data.objects.remove(o,do_unlink=True)
         bpy.data.scenes.remove(scene)
 finally:bpy.context.window.scene=original
-(OUT/'refinement-report.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+previous=json.loads((OUT/'refinement-report.json').read_text(encoding='utf-8')) if (OUT/'refinement-report.json').exists() else []
+merged={r['id']:r for r in previous}
+merged.update({r['id']:r for r in report})
+(OUT/'refinement-report.json').write_text(json.dumps(list(merged.values()),indent=2),encoding='utf-8')
 print(json.dumps([{'id':r['id'],'vertices':r['vertices'],'rigs':r['rigs'],'updated_tracks':len(r['changes'])} for r in report]))

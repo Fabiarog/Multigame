@@ -12,6 +12,7 @@ Atualizado em 12/09/2026. Base: 11 personagens, quatro salas, pôquer roguelike,
 ## Entregue no Patch 26
 
 - Repouso de 4 segundos, microanimações, antecipação e acomodação dos gestos; reações mais legíveis sem acelerar as regras.
+- Corrigidos 411 vértices nos braços de Morgana/Carniçal que formavam pontas ao levantar as mãos; ombros de Morgana continuam exigindo revisão.
 - Fontes Blender editáveis dos 11 personagens e controles IK de autoria em oito deles. Auditoria e comparações em `docs/PATCH26_VALIDACAO.md`.
 - Testes de regras, interface, câmera/4K e exportação Windows aprovados. Não houve aumento de geometria.
 

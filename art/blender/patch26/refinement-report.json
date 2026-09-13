@@ -1652,8 +1652,9 @@
   {
     "id": "morgana",
     "source_sha256": "4084158a3d3a14779540fd2f3fc7b69d0a9b1e9e4fe25e328815402582f99b93",
-    "candidate_sha256": "674d46d163c0b894d4d8a52a2eda3a53493faf303976710d3e56adc287a9c3a5",
+    "candidate_sha256": "a7f88e4c7da4dffa4c7a07d7a517cb3f61c765c44b49eef992ed91507098b4e2",
     "vertices": 42694,
+    "repaired_weight_vertices": 236,
     "authoring_controls": 8,
     "rigs": [
       {
@@ -1901,8 +1902,9 @@
   {
     "id": "carnical",
     "source_sha256": "22bb139f38b2f4843bbd78857daa1373ede08974b9f13640ea2d7c8d48983c95",
-    "candidate_sha256": "f7f0da9c21e9ab53d1bc6da99a4b80d7103d3e77e6f43fea45486c7b18a21c13",
+    "candidate_sha256": "16f56894b207243088197a86831c973be8eafff47ec78597f3a7d0a41bdef58b",
     "vertices": 26376,
+    "repaired_weight_vertices": 175,
     "authoring_controls": 8,
     "rigs": [
       {

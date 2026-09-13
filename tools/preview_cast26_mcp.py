@@ -7,7 +7,7 @@ original=bpy.context.window.scene
 rows=[]
 try:
     for ident in globals().get('CAST_IDS',['onca']):
-        for version in (('original','refined') if ident in ('onca','corvo') else ('refined',)):
+        for version in (('original','refined') if ident in globals().get('COMPARE_IDS',('onca','corvo')) else ('refined',)):
             scene=bpy.data.scenes.new('Preview26');bpy.context.window.scene=scene
             bpy.ops.import_scene.gltf(filepath=str(OUT/(ident+'_'+version+'.glb')))
             actors=list(scene.objects)
@@ -46,5 +46,6 @@ try:
             for obj in list(scene.objects):bpy.data.objects.remove(obj,do_unlink=True)
             bpy.data.scenes.remove(scene)
 finally:bpy.context.window.scene=original
-(OUT/'stress-bounds.json').write_text(json.dumps(rows,indent=2),encoding='utf-8')
+report_name='stress-bounds.json' if len({r['id'] for r in rows})==11 else 'stress-bounds-subset.json'
+(OUT/report_name).write_text(json.dumps(rows,indent=2),encoding='utf-8')
 print('STRESS_BOUNDS_PASS',len(rows))

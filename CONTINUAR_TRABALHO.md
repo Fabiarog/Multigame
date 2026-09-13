@@ -1,6 +1,33 @@
 # Prompt de continuidade — MultiGame
 
-## Estado mais recente — Patch 30, lareira e preparação UV2, 13/09/2026
+## Estado mais recente — Patch 31, Salón de Madrid ("Club de la Villa"), 13/09/2026
+
+Priorize este bloco. Projeto C:/workspace/multigame, branch `review`. Base recebida preservada em Backup `18bdc3b`, main preservada em `58b85b8`. Remoto `pc-casa`.
+
+Concluído no Blender MCP (127.0.0.1:9876):
+- Cenário 3D completo e autoral `assets/models/club/room_madrid_salon.glb` (727 KB, 100% PBR, zero vazamento de objetos).
+- Arquitetura castelhana/madrilenha histórica: piso de limestone polido com gregas douradas e tapete de veludo vermelho granada; lambril de azulejos Talavera (1,45m) com rodameio de nogueira entalhada; estuque superior bordô com molduras boiserie douradas; grande arco monumental em pedra arenisca com pilastras caneladas e brasão heráldico do "Club de la Villa".
+- Perspectiva arquitetônica profunda: abertura vazada real no arco monumental revelando corredor iluminado em perspectiva com piso contínuo, paredes em arenito e lanterna âmbar suspensa.
+- Bodega madrilenha na parede lateral esquerda (balcão de mármore Emperador, rodapé e apoio para pés em latão, prateleiras e garrafas de vinho Rioja/licor).
+- Sacada noturna com janelas em arco e cortinas de veludo carmesim na parede lateral direita.
+- Teto apainelado em caixotões de nogueira (artesonado) com florões de ouro envelhecido; lustre de ferro forjado de 8 braços com arandelas de vela e chamas âmbar.
+- Script de geração paramétrica preservado em `tools/build_madrid_salon.py`.
+
+Integração Godot 4.7.2 (`TableStage.cs`, `TableStage.VisualTarget.cs`, `AudioManager.cs`):
+- Tema `"madrid_salon"` ("Salón de Madrid") adicionado ao ciclo de cenários ([M]).
+- Iluminação dedicada com arandelas âmbar (`#f5a236`), realce dourado (`#ff9838`), luz do corredor (`ArchwayGlow`), iluminação da bodega (`BodegaBarGlow`) e luar noturno na sacada (`WindowMoonlight`).
+- Trilha sonora autêntica de Madrid tocada automaticamente (`AudioManager.Instance?.PlayRoomMusic("madrid_salon")`).
+
+QA e Validação:
+- `dotnet build`: 0 erros, 0 avisos.
+- Camera QA: 100% PASS (`CAMERA_QA PASS []`).
+- Gameplay QA: 531 asserções de regras PASS.
+- Visual Smoke QA: 27 capturas de tela, 25 ações interativas, 0 falhas e 0 problemas de layout (`VISUAL_QA_RESULT PASS`).
+- Quality Auditor: 14 verificações PASS (`python tools/quality_auditor.py`).
+
+---
+
+## Estado anterior — Patch 30, lareira e preparação UV2, 13/09/2026
 
 Priorize este bloco para o trabalho visual. Projeto C:/workspace/multigame, review; base recebida 87a7b98 (inclui Patch 29 de atenção/direção de partida), preservada em Backup 18bdc3b com árvore idêntica. Main permanece 58b85b8. Conferir Git/remoto antes de editar, pois houve trabalho paralelo nas etapas anteriores.
 

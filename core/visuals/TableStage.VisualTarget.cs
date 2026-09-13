@@ -10,9 +10,10 @@ public partial class TableStage
     private void ApplyVisualTarget(bool forward, bool detailed)
     {
         bool classic = _currentRoomTheme == "classic_club";
-        _environment.GlowBloom = classic ? 0 : .16f;
-        _environment.TonemapExposure = classic ? 1.05f : 1.10f;
-        _environment.AmbientLightColor = new Color(classic ? "#80949e" : "#92aba2");
+        bool madrid = _currentRoomTheme == "madrid_salon";
+        _environment.GlowBloom = classic ? 0 : madrid ? .12f : .16f;
+        _environment.TonemapExposure = classic ? 1.05f : madrid ? 1.08f : 1.10f;
+        _environment.AmbientLightColor = new Color(classic ? "#80949e" : madrid ? "#7d5844" : "#92aba2");
         _key.LightEnergy = classic ? 1.1f : 1.35f;
         _key.LightAngularDistance = classic && detailed ? .65f : 0;
         _key.ShadowNormalBias = classic ? .35f : 1.8f;
@@ -25,7 +26,7 @@ public partial class TableStage
         _fillLight.LightColor = new Color(classic ? "#afc5ce" : "#4a3525");
         _fillLight.LightEnergy = classic ? 1.1f : .28f;
         _fillLight.Visible = classic || forward;
-        _rimLight.LightEnergy = classic ? .48f : _currentRoomTheme == "cyber_casino" ? .95f : .75f;
+        _rimLight.LightEnergy = classic ? .48f : _currentRoomTheme == "cyber_casino" ? .95f : madrid ? .85f : .75f;
         if (_tableReflection != null) _tableReflection.Visible = classic;
         ApplyPremiumTable(classic);
         if (_seatAccents.Count != _positions.Count)

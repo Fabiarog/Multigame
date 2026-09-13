@@ -18,6 +18,8 @@ A base visual anterior é a1981dd. Backup remoto 8f73b34 preserva o estado receb
 
 ## Método de comparação
 
+Resultados completos e oito pares de imagens em [COMPARACAO.md](patch27/COMPARACAO.md). No teste, 1080p baixo POV passou de 5,402 para 4,167 ms; 1080p ultra mesa, de 9,592 para 9,126 ms. Em 4K ultra houve aumento de aproximadamente 6% na mediana e P95 do POV de 42,167 ms. Portanto, não afirmar melhoria de desempenho em todos os perfis nem 30 FPS estáveis em 4K.
+
 Godot **4.7.2.stable.mono.official.ed1daf0bf**, Forward+/Vulkan, **NVIDIA GeForce RTX 3050**. Dois Corvos, 18 cartas, mesma composição, perfis baixo/ultra, 1920×1080 e 3840×2160, POV/mesa. VSync desativado, aquecimento antes de cada amostra e 90 intervalos reais de quadros; mediana e percentil 95 registrados. Não equivale a um perfil separado de CPU e GPU.
 
 As capturas mantêm composição, mas partículas e o sistema operacional impedem identidade de pixels entre execuções. Editor aberto e atividades externas não são controlados; diferenças pequenas podem ser ruído. Os números descrevem este computador e esta cena, não todos os modos nem hardware mínimo. O benchmark não testa animações: elas são verificadas separadamente.
@@ -35,6 +37,12 @@ Comparação incremental em 1080p ultra: a variante `none` remove o probe; as de
 Pesquisa oficial: [comparação de GI](https://docs.godotengine.org/en/4.7/tutorials/3d/global_illumination/introduction_to_global_illumination.html), [ReflectionProbe](https://docs.godotengine.org/en/4.7/classes/class_reflectionprobe.html), [LightmapGI](https://docs.godotengine.org/en/4.7/classes/class_lightmapgi.html), [demos oficiais MIT](https://github.com/godotengine/godot-demo-projects). A [demo Compositor Effects da Godot Foundation](https://store.godotengine.org/asset/godot-foundation/compositor-effects-post-processing-demo/) foi encontrada, mas não integrada: dependência desnecessária neste passe e marcada instável na consulta. Nenhum plugin externo instalado ou código de terceiros copiado.
 
 ## Reprodução
+
+Validação concluída na cópia isolada de b12c34f com a correção do material da carta: compilação 0 erros/0 avisos; regras 532 asserções; interface 27 capturas/25 ações/0 falhas de layout; câmera PASS incluindo 4K; regressão das quatro salas com 2/4/6 assentos e animação do baralho PASS; oito capturas/medições Golden Scene e cinco variantes de iluminação concluídas. Relatórios da interface e câmera estão em `docs/patch27`.
+
+Persistem avisos ao encerrar: 1–2 objetos retidos nos testes gerais e 7 recursos Texture nos ensaios Vulkan. Não foram observadas exceções durante as execuções finais; esses avisos não foram resolvidos nem tratados como prova de estabilidade de memória em partidas longas. A primeira versão do teste procurava cadeiras/luzes por nomes que Godot renomeia automaticamente; foi corrigida para identificar assets e máscaras, e repetida com sucesso.
+
+A exportação Windows da cópia isolada terminou com código 0. Pacote de revisão local em `temp/patch27-build`, sem substituir o executável da pasta principal durante alterações paralelas. O commit 8159a1e trouxe mudanças musicais depois da base medida; os benchmarks deste relatório não validam esse novo sistema de áudio.
 
 Definir `DOTNET_ROOT` para o SDK .NET 8 e `GODOT_BIN` para o executável Godot .NET. Compilar antes de executar. `tools/golden_smoke.ps1` aceita `-Mode regression`, `-Mode scene` e `-Mode gi`, com `-OutputDirectory` opcional; isola os saves. `tools/visual_smoke.ps1` verifica regras/interface, e `-CameraOnly` verifica câmeras. Executar medições sequencialmente, sem renderizações Blender simultâneas.
 

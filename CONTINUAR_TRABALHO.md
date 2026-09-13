@@ -1,5 +1,23 @@
 # Prompt de continuidade — MultiGame
 
+## Continuidade da missão visual premium — comparação concluída em 13/09/2026
+
+Este bloco complementa os patches abaixo, sem reverter o trabalho musical ou os personagens recebidos em paralelo. Projeto principal: `C:/workspace/multigame`, review. Verificar Git antes de editar: houve commits simultâneos b12c34f e 8159a1e durante esta etapa. Backup remoto continua em 8f73b34, correspondente ao estado recebido a1981dd mais arquivos novos daquela ocasião; **não é backup integral das mudanças posteriores**. Main deve permanecer em 58b85b8.
+
+Leia `docs/MISSAO_VISUAL_PREMIUM.md`, `docs/PLANO_VISUAL27.md`, `docs/PATCH27_VALIDACAO.md` e `docs/patch27/COMPARACAO.md`. Primeiro alvo é Classic Club com Corvo. Mesa e carta modeladas no Blender MCP 9876, fontes em art/blender/patch27. Sala agrupada em seis zonas, paleta/rugosidade calibradas e probe estático Once. Não substituir outras salas por essa paleta. Não afirmar retopologia do Corvo, mapas novos ou bake LightmapGI: não foram feitos.
+
+Integração em `TableStage.VisualTarget.cs`; cartas físicas em `TableStage.cs`. Preserve a exclusão de DeckShadow nas animações de cortar/embaralhar/coletar, a troca de asset das cadeiras e atualização de acentos por assento. O atlas de reflexos é configurado em project.godot; a API ReflectionProbeSetResolution é obsoleta e não funciona em Godot 4.
+
+QA concluído em cópia isolada `C:/workspace/multigame-visual27-qa` de b12c34f com material da carta corrigido e verificações atualizadas: build limpo, regras 532, interface 27/25 sem falhas, câmera com 4K, regressão das quatro salas/2–6 assentos/baralho. `tools/golden_smoke.ps1 -Mode regression|scene|gi` reproduz os ensaios após build/importação; use Godot .NET 4.7.2 e SDK .NET 8 portátil. Os ensaios têm saves isolados. Evidências finais estão versionadas em docs/patch27. A cópia de QA tem arquivos .import regenerados locais: não copiar todo o seu status para a pasta principal.
+
+Benchmark: RTX 3050, 1080p ultra ~8,8–9,1 ms; 4K ultra ~28,6–29,1 ms. P95 4K POV 42,167 ms: investigar estabilidade antes de prometer 30 FPS. Memória do renderer aumentou cerca de 23 MiB sobre o anterior; não confundir com VRAM física. SSIL/SDFGI/VoxelGI experimentais rejeitados para esta configuração, LightmapGI não medido. Persistem avisos de 1–3 objetos e 7 texturas no encerramento dos testes/pacote, sem investigação de crescimento em partidas longas.
+
+Pacote isolado exportado em `C:/workspace/multigame/temp/patch27-build/MultiGame.exe`; exportação e abertura do menu em headless terminaram com 0. Não inclui as mudanças musicais posteriores a b12c34f. O executável principal foi preservado durante as edições simultâneas. Usar o SDK .NET 8 primeiro no PATH para exportação; modelos de exportação ficam no APPDATA real, portanto um APPDATA vazio provoca erro de templates ausentes.
+
+Próximo trabalho concreto: (1) revisar a emissão forte da lareira e contato/postura das cadeiras em movimento; (2) preparar UV2 e cena estática para comparar LightmapGI; (3) capturar partidas longas e perfilar CPU/memória/4K; (4) só então expandir a outra sala. Pergunta opcional de direção: Lounge do Barão ou Cassino Cyber depois do Classic Club? Antes de trabalhar nos personagens, conferir as mudanças de Onça/Morgana recebidas em paralelo e suas próprias evidências; não assumir que a comparação de dois Corvos valida o elenco inteiro.
+
+---
+
 ## Estado mais recente — Patch 28 validado, 13/09/2026
 
 Priorize este bloco sobre os relatos históricos abaixo. Projeto `C:/workspace/multigame`; branch `review`, base `b12c34f`. Backup preservado no GitHub em `8f73b34`, preservando integralmente o estado recebido; main mantida intacta em `58b85b8`. Remoto `pc-casa` (`https://github.com/Fabiarog/Multigame.git`).

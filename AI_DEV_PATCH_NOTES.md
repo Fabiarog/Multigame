@@ -1,5 +1,19 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
 
+## Complemento visual 27 — 13/09/2026 — Comparação final e regressão da cena de referência
+
+Classic Club/Corvo: concluídas as medições e capturas da mesa modelada no Blender, carta arredondada, materiais, agrupamento do cenário e iluminação estática. Base anterior a1981dd preservada em Backup 8f73b34; integração chegou a review em b12c34f. A medição final foi isolada nessa base com material da carta corrigido, preservando alterações musicais paralelas de 8159a1e. Main preservada.
+
+- **Correções verificadas:** sombra do baralho fora da lista de cartas animadas; sombras de contato sem projetar outra sombra; cadeiras acompanham sala; acentos acompanham 2/4/6 participantes; intensidade do Cyber restaurada ao sair do Classic Club.
+- **Reflexos:** uma sonda Once, cenário na máscara 2, atores na máscara 4 para luzes de acento. Atlas de quatro entradas/128 pixels evita a alocação excessiva observada com o padrão. SSIL/SDFGI/VoxelGI comparados e não habilitados no jogo; LightmapGI ainda depende de UV2/bake no editor.
+- **Desempenho medido na RTX 3050:** 1080p baixo POV 5,402 → 4,167 ms; ultra mesa 9,592 → 9,126 ms. 4K ultra ficou cerca de 6% mais caro, mediana 28,6–29,1 ms, com P95 do POV de 42,167 ms. Não há garantia de 30 FPS estáveis nem ganho em todos os perfis.
+- **QA da base visual isolada:** compilação limpa; regras 532 verificações; interface 27 capturas/25 ações/0 falhas de layout; câmera PASS com 4K; regressão de sala/assentos/baralho PASS. Exportação Windows e inicialização do menu do pacote terminaram com saída 0. Avisos de objetos/texturas retidos no encerramento persistem.
+- **Precisão do escopo:** cadeira recebeu material, sem nova geometria; mesa tem frisos e bevel, sem entalhes esculpidos; carta tem espessura estilizada. Não houve novos mapas AO/normal, UV2 nem remodelagem do Corvo. Os resultados não auditam a geometria de Onça/Morgana nem o áudio novo.
+
+Evidências: [comparação antes/depois](docs/patch27/COMPARACAO.md), [validação e limites](docs/PATCH27_VALIDACAO.md), [plano](docs/PLANO_VISUAL27.md). Próximo passe: lareira, contato das cadeiras/postura, UV2/LightmapGI, estabilidade de memória e frame time; depois decidir expansão para outra sala.
+
+---
+
 ## Patch 28 — 13/09/2026 — Integração Total do Acervo Musical, Motor de Áudio Multi-Formato e Autonomous Quality Auditor
 
 Base `b12c34f`, preservada no GitHub em Backup `8f73b34`. Resultado para review; main preservada. Missão orientada por `docs/PLANO_MUSICA.md`, `learning_proposal.md` e `AGENTS.md`.

@@ -35,3 +35,7 @@ art/blender/patch26/*.png
 # Patch 27 local captures/staging; reviewed evidence lives in docs/patch27.
 temp/patch27-*
 art/blender/patch27/*.glb
+
+# Fireplace refinement staging; selected evidence is versioned in docs/patch30.
+temp/patch30-*
+art/blender/patch30/*.glb

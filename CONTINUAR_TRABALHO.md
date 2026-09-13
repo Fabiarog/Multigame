@@ -1,5 +1,21 @@
 # Prompt de continuidade — MultiGame
 
+## Estado mais recente — Patch 30, lareira e preparação UV2, 13/09/2026
+
+Priorize este bloco para o trabalho visual. Projeto C:/workspace/multigame, review; base recebida 87a7b98 (inclui Patch 29 de atenção/direção de partida), preservada em Backup 18bdc3b com árvore idêntica. Main permanece 58b85b8. Conferir Git/remoto antes de editar, pois houve trabalho paralelo nas etapas anteriores.
+
+Concluído no Blender MCP 9876: materiais dos troncos separados em carvão/brasas, correção do painel que escondia troncos e bevel de quatro peças da lareira. Fonte 30.692 vértices/16.560 triângulos; seis grupos. Nenhuma alteração de código de animação, áudio, luzes ou qualidade gráfica neste passe. Não reverter o sistema de atenção recebido no Patch 29.
+
+UV2 candidata criada **depois** de agrupar o cenário, evitando unir objetos com atlas independentes sobrepostos. Export contém TEXCOORD_1 nas 37 primitivas e passou nas verificações de presença/formato/0–1. **Ainda não houve bake LightmapGI** nem avaliação de densidade/margem/overlap; não relatar iluminação pré-calculada como implementada. As demais salas continuam sem esse preparo.
+
+Leia docs/PLANO_VISUAL30.md e docs/patch30/REVISAO.md. Fonte editável de peças: art/blender/patch30/classic_club_hearth_author.blend; fonte agrupada com UV2: classic_club_hearth_uv2.blend. Produção: assets/models/club/room_classic_club_premium.glb. Script refine_hearth30_mcp.py parte sempre da fonte fixa do Patch 27, sem reaplicar sobre o candidato. Usa cenas temporárias e restaura a cena original. inspect_hearth30.py registra contexto/integrações; validate_hearth30.py verifica export; report_hearth30.py publica comparações a partir de temp/patch30-before e after. Nunca duas operações MCP simultâneas.
+
+QA concluído no estado recebido mais o asset novo: build limpo, regras 531, interface 27 capturas/25 ações sem falhas, regressão de quatro salas/assentos/baralho PASS. Exportação do executável principal Game Hub.exe e inicialização headless do menu passaram com 0; PCK local atualizado e ignorado pelo Git. Logs temp/patch30-*. Avisos de objetos/texturas no encerramento persistem.
+
+Desempenho nesta sessão: ultra 1080p ~19,6–20,5 ms, 4K ~58–58,8 ms. A base medida na mesma sessão já era muito mais lenta que no Patch 27; processos externos não foram controlados. Não prometer ganho de desempenho nem 30 FPS em 4K. Próxima etapa: medir ambiente controlado e preparar cena de bake LightmapGI com UV2 candidata, avaliando qualidade e custo antes de habilitar. Preservar a arquitetura e identidade das outras salas.
+
+---
+
 ## Continuidade da missão visual premium — comparação concluída em 13/09/2026
 
 Este bloco complementa os patches abaixo, sem reverter o trabalho musical ou os personagens recebidos em paralelo. Projeto principal: `C:/workspace/multigame`, review. Verificar Git antes de editar: houve commits simultâneos b12c34f e 8159a1e durante esta etapa. Backup remoto continua em 8f73b34, correspondente ao estado recebido a1981dd mais arquivos novos daquela ocasião; **não é backup integral das mudanças posteriores**. Main deve permanecer em 58b85b8.

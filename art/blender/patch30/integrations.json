@@ -1,0 +1,22 @@
+{
+  "polyhaven": {
+    "status": "success",
+    "enabled": false
+  },
+  "sketchfab": {
+    "status": "success",
+    "enabled": false
+  },
+  "polypizza": {
+    "status": "success",
+    "enabled": false
+  },
+  "hyper3d": {
+    "status": "success",
+    "enabled": false
+  },
+  "hunyuan3d": {
+    "status": "success",
+    "enabled": false
+  }
+}

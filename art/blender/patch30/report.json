@@ -1,0 +1,127 @@
+{
+  "source": "art/blender/patch27/room_classic_club.blend",
+  "changes": [
+    {
+      "object": "FireLog_0.0",
+      "ember_faces": 20,
+      "total_faces": 44
+    },
+    {
+      "object": "FireLog_0.3",
+      "ember_faces": 20,
+      "total_faces": 44
+    },
+    {
+      "object": "FireLog_-0.35",
+      "ember_faces": 20,
+      "total_faces": 44
+    },
+    {
+      "object": "FireplaceCol_1.65",
+      "vertices_before": 24,
+      "vertices_after": 96
+    },
+    {
+      "object": "FireplaceCol_-1.65",
+      "vertices_before": 24,
+      "vertices_after": 96
+    },
+    {
+      "object": "FireplaceHearth",
+      "vertices_before": 24,
+      "vertices_after": 96
+    },
+    {
+      "object": "FireplaceMantel",
+      "vertices_before": 24,
+      "vertices_after": 96
+    }
+  ],
+  "cavity_depth_before": 0.5,
+  "cavity_depth_after": 0.06,
+  "meshes": 6,
+  "vertices": 30692,
+  "triangles": 16560,
+  "uv_layers": {
+    "ClassicZone_0": 2,
+    "ClassicZone_-1": 2,
+    "ClassicZone_1": 2,
+    "ClassicZone_-2": 2,
+    "ClassicZone_-3": 2,
+    "ClassicZone_3": 2
+  },
+  "bounds": {
+    "ClassicZone_0": [
+      [
+        -14.0,
+        -7.5,
+        -0.75
+      ],
+      [
+        14.0,
+        10.5,
+        7.350000858306885
+      ]
+    ],
+    "ClassicZone_-1": [
+      [
+        -6.434999942779541,
+        5.735000133514404,
+        0.0
+      ],
+      [
+        -3.565000057220459,
+        6.424999713897705,
+        4.610000133514404
+      ]
+    ],
+    "ClassicZone_1": [
+      [
+        3.565000057220459,
+        5.735000133514404,
+        0.0
+      ],
+      [
+        6.434999942779541,
+        6.424999713897705,
+        4.610000133514404
+      ]
+    ],
+    "ClassicZone_-2": [
+      [
+        -8.719498634338379,
+        1.3000000715255737,
+        -0.5649999976158142
+      ],
+      [
+        -7.6805009841918945,
+        1.899999976158142,
+        0.37000003457069397
+      ]
+    ],
+    "ClassicZone_-3": [
+      [
+        -13.204999923706055,
+        -5.555000305175781,
+        3.950000286102295
+      ],
+      [
+        -13.094999313354492,
+        3.555000066757202,
+        4.150000095367432
+      ]
+    ],
+    "ClassicZone_3": [
+      [
+        13.094999313354492,
+        -5.555000305175781,
+        3.950000286102295
+      ],
+      [
+        13.204999923706055,
+        3.555000066757202,
+        4.150000095367432
+      ]
+    ]
+  }
+}

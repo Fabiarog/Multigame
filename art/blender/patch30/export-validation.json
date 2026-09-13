@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "sha256": "61f230feb0dffbb2dc7c1db8867227189d472212daeaa7945b451f4d9835f84b",
+  "bytes_before": 1254764,
+  "bytes_after": 1600876,
+  "meshes": 6,
+  "primitives_with_uv2": 37,
+  "uv2_vertices": 36983,
+  "lightmap_baked": false
+}

@@ -1106,11 +1106,13 @@ public partial class PokerUI : Control
             Core.Systems.AudioManager.Instance?.PlaySound("win");
             _stage?.PlayGesture(0, "big_win");
             _stage?.PlayGesture(1, "lose");
+            MatchPresentationDirector.Instance?.NotifyTrickResolved(0, 1, false);
         }
         else
         {
             _stage?.PlayGesture(0, "bad_beat");
             _stage?.PlayGesture(1, "big_win");
+            MatchPresentationDirector.Instance?.NotifyTrickResolved(1, 0, false);
         }
         _tutorialPanel.Visible = false;
         _overlayTitle.Text = passed ? $"Mesa {round} vencida" : "A mesa levou a melhor";
@@ -1132,6 +1134,7 @@ public partial class PokerUI : Control
             CharacterProgress.RecordWin();
             _stage?.PlayGesture(0, "victory");
             _stage?.PlayGesture(1, "lose");
+            MatchPresentationDirector.Instance?.NotifyBossCritical("boss", 0f);
         }
         else
         {

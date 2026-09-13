@@ -713,6 +713,7 @@ public partial class TrucoUI : Control
     private void OnScoreUpdated(int team1, int team2)
     {
         _scoreLabel.Text = $"{team1:00} : {team2:00}";
+        MatchPresentationDirector.Instance?.NotifyMatchPoint(team1, team2, 12);
     }
 
     private void OnViraRevealed(string viraDisplay, string manilhaDisplay)
@@ -783,11 +784,14 @@ public partial class TrucoUI : Control
         _declineBtn.Visible = !byPlayer;
         _raiseBtn.Visible = !byPlayer && stakes < 12;
         _trucoOverlay.Visible = true;
+        int defendingSeat = byPlayer ? 1 : 0;
+        MatchPresentationDirector.Instance?.NotifyTrucoCall(callingSeat, defendingSeat, stakes, byPlayer);
     }
 
     private void OnTrucoResponded(bool accepted, bool byPlayer)
     {
         int respondingSeat = byPlayer ? 0 : 1;
+        MatchPresentationDirector.Instance?.NotifyTrucoResponse(respondingSeat, accepted);
         _stage?.PlayGesture(respondingSeat, accepted ? "accept_truco" : "decline_truco");
         string responderName = byPlayer ? "Você" : "O adversário";
         _statusLabel.Text = accepted
@@ -832,6 +836,7 @@ public partial class TrucoUI : Control
             _stage?.PlayGesture(winner, "trick_win");
             int loser = winner == 0 ? 1 : 0;
             _stage?.PlayGesture(loser, "trick_lose");
+            MatchPresentationDirector.Instance?.NotifyTrickResolved(winner, loser, false);
         }
         _ = _stage?.CollectRoundCardsToDiscard();
     }

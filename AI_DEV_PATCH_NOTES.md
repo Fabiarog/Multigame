@@ -1,5 +1,42 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
 
+## Patch 29 — 13/09/2026 — Table Life System, Procedural Attention (SkeletonModifier3D) e Dynamic Match Director
+
+Base `8159a1e` (Patch 28), preservada no GitHub em Backup `8f73b34`. Resultado para review; main preservada. Missão orientada pela Fase 2 do Plano Diretor (`implementation_plan.md`), `docs/MISSAO_MODELOS_3D.md` e `AGENTS.md`.
+
+- **Módulo 2.1 — Table Life System (Vida na Mesa em `TableStage.cs`):**
+  - **Fichas com Empilhamento Orgânico:** Pilhas duplas de fichas agora possuem micro-offsets determinísticos e orgânicos ($X/Z \pm 1.8$mm, yaw $\pm 1.8^\circ$), eliminando o alinhamento matemático rígido e simulando pilhas organizadas manualmente por jogadores reais.
+  - **Microfísica Tátil de Cartas:** Aterrissagem com amortecimento elástico e settling bounce suave (overshoot de 12mm com decaimento elástico `Bounce.Out`/`Back.Out`), micro-variação angular orgânica de rotação ($\pm 1.8^\circ$ em Y, $\pm 0.3^\circ$ em X/Z) e sombra dinâmica proporcional à altura do arco de voo.
+  - **Impacto Físico Tátil na Mesa:** Novo método `TriggerChipVibration` faz com que fichas próximas à carta batida ou ao bater na mesa sofram sutil vibração de assentamento amortecida (deslocamento vertical de ~1mm com recuperação em 0.12s), respeitando `ReduceMotion`.
+  - **Memória Visual Temporária de Descarte:** Em `CollectRoundCardsToDiscard`, as cartas recolhidas mantêm micro-alinhamento orgânico sob o baralho, conferindo sensação de partida em andamento sem acúmulo caótico nem desaparecimento instantâneo estéril.
+
+- **Módulo 2.2 — Procedural Attention System (Personagens Vivos em `ProceduralAttentionModifier.cs` & `TableStage.cs`):**
+  - **SkeletonModifier3D Nativo:** Implementado `ProceduralAttentionModifier` derivado de `SkeletonModifier3D`, operando no pipeline nativo pós-animação do Godot 4 sem alterar ou corromper os 333 clipes autorados.
+  - **Cadeia Anatômica e Distribuição Cervical:** Look targets distribuídos organicamente: o pescoço absorve 30% da rotação e a cabeça absorve 70%, com clamp estrito em $\pm 48^\circ$ de yaw e $\pm 14^\circ$ de pitch, impedindo absolutamente torções não-naturais ou quebra de malha.
+  - **Microcomportamentos e Respiração:** Ciclo contínuo de respiração orgânica (~0.22 Hz com micro-oscilação de $\pm 0.35^\circ$ no pitch) e micro-sacadas oculares/cervicais aleatórias a cada 2.0 a 4.5 segundos.
+  - **7 Estados de Atenção Cognitiva:** `Relaxed`, `WatchingPlayer`, `WatchingCard`, `Thinking` (inclinação reflexiva para a mesa/mão), `Challenging` (olhar firme e focado no desafiante), `Celebrating` (queixo erguido e postura orgulhosa) e `Defeated` (olhar cabisbaixo).
+  - **Atenção Coordenada da Mesa:** Oponentes acompanham cartas em voo (`SetAllAttentionToCard`), voltam o olhar para o jogador ativo (`SetAllAttentionToSeat`), fixam os olhos no desafiante durante o Truco e sincronizam estados automaticamente durante gestos (`PlayGesture`).
+  - **Acessibilidade Plena:** Respeito absoluto a `SettingsManager.Instance.ReduceMotion`, decaindo suavemente para a rotação neutra sem estalos visuais.
+
+- **Módulo 2.3 — Dynamic Match Director (`MatchPresentationDirector.cs`):**
+  - **Escalação de Intensidade (Níveis 0 a 4):**
+    - *Nível 0 (Normal):* Ritmo limpo e fluido, som leve de carta.
+    - *Nível 1 (Boa Jogada):* Micro-pausa tátil, som de feltro com maior presença, aceno do vencedor da vaza.
+    - *Nível 2 (Manilha / Combinação Alta):* Contração sutil de FOV (-1.4° de aproximação dramática), realce de energia no lustre central, stinger sonoro (`score`/`last-manilha`) e foco visual de toda a mesa na carta decisiva.
+    - *Nível 3 (Chamada de Truco / Aumento):* Corte e pulso de FOV (-2.2°), ducking automático na trilha sonora (-6 dB) para destaque de vozes e impacto, toda a mesa trava a atenção no desafiante (`Challenging`).
+    - *Nível 4 (Match Point 11x11 / Clímax de Chefe):* Iluminação âmbar concentrada na mesa (arandelas periféricas diminuem para 0.45, lustre central aumenta +25%), enquadramento tenso e transição para trilha de tensão (`last-manilha`).
+  - **Ritmo e Cooldowns:** Intervalo mínimo de 2.4 segundos entre momentos dramáticos de Nível 2+ para evitar fadiga visual e manter as partidas ágeis.
+  - **Integração nas Telas de Jogo:** Conectado diretamente em `TrucoUI.cs`, `FodinhaUI.cs`, `PokerUI.cs` e `TableStage.cs`.
+
+- **Validação de QA Integral:**
+  - **Compilação C#:** 0 erros, 0 avisos (`dotnet build`).
+  - **Camera QA:** 100% aprovado (`CAMERA_QA PASS []`).
+  - **Gameplay QA:** 530 asserções de regras aprovadas com 100% de sucesso.
+  - **Visual Smoke QA:** 27 capturas de tela, 25 ações interativas, 0 falhas e 0 problemas de layout (`VISUAL_QA_RESULT PASS`).
+  - **Quality Audit:** 13 verificações PASS, 0 falhas, 1 not tested (network).
+
+---
+
 ## Complemento visual 27 — 13/09/2026 — Comparação final e regressão da cena de referência
 
 Classic Club/Corvo: concluídas as medições e capturas da mesa modelada no Blender, carta arredondada, materiais, agrupamento do cenário e iluminação estática. Base anterior a1981dd preservada em Backup 8f73b34; integração chegou a review em b12c34f. A medição final foi isolada nessa base com material da carta corrigido, preservando alterações musicais paralelas de 8159a1e. Main preservada.

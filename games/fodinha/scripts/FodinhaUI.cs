@@ -209,6 +209,7 @@ public partial class FodinhaUI : Control
                 if (s != winner && _match.Lives[s] > 0)
                     _table.PlayGesture(s, "trick_lose");
             }
+            MatchPresentationDirector.Instance?.NotifyTrickResolved(winner, -1, false);
             _table.ShowOutcome($"{SeatName(winner)} ganhou a vaza");
         }
         Render();

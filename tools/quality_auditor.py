@@ -150,7 +150,7 @@ else:
     log_result("ASSETS", "Cast Studio Portraits", "FAIL", f"Missing portraits for: {missing_portraits}")
 
 # Room models check
-rooms = ["classic_club", "barao_lounge", "dama_salon", "cyber_casino"]
+rooms = ["classic_club", "barao_lounge", "dama_salon", "cyber_casino", "madrid_salon", "mexico_recuerdos"]
 missing_rooms = []
 for r in rooms:
     rp = os.path.join(ROOT_DIR, "assets", "models", "club", f"room_{r}.glb")

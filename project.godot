@@ -30,6 +30,7 @@ ScenarioManager="*res://core/scenarios/ScenarioManager.cs"
 VideoSettings="*res://core/graphics/VideoSettingsManager.cs"
 GraphicsQuality="*res://core/graphics/GraphicsQualityManager.cs"
 NetworkSession="*res://core/networking/NetworkSessionManager.cs"
+AuthoritativeMatch="*res://core/networking/AuthoritativeMatch.cs"
 
 [display]
 

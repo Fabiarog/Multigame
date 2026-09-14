@@ -176,7 +176,9 @@ public partial class AudioManager : Node
         {
             "classic_club" => "midnight-club",
             "madrid"       => "madrid",
-            "mexico"       => "mexico",
+            "madrid_salon" => "madrid",
+            "mexico"           => "mexico",
+            "mexico_recuerdos" => "mexico",
             "barao_lounge" => "barao",
             "dama_salon"   => "dama",
             "cyber_casino" => "velvet-table",

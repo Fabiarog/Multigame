@@ -1,150 +1,43 @@
 using Godot;
 using System.Collections.Generic;
-
 namespace GameHub.Core.Networking;
-
-public class PlayerInfo
-{
-    public long Id { get; set; }
-    public string Name { get; set; }
-    public bool IsReady { get; set; }
-    public int Score { get; set; }
-    // More fields like Avatar, Team, etc.
-}
-
-/// <summary>
-/// Singleton handling the ENet multiplayer connection, Lobby state, and Host/Join logic.
-/// </summary>
+public class PlayerInfo { public long Id {get;set;} public string Name {get;set;} public bool IsReady {get;set;} public int Score {get;set;} }
 public partial class NetworkManager : Node
 {
-    public static NetworkManager Instance { get; private set; }
-
-    private ENetMultiplayerPeer _multiplayerPeer;
-    private const int DEFAULT_PORT = 7070;
-    
-    public Dictionary<long, PlayerInfo> ConnectedPlayers { get; private set; } = new();
-    public PlayerInfo LocalPlayer { get; private set; } = new PlayerInfo();
-
-    [Signal]
-    public delegate void PlayerConnectedEventHandler(long peerId);
-    
-    [Signal]
-    public delegate void PlayerDisconnectedEventHandler(long peerId);
-
-    public override void _EnterTree()
+    public static NetworkManager Instance {get;private set;}
+    public Dictionary<long,PlayerInfo> ConnectedPlayers {get;}=new();
+    public PlayerInfo LocalPlayer {get;}=new(){Name="Jogador"};
+    public bool Active {get;private set;}
+    public bool Hosting {get;private set;}
+    public string LastError {get;private set;}="";
+    [Signal] public delegate void PlayerConnectedEventHandler(long peerId);
+    [Signal] public delegate void PlayerDisconnectedEventHandler(long peerId);
+    [Signal] public delegate void NetworkErrorEventHandler(string message);
+    public override void _EnterTree(){Instance=this;}
+    public override void _Ready()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            Multiplayer.PeerConnected += OnPeerConnected;
-            Multiplayer.PeerDisconnected += OnPeerDisconnected;
-            Multiplayer.ConnectedToServer += OnConnectedToServer;
-            Multiplayer.ConnectionFailed += OnConnectionFailed;
-            Multiplayer.ServerDisconnected += OnServerDisconnected;
-            
-            // Set up a default local player name
-            LocalPlayer.Name = $"Player_{GD.Randi() % 1000}";
-        }
-        else
-        {
-            QueueFree();
-        }
+        Multiplayer.ConnectedToServer+=()=>{LocalPlayer.Id=Multiplayer.GetUniqueId();};
+        Multiplayer.ConnectionFailed+=()=>{Active=false;Fail("Não foi possível conectar ao host.");};
+        Multiplayer.ServerDisconnected+=()=>{Active=false;Hosting=false;Fail("O host encerrou a conexão. A partida foi interrompida.");};
+        Multiplayer.PeerConnected+=id=>EmitSignal(SignalName.PlayerConnected,id);
+        Multiplayer.PeerDisconnected+=id=>{ConnectedPlayers.Remove(id);EmitSignal(SignalName.PlayerDisconnected,id);};
     }
-
-    public void HostGame(int maxPlayers)
+    private bool Fail(string message){LastError=message;EmitSignal(SignalName.NetworkError,message);return false;}
+    public bool HostGame(int maxPlayers,int port=7070)
     {
-        _multiplayerPeer = new ENetMultiplayerPeer();
-        var error = _multiplayerPeer.CreateServer(DEFAULT_PORT, maxPlayers);
-        if (error != Error.Ok)
-        {
-            GD.PrintErr($"[Network] Failed to host: {error}");
-            return;
-        }
-
-        Multiplayer.MultiplayerPeer = _multiplayerPeer;
-        LocalPlayer.Id = 1; // Server is always ID 1
-        ConnectedPlayers[1] = LocalPlayer;
-        
-        GD.Print($"[Network] Hosted game on port {DEFAULT_PORT}. I am Host.");
+        if(Active)return Fail("Já existe uma sessão. Saia dela antes de criar outra.");
+        if(maxPlayers<2||maxPlayers>6||port<1||port>65535)return Fail("Configuração de rede inválida.");
+        var peer=new ENetMultiplayerPeer();var error=peer.CreateServer(port,maxPlayers-1);
+        if(error!=Error.Ok){peer.Dispose();return Fail($"Não foi possível abrir a porta UDP {port}: {error}.");}
+        Multiplayer.MultiplayerPeer=peer;Active=true;Hosting=true;LastError="";LocalPlayer.Id=1;ConnectedPlayers[1]=LocalPlayer;return true;
     }
-
-    public void JoinGame(string ipAddress)
+    public bool JoinGame(string address,int port=7070)
     {
-        _multiplayerPeer = new ENetMultiplayerPeer();
-        var error = _multiplayerPeer.CreateClient(ipAddress, DEFAULT_PORT);
-        if (error != Error.Ok)
-        {
-            GD.PrintErr($"[Network] Failed to join: {error}");
-            return;
-        }
-
-        Multiplayer.MultiplayerPeer = _multiplayerPeer;
-        GD.Print($"[Network] Joining {ipAddress}...");
+        if(Active)return Fail("Já existe uma conexão. Saia dela antes de conectar novamente.");
+        if(string.IsNullOrWhiteSpace(address)||address.Length>253||port<1||port>65535)return Fail("Endereço ou porta inválidos.");
+        var peer=new ENetMultiplayerPeer();var error=peer.CreateClient(address.Trim(),port);
+        if(error!=Error.Ok){peer.Dispose();return Fail($"Falha ao conectar: {error}.");}
+        Multiplayer.MultiplayerPeer=peer;Active=true;Hosting=false;LastError="";return true;
     }
-
-    private void OnPeerConnected(long id)
-    {
-        GD.Print($"[Network] Peer {id} connected.");
-        // We will exchange player info via RPCs here
-    }
-
-    private void OnPeerDisconnected(long id)
-    {
-        GD.Print($"[Network] Peer {id} disconnected.");
-        if (ConnectedPlayers.ContainsKey(id))
-        {
-            ConnectedPlayers.Remove(id);
-            EmitSignal(SignalName.PlayerDisconnected, id);
-        }
-    }
-
-    private void OnConnectedToServer()
-    {
-        LocalPlayer.Id = Multiplayer.GetUniqueId();
-        GD.Print($"[Network] Successfully connected to server. My ID is {LocalPlayer.Id}");
-        
-        // Send our info to the server
-        RpcId(1, MethodName.RegisterPlayer, LocalPlayer.Name);
-    }
-    
-    private void OnConnectionFailed() => GD.PrintErr("[Network] Connection failed.");
-    private void OnServerDisconnected() => GD.Print("[Network] Server disconnected.");
-
-    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void RegisterPlayer(string playerName)
-    {
-        long senderId = Multiplayer.GetRemoteSenderId();
-        
-        var newPlayer = new PlayerInfo { Id = senderId, Name = playerName };
-        ConnectedPlayers[senderId] = newPlayer;
-        
-        GD.Print($"[Network] Registered Player: {playerName} (ID: {senderId})");
-        EmitSignal(SignalName.PlayerConnected, senderId);
-
-        // If I am the server, I need to broadcast the entire player list to the new guy
-        if (Multiplayer.IsServer())
-        {
-            // Send new player to everyone else
-            foreach (var p in ConnectedPlayers)
-            {
-                if (p.Key != senderId && p.Key != 1)
-                {
-                    RpcId(p.Key, MethodName.AddPlayerToLobby, senderId, playerName);
-                }
-                
-                // Send existing players to the new guy
-                RpcId(senderId, MethodName.AddPlayerToLobby, p.Key, p.Value.Name);
-            }
-        }
-    }
-
-    [Rpc(MultiplayerApi.RpcMode.Authority, CallLocal = false, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
-    private void AddPlayerToLobby(long id, string playerName)
-    {
-        if (!ConnectedPlayers.ContainsKey(id))
-        {
-            ConnectedPlayers[id] = new PlayerInfo { Id = id, Name = playerName };
-            EmitSignal(SignalName.PlayerConnected, id);
-        }
-    }
+    public void Close(){Active=false;Hosting=false;ConnectedPlayers.Clear();LocalPlayer.Id=0;Multiplayer.MultiplayerPeer?.Close();Multiplayer.MultiplayerPeer=new OfflineMultiplayerPeer();}
 }

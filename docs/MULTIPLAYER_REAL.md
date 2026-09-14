@@ -22,3 +22,7 @@ Dois processos independentes por modo, logs de PID/assento/sequence/hash e resul
 Referência técnica: [Godot 4.7, multiplayer de alto nível](https://docs.godotengine.org/en/4.7/tutorials/networking/high_level_multiplayer.html). UDP direto exige conectividade LAN/firewall; WAN depende de rota pública/encaminhamento UDP e pode ser impedida por CGNAT. Não prometer relay ou browser/WebSocket.
 
 Status inicial: auditoria e desenho concluídos; implementação e QA em andamento. Este documento será atualizado com resultados reais.
+
+## Atualização 13/09/2026 — integração ao jogo
+
+A cena NetworkTable agora existe e conecta os três modelos autoritativos à mesa 2.5D. Texas aparece como opção separada no hub; Fodinha LAN foi desbloqueada. Duas instâncias gráficas independentes por modo receberam resultados iguais e rejeitaram payloads malformados e resultados falsos. Evidências: docs/network-qa. Relatório e pendências detalhados em docs/INTEGRACAO_CONTEUDO.md. Não declarar multiplayer finalizado: ainda faltam a matriz de rede adversa, dois computadores, WAN e QA aprofundado das regras Texas.

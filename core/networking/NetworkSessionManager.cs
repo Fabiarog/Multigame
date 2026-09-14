@@ -104,6 +104,7 @@ public partial class NetworkSessionManager : Node
         Reconnection = new ReconnectionService();
         Reconnection.Name = "ReconnectionService";
         AddChild(Reconnection);
+        Reconnection.SetProcess(false); // Legacy retry service cannot reclaim authoritative seats.
 
         // Wire into core network events.
         Multiplayer.ConnectedToServer  += OnConnectedToServer;
@@ -269,8 +270,8 @@ public partial class NetworkSessionManager : Node
         OnlineManager?.Shutdown();
         Reconnection?.Reset();
 
-        Multiplayer.MultiplayerPeer?.Close();
-        Multiplayer.MultiplayerPeer = null;
+        AuthoritativeMatch.Instance?.Reset();
+        NetworkManager.Instance?.Close();
 
         SetState(SessionState.Idle);
         CurrentMode = NetworkMode.Offline;
@@ -325,22 +326,22 @@ public partial class NetworkSessionManager : Node
 
     private void OnServerDisconnected()
     {
-        GD.Print("[Session] Server disconnected — attempting reconnection…");
+        GD.Print("[Session] Server disconnected — match ended.");
         SetState(SessionState.Disconnected);
 
-        // The ReconnectionService will handle automated retry if enabled.
-        Reconnection?.OnLocalDisconnected();
+        // No authenticated seat reclaim is implemented; the match ends on host loss.
+        EmitSignal(SignalName.SessionError, "O anfitrião saiu. Entre em uma nova sala.");
     }
 
     private void OnPeerConnected(long peerId)
     {
-        Reconnection?.OnPeerConnected(peerId);
+        // Active matches use AuthoritativeMatch bot takeover.
         EmitSignal(SignalName.PlayerSyncUpdated, peerId, "connected");
     }
 
     private void OnPeerDisconnected(long peerId)
     {
-        Reconnection?.OnPeerDisconnected(peerId);
+        // Active matches use AuthoritativeMatch bot takeover.
         EmitSignal(SignalName.PlayerSyncUpdated, peerId, "disconnected");
     }
 }

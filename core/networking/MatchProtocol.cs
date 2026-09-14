@@ -22,6 +22,7 @@ public sealed class MatchView
     public string MatchId { get; set; } = "";
     public long Sequence { get; set; }
     public string Game { get; set; } = "";
+    public string Room { get; set; } = "classic_club";
     public string Phase { get; set; } = "";
     public int YourSeat { get; set; }
     public int Turn { get; set; }

@@ -1,0 +1,77 @@
+{
+  "truco": {
+    "passed": true,
+    "host": {
+      "pid": "27880",
+      "game": "truco",
+      "match": "055882bd221d4d0884146328ea6a5208",
+      "seat": "0",
+      "sequence": "454",
+      "scores": "9,12",
+      "ack": "456",
+      "rejected": "2",
+      "divergences": "0"
+    },
+    "client": {
+      "pid": "29272",
+      "game": "truco",
+      "match": "055882bd221d4d0884146328ea6a5208",
+      "seat": "1",
+      "sequence": "452",
+      "scores": "9,12",
+      "ack": "0",
+      "rejected": "0",
+      "divergences": "0"
+    }
+  },
+  "fodinha": {
+    "passed": true,
+    "host": {
+      "pid": "28140",
+      "game": "fodinha",
+      "match": "82ea4a1cbea049f191a413ad017c7b3b",
+      "seat": "0",
+      "sequence": "324",
+      "scores": "0,0,5,0",
+      "ack": "324",
+      "rejected": "2",
+      "divergences": "0"
+    },
+    "client": {
+      "pid": "27912",
+      "game": "fodinha",
+      "match": "82ea4a1cbea049f191a413ad017c7b3b",
+      "seat": "1",
+      "sequence": "322",
+      "scores": "0,0,5,0",
+      "ack": "0",
+      "rejected": "0",
+      "divergences": "0"
+    }
+  },
+  "poker_classic": {
+    "passed": true,
+    "host": {
+      "pid": "28016",
+      "game": "poker_classic",
+      "match": "9e82a7899bbe46d68a4aebdae8f158da",
+      "seat": "0",
+      "sequence": "20",
+      "scores": "0,2000",
+      "ack": "19",
+      "rejected": "2",
+      "divergences": "0"
+    },
+    "client": {
+      "pid": "28880",
+      "game": "poker_classic",
+      "match": "9e82a7899bbe46d68a4aebdae8f158da",
+      "seat": "1",
+      "sequence": "17",
+      "scores": "0,2000",
+      "ack": "0",
+      "rejected": "0",
+      "divergences": "0"
+    }
+  }
+}

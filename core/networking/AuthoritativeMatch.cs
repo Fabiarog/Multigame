@@ -75,9 +75,8 @@ public partial class AuthoritativeMatch : Node
     }
     private void Reject(long peer,string message)
     {
-        Rejected++;GD.Print($"NET_REJECT peer={peer} seq={_sequence} reason={message}");
+        Rejected++;SendProjection(peer);GD.Print($"NET_REJECT peer={peer} seq={_sequence} reason={message}");
         if(peer==1){Notice=message;EmitSignal(SignalName.ViewUpdated);}else RpcId(peer,MethodName.Rejection,message);
-        SendProjection(peer);
     }
     [Rpc(MultiplayerApi.RpcMode.Authority,TransferMode=MultiplayerPeer.TransferModeEnum.Reliable)]
     private void Rejection(string message){Notice=message;EmitSignal(SignalName.ViewUpdated);}
@@ -85,7 +84,7 @@ public partial class AuthoritativeMatch : Node
     private void SendProjection(long peer)
     {
         int seat=Array.IndexOf(_peers,peer);if(seat<0)return;
-        var view=_rules.Project(seat);view.MatchId=_matchId;view.Sequence=_sequence;view.Names=(string[])_names.Clone();view.Bots=_peers.Select(p=>p==0).ToArray();
+        var view=_rules.Project(seat);view.Room=LobbyManager.Instance.CurrentLobby.SelectedScenarioId;view.MatchId=_matchId;view.Sequence=_sequence;view.Names=(string[])_names.Clone();view.Bots=_peers.Select(p=>p==0).ToArray();
         if(_loading.Count>0){view.Phase="Loading";view.Actions=Array.Empty<string>();}else if(_wait>0)view.Actions=Array.Empty<string>();
         string json=MatchProtocol.Encode(view),hash=MatchProtocol.Hash(json);
         if(!_sent.TryGetValue(peer,out var history))_sent[peer]=history=new();history[_sequence]=hash;

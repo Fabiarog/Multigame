@@ -1,0 +1,34 @@
+Godot Engine v4.7.2.stable.mono.official.ed1daf0bf - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 610.88 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 3050
+
+[GameRegistry] Scanning for games...
+[GameRegistry] Registered game: Poker Roguelike (poker_roguelike)
+[GameRegistry] Registered game: Truco (truco)
+[GameRegistry] Registered game: Fodinha (fodinha)
+[Settings] No settings file found, creating default.
+[Settings] Settings saved.
+[Settings] Applied current settings to the engine.
+[Save] Attempting to load save data...
+[ScenarioManager] Total scenarios available: 7
+[Video] Native screen resolution: 3840×2160
+[Video] 4 resolution preset(s) available.
+[Video] Loaded: 4K    — Ultra HD (3840×2160), Mode=Fullscreen, Scale=100%, VSync=True
+[Video] Resolution set to 4K    — Ultra HD (3840×2160)
+[Video] Render scale: 100%
+[Video] All video settings applied.
+[HW] GPU: NVIDIA GeForce RTX 3050
+[HW] API: 3.3.0 NVIDIA 610.88
+[HW] Renderer: gl_compatibility
+[HW] Est. VRAM: 0 MB
+[HW] RT support: True
+[Graphics] Loaded: RT=False, AO=False, Refl=False, GI=False
+[Lobby] Added player: Player (ID: 1)
+[LAN] Broadcasting started: Player (poker_classic)
+NET_QA_START pid=28016 role=host game=poker_classic
+[Lobby] Added player: Jogador 2 (ID: 891430468)
+[LAN] Broadcasting stopped.
+NET_REJECT peer=891430468 seq=4 reason=Formato inválido.
+NET_REJECT peer=891430468 seq=4 reason=Formato inválido.
+NET_TAKEOVER seat=1
+[Lobby] Removed player ID: 891430468
+NET_QA_PASS pid=28016 game=poker_classic match=9e82a7899bbe46d68a4aebdae8f158da seat=0 sequence=20 scores=0,2000 ack=19 rejected=2 divergences=0

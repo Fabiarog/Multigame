@@ -1,5 +1,14 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
 
+## Música por contexto e iluminação noturna — 13/09/2026
+
+Base 87813ad preservada em Backup 52847f4. Música escolhida nas configurações agora afeta apenas o menu. Partidas usam a música do mapa; roguelike usa a do boss, protegida contra chamadas do mapa e da tensão. Ao sair para o menu ou entrar em outra modalidade, o contexto muda explicitamente. Teste tools/audio_night_smoke.gd: 10 verificações de transições aprovadas, incluindo mudar a seleção durante partida e retornar ao menu.
+
+México: GLB recebido tinha 24 materiais cinza padrão (baseColor 0.8), sem os valores PBR definidos no script. Reparo executado no Blender MCP 9876 com importação em cena temporária, materiais reconstruídos e exportação candidata separada; cena original MexicoRecuerdosScene restaurada. 176 malhas antes/depois, 24 cores distintas, 3 materiais emissivos. Restaurados cor, rugosidade, metalicidade e emissão; não foram inventadas texturas bitmap nem alterada a topologia. Corrigida a busca do BSDF por tipo no gerador, evitando depender do nome localizado do nó. Candidato temporário em temp/audio-night; original preservado em Backup. CLI game-dev não estava no PATH; reparo executado pelo bridge local existente, sem geração externa.
+
+Iluminação México: redução da luz direcional e ambiente, preenchimento azul noturno, menor alcance da luminária e menor energia no altar/varanda/luar. Preenchimento local mantém cartas e personagens legíveis. Sem novos efeitos pesados. Capturas runtime OpenGL e verificações em docs/audio-night-qa; build zero erros/avisos. Aviso preexistente de ObjectDB no teardown persiste. Executável local exportado como Windows Debug, pois falta o template Release x86_64 neste PC.
+
+
 ## Integração ao runtime — 13/09/2026 (prioridade atual)
 
 Base d98a569 preservada em Backup 6154ebd no remoto pc-casa. Trabalho de integração: NetworkTable.cs/.tscn, menu Texas separado, Fodinha LAN, seleção Madrid/México, tema do host na projeção, erro de rank Texas corrigido, serviço antigo de reconexão desativado. Relatório completo: docs/INTEGRACAO_CONTEUDO.md. Evidências em docs/network-qa. QA solo: 531 regras; visual: 27 capturas/25 ações sem falhas. Rede: dois processos gráficos por jogo; não equivale a dois computadores ou WAN. Continuar a matriz de QA de docs/MULTIPLAYER_REAL.md antes de declarar multiplayer completo. Não ativar stubs de relay como produto. Executável Windows deve ser reexportado após qualquer alteração de código. Manter main intacta, publicar em review e preservar o histórico de Backup.

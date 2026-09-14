@@ -219,7 +219,7 @@ public partial class HubMain : Control
         device.AddChild(CreateSliderRow("Música", 0, 100, 80, out _musicSlider, out _musicValueLabel));
         device.AddChild(CreateSliderRow("Efeitos", 0, 100, 100, out _sfxSlider, out _sfxValueLabel));
         _musicTrackSelect = new OptionButton { CustomMinimumSize = new Vector2(0, 38) };
-        _musicTrackSelect.AddItem("Trilha da mesa (automática)");
+        _musicTrackSelect.AddItem("Música do menu (automática)");
         foreach (var name in AudioManager.TrackNames) _musicTrackSelect.AddItem(name);
         device.AddChild(_musicTrackSelect);
         device.AddChild(CreateFixedSpacer(4));

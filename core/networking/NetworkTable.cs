@@ -14,6 +14,7 @@ public partial class NetworkTable : Control
     private int _castSeats, _round = -1, _trick = -1, _shown;
     public override void _Ready()
     {
+        GameHub.Core.Systems.AudioManager.Instance?.BeginRoomMusic(GameHub.Core.Systems.SettingsManager.Instance?.RoomTheme ?? "classic_club");
         Theme = ClubTheme.Create();
         var background = new ColorRect { Color = new Color("101d19"), MouseFilter = MouseFilterEnum.Ignore }; AddChild(background); background.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);

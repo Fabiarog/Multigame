@@ -55,7 +55,7 @@ public partial class FodinhaUI : Control
         _actions = new HBoxContainer { CustomMinimumSize = new Vector2(0, 44) }; _actions.AddThemeConstantOverride("separation", 8); page.AddChild(_actions);
         _hand = new HBoxContainer { CustomMinimumSize = new Vector2(0, 108), Alignment = BoxContainer.AlignmentMode.Center };
         _hand.AddThemeConstantOverride("separation", 10); page.AddChild(_hand);
-        AudioManager.Instance?.PlayMusic("copper-steps");
+        AudioManager.Instance?.BeginRoomMusic(GameHub.Core.Systems.SettingsManager.Instance?.RoomTheme ?? "classic_club");
         _match = new FodinhaMatch(); SyncFans(); Render();
         AccessibilityVisuals.AddGlobalFilter(this);
         await _table.PlayEntrance();

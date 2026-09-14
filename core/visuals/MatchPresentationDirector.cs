@@ -199,8 +199,7 @@ public partial class MatchPresentationDirector : Node
             // Transition to tense atmosphere
             _activeStage.SetTensionLighting(true);
 
-            // Switch to tension track if available
-            AudioManager.Instance?.PlayMusic("last-manilha");
+            // Musical identity stays with the room; tension uses lighting and reactions.
         }
         else if (!critical && _isMatchPoint)
         {

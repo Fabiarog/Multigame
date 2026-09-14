@@ -67,7 +67,7 @@ public partial class PokerUI : Control
     {
         _game = GetNode<PokerGameManager>("../../GameManager");
         Theme = ClubTheme.Create();
-        Core.Systems.AudioManager.Instance?.PlayMusic("velvet-table");
+        Core.Systems.AudioManager.Instance?.PlayBossMusic(0);
         BuildUI();
         _game.HandDealt += OnHandDealt;
         _game.ScoreUpdated += OnScoreUpdated;
@@ -1013,15 +1013,7 @@ public partial class PokerUI : Control
         _opponentsLabel.Text = $"{_game.OpponentCount} bot{(_game.OpponentCount == 1 ? "" : "s")} à mesa · vença a meta";
         if (introduce)
         {
-            string music = rival switch
-            {
-                7 => "barao",
-                8 => "dama",
-                9 => "last-manilha",
-                10 => "midnight-baron",
-                _ => "midnight-baron"
-            };
-            Core.Systems.AudioManager.Instance?.PlayMusic(music);
+            Core.Systems.AudioManager.Instance?.PlayBossMusic(rival);
             await _stage.PlayEntrance(true);
             if (IsInsideTree()) UpdateActionButtons();
         }

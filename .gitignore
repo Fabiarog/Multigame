@@ -39,3 +39,6 @@ art/blender/patch27/*.glb
 # Fireplace refinement staging; selected evidence is versioned in docs/patch30.
 temp/patch30-*
 art/blender/patch30/*.glb
+
+# Reproducible Blender material-repair staging.
+temp/audio-night/

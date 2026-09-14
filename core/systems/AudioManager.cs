@@ -137,11 +137,20 @@ public partial class AudioManager : Node
         return processed;
     }
 
+    private enum MusicContext { Menu, Room, Boss }
+    private MusicContext _musicContext;
+    public void BeginRoomMusic(string room) { _musicContext = MusicContext.Room; PlayRoomMusic(room); }
     public void PlayMusic(string trackName)
+    {
+        if (_musicContext == MusicContext.Boss) return;
+        _musicContext = MusicContext.Room;
+        StartTrack(trackName);
+    }
+    private void StartTrack(string trackName)
     {
         _context = System.Array.IndexOf(TrackIds, trackName) >= 0 ? trackName : "midnight-club";
         int selected = SettingsManager.Instance?.MusicTrack ?? 0;
-        string track = selected > 0 && selected <= TrackIds.Length ? TrackIds[selected - 1] : _context;
+        string track = _musicContext == MusicContext.Menu && selected > 0 && selected <= TrackIds.Length ? TrackIds[selected - 1] : _context;
 
         if (_music == null) return;
 
@@ -168,10 +177,12 @@ public partial class AudioManager : Node
         _fade.Chain().TweenCallback(Callable.From(_outgoing.Stop));
     }
 
-    public void PlayMenuMusic() => PlayMusic("menu");
+    public void PlayMenuMusic() { _musicContext = MusicContext.Menu; StartTrack("menu"); }
 
     public void PlayRoomMusic(string themeId)
     {
+        if (_musicContext == MusicContext.Boss) return;
+        _musicContext = MusicContext.Room;
         string track = themeId switch
         {
             "classic_club" => "midnight-club",
@@ -189,6 +200,7 @@ public partial class AudioManager : Node
 
     public void PlayBossMusic(int bossIndex)
     {
+        _musicContext = MusicContext.Boss;
         string track = bossIndex switch
         {
             7 => "barao",
@@ -197,11 +209,12 @@ public partial class AudioManager : Node
             10 => "midnight-baron",
             _ => "midnight-baron"
         };
-        PlayMusic(track);
+        StartTrack(track);
     }
 
     public void PlayBossMusic(string characterId)
     {
+        _musicContext = MusicContext.Boss;
         string track = characterId switch
         {
             "barao"    => "barao",
@@ -210,7 +223,7 @@ public partial class AudioManager : Node
             "carnical" => "midnight-baron",
             _          => "midnight-baron"
         };
-        PlayMusic(track);
+        StartTrack(track);
     }
 
     public void SetDucking(bool active, float duckDb = -7f, float duration = 0.35f)
@@ -257,7 +270,7 @@ public partial class AudioManager : Node
         player.Stream = null;
     }
 
-    public void RefreshTrack() => PlayMusic(_context);
+    public void RefreshTrack() => StartTrack(_context);
 
     private float MusicDb()
     {

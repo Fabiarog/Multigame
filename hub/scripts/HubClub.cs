@@ -24,7 +24,7 @@ public partial class HubMain
     private void BuildUI()
     {
         Theme = ClubTheme.Create();
-        AudioManager.Instance?.PlayMusic("midnight-club");
+        AudioManager.Instance?.PlayMenuMusic();
         AddChild(new ClubBackdrop { ShowTable = false });
         _mainMenuPanel = BuildMainMenu();
         _settingsPanel = FramePage(BuildSettingsPanel());

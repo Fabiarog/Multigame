@@ -67,7 +67,7 @@ public partial class TrucoUI : Control
     public override async void _Ready()
     {
         _game = GetNode<TrucoGameManager>("../../GameManager");
-        Core.Systems.AudioManager.Instance?.PlayMusic("last-manilha");
+        Core.Systems.AudioManager.Instance?.BeginRoomMusic(GameHub.Core.Systems.SettingsManager.Instance?.RoomTheme ?? "classic_club");
         BuildUI();
         ConnectSignals();
         if (_stage != null)

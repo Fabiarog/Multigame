@@ -24,7 +24,7 @@ def create_pbr_mat(name, base_rgb, roughness=0.75, metallic=0.0, emission_rgb=No
     mat = bpy.data.materials.new(name=name)
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
-    bsdf = nodes.get("Principled BSDF")
+    bsdf = next((node for node in nodes if node.type == "BSDF_PRINCIPLED"), None)
     if bsdf:
         bsdf.inputs["Base Color"].default_value = (*base_rgb, 1.0)
         bsdf.inputs["Roughness"].default_value = roughness

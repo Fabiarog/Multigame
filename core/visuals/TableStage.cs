@@ -705,7 +705,7 @@ public partial class TableStage : Control
                         Name = "AltarOfrendaGlow",
                         Position = new Vector3(0.0f, 2.2f, -6.2f),
                         LightColor = new Color("#ff851b"),
-                        LightEnergy = 1.40f,
+                        LightEnergy = .65f,
                         OmniRange = 6.5f,
                         OmniAttenuation = 1.2f,
                         ShadowEnabled = false
@@ -719,7 +719,7 @@ public partial class TableStage : Control
                         Name = "PorchLanternGlow",
                         Position = new Vector3(-8.5f, 2.4f, 0.0f),
                         LightColor = new Color("#ffaa33"),
-                        LightEnergy = 1.10f,
+                        LightEnergy = .65f,
                         OmniRange = 5.5f,
                         OmniAttenuation = 1.3f,
                         ShadowEnabled = false
@@ -733,7 +733,7 @@ public partial class TableStage : Control
                         Name = "CourtyardMoonlight",
                         Position = new Vector3(8.5f, 3.2f, 0.0f),
                         LightColor = new Color("#1a3366"),
-                        LightEnergy = 0.85f,
+                        LightEnergy = .4f,
                         OmniRange = 7.5f,
                         OmniAttenuation = 1.4f,
                         ShadowEnabled = false
@@ -749,6 +749,8 @@ public partial class TableStage : Control
         {
             GD.PushWarning($"[TableStage] Error loading room {themeId}: {ex.Message}");
         }
+
+        AudioManager.Instance?.PlayRoomMusic(themeId);
 
         // Theme-responsive rim lighting
         if (_rimLight != null && IsInstanceValid(_rimLight))

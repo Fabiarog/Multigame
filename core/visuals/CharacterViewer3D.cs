@@ -416,9 +416,74 @@ public partial class CharacterViewer3D : Control
 
         overlay.AddChild(new Control { SizeFlagsVertical = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
 
-        // Animation triggers row at the bottom
+        // ── Playback Controls Row ──
+        var playbackRow = new HBoxContainer { MouseFilter = MouseFilterEnum.Pass };
+        playbackRow.AddThemeConstantOverride("separation", 4);
+        overlay.AddChild(playbackRow);
+
+        var pauseBtn = ClubTheme.Button("⏸ Pausar");
+        pauseBtn.CustomMinimumSize = new Vector2(0, 26);
+        pauseBtn.Pressed += () =>
+        {
+            if (_animator == null || !IsInstanceValid(_animator)) return;
+            if (_animator.IsPlaying()) { _animator.Pause(); pauseBtn.Text = "▶ Play"; }
+            else { _animator.Play(); pauseBtn.Text = "⏸ Pausar"; }
+        };
+        playbackRow.AddChild(pauseBtn);
+
+        var stepBtn = ClubTheme.Button("⏭ +1f");
+        stepBtn.CustomMinimumSize = new Vector2(0, 26);
+        stepBtn.Pressed += () =>
+        {
+            if (_animator == null || !IsInstanceValid(_animator)) return;
+            _animator.Pause();
+            _animator.Advance(1.0 / 30.0); // Step one frame at 30fps
+            pauseBtn.Text = "▶ Play";
+        };
+        playbackRow.AddChild(stepBtn);
+
+        // Speed selector
+        string[] speeds = { "0.25x", "0.50x", "1.00x" };
+        float[] speedVals = { 0.25f, 0.5f, 1.0f };
+        for (int s = 0; s < speeds.Length; s++)
+        {
+            int idx = s; // Capture
+            var speedBtn = ClubTheme.Button(speeds[s]);
+            speedBtn.CustomMinimumSize = new Vector2(0, 26);
+            speedBtn.Pressed += () =>
+            {
+                if (_animator != null && IsInstanceValid(_animator))
+                    _animator.SpeedScale = speedVals[idx];
+            };
+            playbackRow.AddChild(speedBtn);
+        }
+
+        playbackRow.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore });
+
+        // Camera angle presets
+        var frontBtn = ClubTheme.Button("Front");
+        frontBtn.CustomMinimumSize = new Vector2(0, 26);
+        frontBtn.Pressed += () => { _yaw = 0; _pitch = 10; UpdateCameraTransform(); };
+        playbackRow.AddChild(frontBtn);
+
+        var sideBtn = ClubTheme.Button("Side");
+        sideBtn.CustomMinimumSize = new Vector2(0, 26);
+        sideBtn.Pressed += () => { _yaw = 90; _pitch = 5; UpdateCameraTransform(); };
+        playbackRow.AddChild(sideBtn);
+
+        var threeQBtn = ClubTheme.Button("3/4");
+        threeQBtn.CustomMinimumSize = new Vector2(0, 26);
+        threeQBtn.Pressed += () => { _yaw = 35; _pitch = 12; UpdateCameraTransform(); };
+        playbackRow.AddChild(threeQBtn);
+
+        var backBtn = ClubTheme.Button("Back");
+        backBtn.CustomMinimumSize = new Vector2(0, 26);
+        backBtn.Pressed += () => { _yaw = 180; _pitch = 8; UpdateCameraTransform(); };
+        playbackRow.AddChild(backBtn);
+
+        // ── Animation Triggers Row ──
         _animControls = new HBoxContainer { MouseFilter = MouseFilterEnum.Pass };
-        _animControls.AddThemeConstantOverride("separation", 6);
+        _animControls.AddThemeConstantOverride("separation", 4);
         overlay.AddChild(_animControls);
 
         AddAnimButton("Repouso", "idle");
@@ -426,6 +491,24 @@ public partial class CharacterViewer3D : Control
         AddAnimButton("Vitória", "victory");
         AddAnimButton("Jogar", "play_card");
         AddAnimButton("Floreio", "flourish");
+        AddAnimButton("Entrada", "entrance");
+        AddAnimButton("Boss", "boss_intro");
+
+        // Second row for additional animations
+        var animRow2 = new HBoxContainer { MouseFilter = MouseFilterEnum.Pass };
+        animRow2.AddThemeConstantOverride("separation", 4);
+        overlay.AddChild(animRow2);
+
+        string[] extraAnims = { "think", "inspect_hand", "laugh", "surprised", "lose", "big_win", "taunt", "deal" };
+        string[] extraLabels = { "Pensar", "Inspecionar", "Rir", "Surpresa", "Derrota", "Grande Vitória", "Provocar", "Distribuir" };
+        for (int e = 0; e < extraAnims.Length; e++)
+        {
+            string anim = extraAnims[e];
+            var ebtn = ClubTheme.Button(extraLabels[e]);
+            ebtn.CustomMinimumSize = new Vector2(0, 26);
+            ebtn.Pressed += () => PlayAnimation(anim);
+            animRow2.AddChild(ebtn);
+        }
 
         var resetCamBtn = ClubTheme.Button("↺ Câmera");
         resetCamBtn.CustomMinimumSize = new Vector2(0, 28);
@@ -435,7 +518,7 @@ public partial class CharacterViewer3D : Control
             _cameraDistance = 2.15f;
             UpdateCameraTransform();
         };
-        _animControls.AddChild(resetCamBtn);
+        animRow2.AddChild(resetCamBtn);
     }
 
     private void AddAnimButton(string title, string clip)

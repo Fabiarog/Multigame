@@ -1,5 +1,56 @@
 # MULTIGAME — LOG DE ATUALIZAÇÕES, ARQUITETURA E GUIA DE DESENVOLVIMENTO
 
+## Patch 33 — 14/09/2026 — Evolução Profunda das Animações (Fase 0 & Fase 1: Piloto Seu Corvo e Infraestrutura de Review)
+
+Base `review` preservada; main preservada; Backup preservado no remoto pc-casa. Desenvolvimento estritamente em review.
+Missão orientada pelo Plano Diretor de Animações, `docs/MISSAO_MODELOS_3D.md` e `AGENTS.md`.
+
+- **Auditoria Visual & Técnica Completa (Fase 0):**
+  - Inspeção detalhada dos 11 personagens e seus 333 clipes existentes no Blender 5.2.1 via MCP (127.0.0.1:9876).
+  - Análise no Graph Editor das curvas de interpolação: identificada amostragem linear/step em 230 curvas (23 ossos x 10 canais), decorrente do pipeline de exportação glTF anterior.
+  - Documentação canônica criada em `docs/animation-review/`:
+    - `ANIMATION_CATALOG.md`: Catálogo completo com classificação dos 11 modelos, durações, loops e canais.
+    - `COVERAGE_MATRIX.md`: Matriz de cobertura detalhada por categoria (Idle, Card, Dealer, Truco, Victory, Defeat, Micro-reactions).
+    - `RESEARCH_REPORT.md`: Relatório de bibliotecas externas (Mixamo, Quaternius, CC0/CC-BY), compatibilidade de licenças e princípios Disney aplicados a jogos de cartas 3D.
+  - Validação da deformação residual da Morgana: `assets/models/club/morgana.glb` auditado no Blender com 0 arestas suspeitas na pose de vitória.
+
+- **Infraestrutura de Debug & Preview (Fase 0):**
+  - **Animation Debug Overlay (`TableStage.cs`):** Atalho [F9] ativa HUD em tempo real exibindo para cada assento: clipe ativo, posição/duração (s), estado de atenção procedural (`ProceduralAttentionModifier`), modo de câmera e fila anti-repetição de gestos.
+  - **CharacterViewer3D Expandido (`CharacterViewer3D.cs`):** Adicionados controles de scrub e playback: seletor de velocidade (0.25x / 0.5x / 1.0x), pausa/play, frame step (±1 frame), e presets de câmera (Frontal, Lateral, 3/4).
+
+- **Autoria de Animações Piloto no Blender MCP (Fase 1 — Seu Corvo):**
+  - Criados 14 novos clipes de alta expressividade e impacto tátil em cena isolada temporária via `tools/create_corvo_pilot_anims.py`, preservando a malha única (`mesh_node`), 23 ossos deformadores originais e o marcador `Head`:
+    - `idle_relaxed` (120f / 4.0s loop): Respiração profunda lenta, recline suave no encosto, flutter/ruffle sutil nas asas `Wing.L`/`Wing.R`.
+    - `idle_nervous` (90f / 3.0s loop): Ciclo respiratório rápido (3 ciclos), asas coladas ao peito, olhares rápidos de pássaro (darting scans).
+    - `nod` (24f / 0.8s): Aceno afirmativo nítido com antecipação e amortecimento.
+    - `shake_head` (24f / 0.8s): Negação/ceticismo com oscilação amortecida.
+    - `lean_forward` (32f / 1.07s): Inclinação sobre a mesa com fixação do olhar à frente (para apostas, blefes e truco).
+    - `lean_back` (32f / 1.07s): Recline calculista com queixo recolhido.
+    - `win_trick` (36f / 1.2s): Vitória contida de vaza intermediária (peito infla, asas abrem brevemente e fecham, nod satisfeito) — elimina o fallback desproporcional para celebração de partida inteira.
+    - `lose_trick` (36f / 1.2s): Derrota de vaza com ombros caídos, ligeiro sacudir de cabeça e suspiro — elimina o congelamento do personagem em idle.
+    - `lose_hand` (48f / 1.6s): Derrota de mão/rodada com recuo frustrado, cabeça virando de lado e asas agitadas.
+    - `seat_adjust` (36f / 1.2s): Ajuste de postura no assento com encolher de ombros.
+    - `micro_glance_left` (18f / 0.6s): Olhar rápido de soslaio para a esquerda.
+    - `micro_glance_right` (18f / 0.6s): Olhar rápido de soslaio para a direita.
+    - `micro_sigh` (27f / 0.9s): Suspiro leve com elevação e queda do peito.
+    - `micro_finger_tap` (24f / 0.8s): Tamborilar impaciente de ponta de asa/mão na mesa.
+  - Modelo atualizado em `assets/models/club/corvo.glb` (53 animações, tamanho 13.59 MB vs 12.98 MB original, apenas +4.6% de crescimento).
+  - Fontes e candidatos preservados em `art/blender/patch26/corvo_refined_pilot.glb` e `corvo_refined_pilot.blend`.
+
+- **Integração no Runtime Godot 4.7.2 (`TableStage.cs`):**
+  - Atualizado `GestureFallback` com encadeamento secundário e suporte a novos clipes nativos.
+  - Sistema anti-repetição (`IsGestureRepeated`) com memória circular dos últimos 4 gestos por assento, prevenindo spam visual.
+  - Suporte a looping contínuo para variantes de idle (`idle_relaxed`, `idle_nervous`).
+  - Sincronização automática com `ProceduralAttentionModifier` (estados `Celebrating`, `Defeated`, `Thinking`, `Challenging`, `Relaxed`).
+
+- **Validação e QA Integral:**
+  - `dotnet build`: 0 erros, 0 avisos.
+  - Validação de importação no Godot headless (`tools/test_corvo_pilot_import.gd`): 14/14 clipes validados com 100% PASS.
+  - Camera QA: 100% PASS.
+  - Visual Smoke QA: 27 capturas, 25 ações interativas, 0 falhas (`VISUAL_QA_RESULT PASS`).
+
+---
+
 ## Música por contexto e iluminação noturna — 13/09/2026
 
 Base 87813ad preservada em Backup 52847f4. Música escolhida nas configurações agora afeta apenas o menu. Partidas usam a música do mapa; roguelike usa a do boss, protegida contra chamadas do mapa e da tensão. Ao sair para o menu ou entrar em outra modalidade, o contexto muda explicitamente. Teste tools/audio_night_smoke.gd: 10 verificações de transições aprovadas, incluindo mudar a seleção durante partida e retornar ao menu.

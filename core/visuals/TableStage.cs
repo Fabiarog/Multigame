@@ -55,6 +55,15 @@ public partial class TableStage : Control
     private bool _tensionLightingActive = false;
     private Tween _fovPulseTween;
     private Tween _pendantPulseTween;
+
+    // ── Animation Debug Overlay (F9) ──
+    private bool _animDebugVisible = false;
+    private Label _animDebugLabel;
+
+    // ── Gesture Anti-Repetition Memory ──
+    private readonly Dictionary<int, Queue<string>> _gestureHistory = new();
+    private const int GestureHistorySize = 4;
+    private readonly RandomNumberGenerator _gestureRng = new();
     private Node3D _roomInstance;
     private string _currentRoomTheme = "classic_club";
     private static readonly string[] RoomThemeIds = new[] { "classic_club", "barao_lounge", "dama_salon", "cyber_casino", "madrid_salon", "mexico_recuerdos" };
@@ -1964,6 +1973,8 @@ public partial class TableStage : Control
         { "idle_table_01", "idle" },
         { "idle_table_02", "idle" },
         { "idle_impatient", "idle" },
+        { "idle_relaxed", "idle_table_01" },
+        { "idle_nervous", "idle_impatient" },
         { "think", "idle" },
         { "inspect_hand", "idle" },
         { "hold_cards", "idle" },
@@ -1982,22 +1993,36 @@ public partial class TableStage : Control
         { "bid_confident", "victory" },
         { "bid_uncertain", "idle" },
         { "bid_zero", "idle" },
-        { "trick_win", "victory" },
-        { "trick_lose", "idle" },
+        { "trick_win", "win_trick" },
+        { "win_trick", "victory" },
+        { "trick_lose", "lose_trick" },
+        { "lose_trick", "lose" },
+        { "lose_hand", "lose" },
         { "life_lost", "idle" },
-        { "small_win", "victory" },
+        { "small_win", "win_trick" },
         { "big_win", "victory" },
         { "lose", "idle" },
-        { "bad_beat", "idle" },
+        { "bad_beat", "lose_hand" },
         { "suspicious", "idle" },
         { "surprised", "idle" },
         { "laugh", "idle" },
-        { "taunt", "flourish" }
+        { "taunt", "flourish" },
+        { "nod", "accept_truco" },
+        { "shake_head", "decline_truco" },
+        { "lean_forward", "truco" },
+        { "lean_back", "think" },
+        { "seat_adjust", "idle" },
+        { "micro_glance_left", "suspicious" },
+        { "micro_glance_right", "suspicious" },
+        { "micro_sigh", "lose_trick" },
+        { "micro_finger_tap", "idle_impatient" }
     };
 
     public void PlayGesture(int seat, string clip)
     {
         if (seat < 0 || seat >= _animators.Count || SettingsManager.Instance?.ReduceMotion == true) return;
+        if (IsGestureRepeated(seat, clip)) return;
+
         SyncAttentionForGesture(seat, clip);
         var player = _animators[seat];
         if (player == null) return;
@@ -2025,28 +2050,43 @@ public partial class TableStage : Control
                     break;
                 }
             }
+            // Secondary chain fallback (e.g. trick_win -> win_trick -> victory)
+            if (!hasClip && GestureFallback.TryGetValue(fallback, out var secondFallback))
+            {
+                foreach (string animation in player.GetAnimationList())
+                {
+                    if (animation.Equals(secondFallback, StringComparison.OrdinalIgnoreCase) || animation.EndsWith("/" + secondFallback, StringComparison.OrdinalIgnoreCase))
+                    {
+                        targetClip = animation;
+                        hasClip = true;
+                        break;
+                    }
+                }
+            }
         }
 
         if (hasClip)
         {
             player.ClearQueue();
             var anim = player.GetAnimation(targetClip);
+            bool isLooping = targetClip.Equals("idle", StringComparison.OrdinalIgnoreCase) || targetClip.EndsWith("/idle", StringComparison.OrdinalIgnoreCase)
+                || targetClip.Contains("idle_relaxed") || targetClip.Contains("idle_nervous") || targetClip.Contains("idle_table");
             if (anim != null)
             {
-                if (targetClip.Equals("idle", StringComparison.OrdinalIgnoreCase) || targetClip.EndsWith("/idle", StringComparison.OrdinalIgnoreCase))
-                    anim.LoopMode = Animation.LoopModeEnum.Linear;
-                else
-                    anim.LoopMode = Animation.LoopModeEnum.None;
+                anim.LoopMode = isLooping ? Animation.LoopModeEnum.Linear : Animation.LoopModeEnum.None;
             }
             player.Play(targetClip, 0.22);
-            foreach (string idle in player.GetAnimationList())
+            if (!isLooping)
             {
-                if (idle.Equals("idle", StringComparison.OrdinalIgnoreCase) || idle.EndsWith("/idle", StringComparison.OrdinalIgnoreCase))
+                foreach (string idle in player.GetAnimationList())
                 {
-                    var idleAnim = player.GetAnimation(idle);
-                    if (idleAnim != null) idleAnim.LoopMode = Animation.LoopModeEnum.Linear;
-                    player.Queue(idle);
-                    break;
+                    if (idle.Equals("idle", StringComparison.OrdinalIgnoreCase) || idle.EndsWith("/idle", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var idleAnim = player.GetAnimation(idle);
+                        if (idleAnim != null) idleAnim.LoopMode = Animation.LoopModeEnum.Linear;
+                        player.Queue(idle);
+                        break;
+                    }
                 }
             }
         }
@@ -2056,15 +2096,15 @@ public partial class TableStage : Control
     {
         if (seat < 0 || seat >= _attentionModifiers.Count) return;
         string lower = clip.ToLowerInvariant();
-        if (lower.Contains("win") || lower.Contains("flourish") || lower.Contains("victory"))
+        if (lower.Contains("win") || lower.Contains("flourish") || lower.Contains("victory") || lower.Contains("nod"))
             SetSeatAttention(seat, AttentionState.Celebrating, Vector3.Zero);
-        else if (lower.Contains("lose") || lower.Contains("lost") || lower.Contains("beat"))
+        else if (lower.Contains("lose") || lower.Contains("lost") || lower.Contains("beat") || lower.Contains("sigh"))
             SetSeatAttention(seat, AttentionState.Defeated, Vector3.Zero);
-        else if (lower.Contains("think") || lower.Contains("inspect"))
+        else if (lower.Contains("think") || lower.Contains("inspect") || lower.Contains("lean_back"))
             SetSeatAttention(seat, AttentionState.Thinking, Vector3.Zero);
-        else if (lower.Contains("truco") || lower.Contains("all_in") || lower.Contains("bet"))
+        else if (lower.Contains("truco") || lower.Contains("all_in") || lower.Contains("bet") || lower.Contains("lean_forward"))
             SetSeatAttention(seat, AttentionState.Challenging, Vector3.Zero);
-        else if (lower.Contains("idle"))
+        else if (lower.Contains("idle") || lower.Contains("adjust"))
             SetSeatAttention(seat, AttentionState.Relaxed, Vector3.Zero);
     }
 
@@ -2459,6 +2499,16 @@ public partial class TableStage : Control
 
     public override void _Process(double delta)
     {
+        // ── Animation Debug Overlay toggle (F9) ──
+        if (Input.IsActionJustPressed("ui_page_down") || Input.IsKeyPressed(Key.F9))
+        {
+            ToggleAnimDebug();
+        }
+        if (_animDebugVisible && _animDebugLabel != null && IsInstanceValid(_animDebugLabel))
+        {
+            UpdateAnimDebugOverlay();
+        }
+
         // Canvas stretch keeps layout at 1280x720. Render the embedded world at
         // its physical display size, including window stretch and parent scale.
         // A SubViewportContainer would force this back to logical Control.Size.
@@ -2535,6 +2585,7 @@ public partial class TableStage : Control
         _tableActions.Clear();
         _tableChips.Clear();
         _attentionModifiers.Clear();
+        _gestureHistory.Clear();
         foreach (var light in _sconceLights) if (IsInstanceValid(light)) light.QueueFree();
         _sconceLights.Clear();
         if (_dustParticles != null && IsInstanceValid(_dustParticles)) _dustParticles.QueueFree();
@@ -2542,5 +2593,101 @@ public partial class TableStage : Control
         if (_fillLight != null && IsInstanceValid(_fillLight)) _fillLight.QueueFree();
         if (_rimLight != null && IsInstanceValid(_rimLight)) _rimLight.QueueFree();
         if (_roomInstance != null && IsInstanceValid(_roomInstance)) _roomInstance.QueueFree();
+        if (_animDebugLabel != null && IsInstanceValid(_animDebugLabel)) _animDebugLabel.QueueFree();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ANIMATION DEBUG OVERLAY (Regra 93)
+    // ═══════════════════════════════════════════════════════════════════
+
+    private void ToggleAnimDebug()
+    {
+        _animDebugVisible = !_animDebugVisible;
+        if (_animDebugVisible)
+        {
+            if (_animDebugLabel == null || !IsInstanceValid(_animDebugLabel))
+            {
+                _animDebugLabel = new Label
+                {
+                    Name = "AnimDebugOverlay",
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Position = new Vector2(8, 8),
+                    Size = new Vector2(500, 400),
+                    MouseFilter = MouseFilterEnum.Ignore,
+                    Modulate = new Color(0.1f, 1.0f, 0.3f, 0.9f)
+                };
+                _animDebugLabel.AddThemeFontSizeOverride("font_size", 13);
+                AddChild(_animDebugLabel);
+            }
+            _animDebugLabel.Visible = true;
+        }
+        else if (_animDebugLabel != null && IsInstanceValid(_animDebugLabel))
+        {
+            _animDebugLabel.Visible = false;
+        }
+    }
+
+    private void UpdateAnimDebugOverlay()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("── ANIMATION DEBUG ──");
+        sb.AppendLine($"Camera: {CurrentCameraMode} | Motion: {(SettingsManager.Instance?.ReduceMotion != true)}");
+        sb.AppendLine($"Director: {MatchPresentationDirector.Instance?.CurrentLevel}");
+        sb.AppendLine();
+        for (int i = 0; i < _animators.Count; i++)
+        {
+            var player = _animators[i];
+            string charId = i < _cast.Count && _cast[i] >= 0 && _cast[i] < CharacterCatalog.Ids.Length
+                ? CharacterCatalog.Ids[_cast[i]] : "?";
+            string clipName = "(none)";
+            float clipTime = 0f;
+            float clipLen = 0f;
+            if (player != null && IsInstanceValid(player) && player.IsPlaying())
+            {
+                clipName = player.CurrentAnimation;
+                clipTime = (float)player.CurrentAnimationPosition;
+                clipLen = (float)player.CurrentAnimationLength;
+            }
+            string attnState = "—";
+            if (i < _attentionModifiers.Count && _attentionModifiers[i] != null)
+                attnState = _attentionModifiers[i].State.ToString();
+
+            string history = "";
+            if (_gestureHistory.TryGetValue(i, out var hist) && hist.Count > 0)
+                history = $" [{string.Join(",", hist)}]";
+
+            sb.AppendLine($"[{i}] {charId}: {clipName} {clipTime:F2}/{clipLen:F2}s | Attn: {attnState}{history}");
+        }
+        _animDebugLabel.Text = sb.ToString();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // GESTURE ANTI-REPETITION (Regra 67)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Records a gesture in the seat's history and checks if it was played recently.
+    /// Returns true if the gesture should be suppressed (played too recently).
+    /// </summary>
+    private bool IsGestureRepeated(int seat, string clip)
+    {
+        if (!_gestureHistory.TryGetValue(seat, out var history))
+        {
+            history = new Queue<string>();
+            _gestureHistory[seat] = history;
+        }
+
+        // Core clips (idle, play_card, entrance) should never be suppressed
+        string lower = clip.ToLowerInvariant();
+        if (lower == "idle" || lower.StartsWith("play_card") || lower == "entrance"
+            || lower == "boss_intro" || lower == "deal" || lower == "shuffle" || lower == "cut_deck")
+            return false;
+
+        bool repeated = history.Contains(clip);
+        history.Enqueue(clip);
+        while (history.Count > GestureHistorySize)
+            history.Dequeue();
+        return repeated;
     }
 }

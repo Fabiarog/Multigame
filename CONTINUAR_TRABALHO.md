@@ -1,5 +1,42 @@
 # Prompt de continuidade — MultiGame
 
+## Estado mais recente — Patch 33, Evolução Profunda das Animações (Fase 0 & Fase 1: Piloto Seu Corvo e Infraestrutura de Review), 14/09/2026
+
+Priorize este bloco. Projeto C:/workspace/multigame, branch `review`. Base recebida preservada em Backup `18bdc3b`, main preservada em `58b85b8`. Remoto `pc-casa`.
+
+Concluído no Blender MCP (127.0.0.1:9876):
+- Auditoria minuciosa dos 11 modelos e 333 clipes existentes; descoberta de amostragem linear glTF em todas as curvas fcurve.
+- Documentos canônicos criados em `docs/animation-review/`:
+  - `ANIMATION_CATALOG.md` (inventário dos 11 personagens, ossos, clipes e tipos de rig)
+  - `COVERAGE_MATRIX.md` (matriz de cobertura por categoria de animação e impacto de fallbacks)
+  - `RESEARCH_REPORT.md` (análise de bibliotecas, compatibilidade de licenças e diretrizes de timing)
+- Validação da deformação residual da Morgana (`assets/models/club/morgana.glb`): 0 arestas suspeitas na pose de vitória.
+- Autoria de 14 novos clipes para o personagem piloto Seu Corvo (`tools/create_corvo_pilot_anims.py`):
+  `idle_relaxed`, `idle_nervous`, `nod`, `shake_head`, `lean_forward`, `lean_back`, `win_trick`, `lose_trick`, `lose_hand`, `seat_adjust`, `micro_glance_left`, `micro_glance_right`, `micro_sigh`, `micro_finger_tap`.
+- Exportado e integrado `assets/models/club/corvo.glb`: 53 animações, 1 única malha, 23 ossos originais preservados, zero vazamento de objetos, crescimento de tamanho estritamente controlado (+4.6%).
+- Fontes e candidatos preservados em `art/blender/patch26/corvo_refined_pilot.glb` e `corvo_refined_pilot.blend`.
+
+Integração Godot 4.7.2 (`TableStage.cs`, `CharacterViewer3D.cs`):
+- Animation Debug Overlay (tecla [F9]) exibindo clipe ativo, posição/duração, estado de atenção e histórico anti-repetição.
+- Controles de preview expandidos em `CharacterViewer3D.cs` (velocidade 0.25x/0.5x/1.0x, pause/play, frame step ±1f, presets de câmera).
+- Atualizado `GestureFallback` com encadeamento secundário e suporte a loops em variantes de idle.
+- Sistema anti-repetição (`IsGestureRepeated`) com memória circular dos últimos 4 gestos por assento.
+- Sincronização com `ProceduralAttentionModifier`.
+
+QA e Validação:
+- `dotnet build`: 0 erros, 0 avisos.
+- Importação Godot headless (`tools/test_corvo_pilot_import.gd`): 14/14 clipes com 100% PASS.
+- Camera QA: 100% PASS (`CAMERA_QA PASS []`).
+- Visual Smoke QA: PASS.
+
+Próximos passos planejados:
+1. Fase 2: Variações de Carta e Dealer (`play_card_soft`, `play_card_slam`, `play_card_confident`, etc.).
+2. Fase 3: Truco Expandido e Reações Sociais (gestos diferenciados por aposta 3/6/9/12).
+3. Replicação dos novos clipes para os demais personagens esqueléticos (Iara, Zeca, Aki, Barão, Dama, Morgana, Carniçal).
+4. Pipeline sandbox para expansão de Dona Onça (9 -> 25+ clipes) e personagens legados (Nina/Bento).
+
+---
+
 ## Música por contexto e iluminação noturna — 13/09/2026
 
 Base 87813ad preservada em Backup 52847f4. Música escolhida nas configurações agora afeta apenas o menu. Partidas usam a música do mapa; roguelike usa a do boss, protegida contra chamadas do mapa e da tensão. Ao sair para o menu ou entrar em outra modalidade, o contexto muda explicitamente. Teste tools/audio_night_smoke.gd: 10 verificações de transições aprovadas, incluindo mudar a seleção durante partida e retornar ao menu.

@@ -56,7 +56,6 @@ folder_colors={
 
 [rendering]
 
-reflections/reflection_atlas/reflection_count=4
-reflections/reflection_atlas/reflection_size=128
-
 textures/canvas_textures/default_texture_filter=0
+reflections/reflection_atlas/reflection_size=128
+reflections/reflection_atlas/reflection_count=4

@@ -10,13 +10,13 @@ public partial class HubMain
 {
     private OptionButton _modeSelect, _botSelect, _difficultySelect, _teamSelect;
     private Control _botField, _difficultyField, _teamField;
-    private Button _pokerTile, _trucoTile, _fodinhaTile, _playButton, _step1ActionBtn;
+    private Button _pokerTile, _trucoTile, _fodinhaTile, _holdemTile, _playButton, _step1ActionBtn;
     private Control _lanActions;
     private Label _gameDescription;
 
     private VBoxContainer _homeMenuContainer, _creationContainer;
     private VBoxContainer _step1Game, _step2Config, _step3Map;
-    private Button _mapClassicTile, _mapBaraoTile, _mapDamaTile, _mapCyberTile;
+    private Button _mapClassicTile, _mapBaraoTile, _mapDamaTile, _mapCyberTile, _mapMadridTile, _mapMexicoTile;
     private Label _stepIndicatorLabel;
     private string _selectedMapId = "classic_club";
     private int _creationStep = 1;
@@ -158,12 +158,16 @@ public partial class HubMain
         _step1Game.AddChild(title1);
         _step1Game.AddChild(Paragraph("Selecione a modalidade que você deseja disputar.", 14));
 
-        var choices = Row(10);
+        var choices = new GridContainer { Columns = 2 };
+        choices.AddThemeConstantOverride("h_separation", 10);
+        choices.AddThemeConstantOverride("v_separation", 10);
         _step1Game.AddChild(choices);
         _pokerTile = GameTile("♠", "Pôquer", "ROGUELIKE", "01");
         _trucoTile = GameTile("♣", "Truco", "BLEFE & MANILHA", "02");
         _fodinhaTile = GameTile("♦", "Fodinha", "PALPITES & VIDAS", "03");
-        choices.AddChild(_pokerTile); choices.AddChild(_trucoTile); choices.AddChild(_fodinhaTile);
+        _holdemTile = GameTile("♥", "Texas Hold’em", "MULTIPLAYER · FICHAS FICTÍCIAS", "04");
+        _holdemTile.Pressed += () => SelectGame("poker_classic");
+        choices.AddChild(_holdemTile); choices.AddChild(_pokerTile); choices.AddChild(_trucoTile); choices.AddChild(_fodinhaTile);
         _fodinhaTile.Pressed += () => SelectGame("fodinha");
         _pokerTile.Pressed += () => SelectGame("poker_roguelike");
         _trucoTile.Pressed += () => SelectGame("truco");
@@ -231,6 +235,9 @@ public partial class HubMain
         _mapCyberTile = MapTile("⚡", "Cassino Cyber", "Skyline neon, painéis e holograma.", "cyber_casino");
         mapGrid.AddChild(_mapClassicTile); mapGrid.AddChild(_mapBaraoTile);
         mapGrid.AddChild(_mapDamaTile); mapGrid.AddChild(_mapCyberTile);
+        _mapMadridTile = MapTile("♦", "Salón de Madrid", "Arquitetura castelhana e bodega.", "madrid_salon");
+        _mapMexicoTile = MapTile("♦", "La Mesa de los Recuerdos", "Pátio mexicano e altar de ofrendas.", "mexico_recuerdos");
+        mapGrid.AddChild(_mapMadridTile); mapGrid.AddChild(_mapMexicoTile);
 
         _step3Map.AddChild(Expand(true));
 
@@ -371,6 +378,8 @@ public partial class HubMain
         UpdateTileHighlight(_mapBaraoTile, cur == "barao_lounge");
         UpdateTileHighlight(_mapDamaTile, cur == "dama_salon");
         UpdateTileHighlight(_mapCyberTile, cur == "cyber_casino");
+        UpdateTileHighlight(_mapMadridTile, cur == "madrid_salon");
+        UpdateTileHighlight(_mapMexicoTile, cur == "mexico_recuerdos");
     }
 
     private void UpdateTileHighlight(Button btn, bool selected)
@@ -381,6 +390,8 @@ public partial class HubMain
 
     private static string GetMapDescription(string mapId) => mapId switch
     {
+        "madrid_salon" => "05 / SALÓN DE MADRID\nArquitetura castelhana, bodega e luz acolhedora.",
+        "mexico_recuerdos" => "06 / LA MESA DE LOS RECUERDOS\nPátio colonial, papel picado e altar iluminado por velas.",
         "barao_lounge" => "02 / LOUNGE DO BARÃO\nSantuário gótico noturno com grandes vitrais ogivais, luar e púrpura imperial.",
         "dama_salon"   => "03 / SALÃO DA DAMA\nRequinte Belle Époque com espelhos ovais dourados, carrinho de champanhe e rosas.",
         "cyber_casino" => "04 / CASSINO CYBER\nSky-lounge VIP com vista panorâmica da metrópole neon, painéis de carbono e holografia.",
@@ -390,15 +401,17 @@ public partial class HubMain
     private void UpdateGameDescription()
     {
         bool poker = _selectedGameId == "poker_roguelike";
-        if (poker) _gameDescription.Text = "01 / PÔQUER ROGUELIKE\nCombine cartas, supere metas e fortaleça sua próxima mão.";
+        if (_selectedGameId == "poker_classic") _gameDescription.Text = "04 / TEXAS HOLD’EM\nMesa multiplayer com fichas fictícias. Sem dinheiro real.";
+        else if (poker) _gameDescription.Text = "01 / PÔQUER ROGUELIKE\nCombine cartas, supere metas e fortaleça sua próxima mão.";
         else if (_selectedGameId == "truco") _gameDescription.Text = "02 / TRUCO\nCorte o baralho, descubra a manilha e sustente seu blefe.";
-        else if (_selectedGameId == "fodinha") _gameDescription.Text = "03 / FODINHA · SOLO COM 3 IAs\nCinco vidas. Dê seu palpite e ganhe exatamente o que prometeu.";
+        else if (_selectedGameId == "fodinha") _gameDescription.Text = "03 / FODINHA · SOLO OU REDE\nCinco vidas. Dê seu palpite e ganhe exatamente o que prometeu.";
     }
 
     private void SelectGame(string id)
     {
         _selectedGameId = id;
         bool poker = id == "poker_roguelike";
+        UpdateTileHighlight(_holdemTile, id == "poker_classic");
         _pokerTile.AddThemeStyleboxOverride("normal", ClubTheme.Box(poker ? ClubTheme.Green : ClubTheme.Panel, poker ? Gold : ClubTheme.Border, 12, 6));
         _trucoTile.AddThemeStyleboxOverride("normal", ClubTheme.Box(id == "truco" ? ClubTheme.Green : ClubTheme.Panel, id == "truco" ? Gold : ClubTheme.Border, 12, 6));
         _fodinhaTile.AddThemeStyleboxOverride("normal", ClubTheme.Box(id == "fodinha" ? ClubTheme.Green : ClubTheme.Panel, id == "fodinha" ? Gold : ClubTheme.Border, 12, 6));
@@ -424,10 +437,13 @@ public partial class HubMain
         if (!poker && _modeSelect.Selected == 1) _modeSelect.Selected = 0;
         _botField.Visible = _difficultyField.Visible = poker && _modeSelect.Selected == 0;
         bool fodinha = _selectedGameId == "fodinha";
-        _modeSelect.SetItemDisabled(2, fodinha);
-        if (fodinha) _modeSelect.Selected = 0;
+        _modeSelect.SetItemDisabled(2, poker);
+        bool holdem = _selectedGameId == "poker_classic";
+        _modeSelect.SetItemDisabled(0, holdem);
+        if (holdem) _modeSelect.Selected = 2;
+        else if (poker && _modeSelect.Selected == 2) _modeSelect.Selected = 0;
         _teamField.Visible = _selectedGameId == "truco";
-        if (_lanActions != null) _lanActions.Visible = !fodinha;
+        if (_lanActions != null) _lanActions.Visible = !poker;
         if (_playButton != null) _playButton.Text = _modeSelect.Selected == 2 ? "Abrir sala LAN   →" : "Sentar à mesa   →";
     }
 
@@ -458,7 +474,7 @@ public partial class HubMain
         GameRegistry.IsTutorialMode = false;
         _isHosting = true;
         bool truco = _selectedGameId == "truco";
-        LobbyManager.Instance?.HostLobby(_selectedGameId, truco ? GameRegistry.TrucoTeamSize * 2 : 6, LobbyState.TurnMode.Sequential, truco ? 12 : 300, "casino");
+        LobbyManager.Instance?.HostLobby(_selectedGameId, truco ? GameRegistry.TrucoTeamSize * 2 : _selectedGameId == "fodinha" ? 4 : 6, LobbyState.TurnMode.Sequential, truco ? 12 : 300, "casino");
         ShowMenu(HubState.Lobby);
     }
 

@@ -1,5 +1,10 @@
 # Prompt de continuidade — MultiGame
 
+## Integração ao runtime — 13/09/2026 (prioridade atual)
+
+Base d98a569 preservada em Backup 6154ebd no remoto pc-casa. Trabalho de integração: NetworkTable.cs/.tscn, menu Texas separado, Fodinha LAN, seleção Madrid/México, tema do host na projeção, erro de rank Texas corrigido, serviço antigo de reconexão desativado. Relatório completo: docs/INTEGRACAO_CONTEUDO.md. Evidências em docs/network-qa. QA solo: 531 regras; visual: 27 capturas/25 ações sem falhas. Rede: dois processos gráficos por jogo; não equivale a dois computadores ou WAN. Continuar a matriz de QA de docs/MULTIPLAYER_REAL.md antes de declarar multiplayer completo. Não ativar stubs de relay como produto. Executável Windows deve ser reexportado após qualquer alteração de código. Manter main intacta, publicar em review e preservar o histórico de Backup.
+
+
 ## Estado mais recente — Patch 32, La Mesa de los Recuerdos ("Día de Muertos"), 13/09/2026
 
 Priorize este bloco. Projeto C:/workspace/multigame, branch `review`. Base recebida preservada em Backup `18bdc3b`, main preservada em `58b85b8`. Remoto `pc-casa`.

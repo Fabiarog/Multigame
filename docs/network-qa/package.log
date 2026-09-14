@@ -1,0 +1,25 @@
+Godot Engine v4.7.2.stable.mono.official.ed1daf0bf - https://godotengine.org
+
+[GameRegistry] Scanning for games...
+[GameRegistry] Registered game: Poker Roguelike (poker_roguelike)
+[GameRegistry] Registered game: Truco (truco)
+[GameRegistry] Registered game: Fodinha (fodinha)
+[Settings] No settings file found, creating default.
+[Settings] Settings saved.
+[Settings] Applied current settings to the engine.
+[Save] Attempting to load save data...
+[ScenarioManager] Total scenarios available: 7
+[Video] Native screen resolution: 0Ã—0
+[Video] 1 resolution preset(s) available.
+[Video] Loaded: 720p  â€” HD (1280Ã—720), Mode=Fullscreen, Scale=100%, VSync=True
+[Video] Resolution set to 720p  â€” HD (1280Ã—720)
+[Video] Render scale: 100%
+[Video] All video settings applied.
+[HW] GPU:
+[HW] API:
+[HW] Renderer: forward_plus
+[HW] Est. VRAM: 0 MB
+[HW] RT support: False
+[Graphics] Loaded: RT=False, AO=False, Refl=False, GI=False
+[HubMain] Switching UI to: MainMenu
+[HubMain] Hub initialized successfully.

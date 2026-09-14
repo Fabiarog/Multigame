@@ -363,7 +363,7 @@ public partial class HubMain : Control
         var title = CreateLabel("Sala", 14, Gold);
         title.HorizontalAlignment = HorizontalAlignment.Center;
         vbox.AddChild(title);
-        var lanNote = ClubTheme.Label("LAN em desenvolvimento: as partidas ainda não são sincronizadas.", 14, TextSecondary);
+        var lanNote = ClubTheme.Label("Rede direta · Truco, Fodinha e Texas Hold’em · anfitrião necessário.", 14, TextSecondary);
         lanNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         lanNote.HorizontalAlignment = HorizontalAlignment.Center;
         vbox.AddChild(lanNote);
@@ -1054,7 +1054,7 @@ public partial class HubMain : Control
             _playerListBox.AddChild(row);
         }
 
-        _lobbyStatusLabel.Text = $"Jogadores: {lobby.PlayerSlots.Count}/{lobby.MaxPlayers}";
+        _lobbyStatusLabel.Text = $"Jogadores: {lobby.PlayerSlots.Count}/{lobby.MaxPlayers} · {LobbyManager.Instance.Status}";
         _startBtn.Visible = _isHosting;
     }
 

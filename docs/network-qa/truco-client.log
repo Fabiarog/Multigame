@@ -1,0 +1,35 @@
+Godot Engine v4.7.2.stable.mono.official.ed1daf0bf - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 610.88 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce RTX 3050
+
+[GameRegistry] Scanning for games...
+[GameRegistry] Registered game: Poker Roguelike (poker_roguelike)
+[GameRegistry] Registered game: Truco (truco)
+[GameRegistry] Registered game: Fodinha (fodinha)
+[Settings] No settings file found, creating default.
+[Settings] Settings saved.
+[Settings] Applied current settings to the engine.
+[Save] Attempting to load save data...
+[ScenarioManager] Total scenarios available: 7
+[Video] Native screen resolution: 3840×2160
+[Video] 4 resolution preset(s) available.
+[Video] Loaded: 4K    — Ultra HD (3840×2160), Mode=Fullscreen, Scale=100%, VSync=True
+[Video] Resolution set to 4K    — Ultra HD (3840×2160)
+[Video] Render scale: 100%
+[Video] All video settings applied.
+[HW] GPU: NVIDIA GeForce RTX 3050
+[HW] API: 3.3.0 NVIDIA 610.88
+[HW] Renderer: gl_compatibility
+[HW] Est. VRAM: 0 MB
+[HW] RT support: True
+[Graphics] Loaded: RT=False, AO=False, Refl=False, GI=False
+NET_QA_START pid=29272 role=client game=truco
+[Session] State → Connected
+[Lobby] Added player: Player (ID: 1)
+[Lobby] Added player: Jogador 2 (ID: 641515629)
+[Lobby] Added player: Player (ID: 1)
+[Lobby] Added player: Jogador 2 (ID: 641515629)
+[Lobby] Added player: Player (ID: 1)
+[Lobby] Added player: Player (ID: 641515629)
+[Lobby] Added player: Player (ID: 1)
+[Lobby] Added player: Player (ID: 641515629)
+NET_QA_PASS pid=29272 game=truco match=055882bd221d4d0884146328ea6a5208 seat=1 sequence=452 scores=9,12 ack=0 rejected=0 divergences=0

@@ -96,7 +96,7 @@ public sealed class HoldemAuthority : IAuthoritativeRules
         }
         _winners=won.Order().ToArray();Array.Clear(_paid);Array.Clear(_bet);Phase="RoundResult";
     }
-    public static string Card(int c)=> (c%13+2 switch{14=>"A",13=>"K",12=>"Q",11=>"J",var rank=>rank.ToString()})+new[]{"♦","♠","♥","♣"}[c/13];
+    public static string Card(int c)=> ((c%13+2) switch{14=>"A",13=>"K",12=>"Q",11=>"J",var rank=>rank.ToString()})+new[]{"♦","♠","♥","♣"}[c/13];
     public static long Evaluate(int[] cards)
     {
         if(cards.Length<5||cards.Length>7||cards.Distinct().Count()!=cards.Length)throw new ArgumentException("Expected distinct 5–7 cards");

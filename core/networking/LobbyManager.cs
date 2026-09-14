@@ -25,7 +25,7 @@ public partial class LobbyManager : Node
         if(gameId=="fodinha")seats=4;
         if(gameId=="truco"&&seats is not (2 or 4 or 6))return false;
         if(!NetworkManager.Instance.HostGame(seats,port)){Status=NetworkManager.Instance.LastError;EmitSignal(SignalName.LobbyUpdated);return false;}
-        CurrentLobby=new LobbyState{SelectedGameId=gameId,MaxPlayers=seats,TargetScore=gameId=="truco"?12:gameId=="fodinha"?5:1000,SelectedTurnMode=LobbyState.TurnMode.Sequential,SelectedScenarioId="classic_club"};
+        CurrentLobby=new LobbyState{SelectedGameId=gameId,MaxPlayers=seats,TargetScore=gameId=="truco"?12:gameId=="fodinha"?5:1000,SelectedTurnMode=LobbyState.TurnMode.Sequential,SelectedScenarioId=SettingsManager.Instance?.RoomTheme??"classic_club"};
         CurrentLobby.AddPlayer(1,CleanName(SettingsManager.Instance?.PlayerNickname??"Host"));CurrentLobby.PlayerSlots[1].Team=1;
         Status="Sala criada. Aguarde os participantes e marque Pronto.";
         LanDiscovery.Instance?.StartBroadcasting(CurrentLobby.PlayerSlots[1].PlayerName,gameId,1,seats);Sync();return true;

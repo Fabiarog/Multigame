@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="GameDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://core/registry/GameDefinition.cs" id="1"]
+[resource]
+script = ExtResource("1")
+GameId = "fodinha"
+GameName = "Fodinha"
+Description = "Você e três IAs. Cinco vidas; acerte seu palpite de vitórias."
+MinPlayers = 1
+MaxPlayers = 1
+MainScenePath = "res://games/fodinha/scenes/FodinhaGame.tscn"
+Version = "0.1.0"

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "morgana",
+    "mesh": "model:wizch_01",
+    "suspect_edges": 0,
+    "worst": []
+  },
+  {
+    "id": "carnical",
+    "mesh": "Base_body",
+    "suspect_edges": 0,
+    "worst": []
+  }
+]

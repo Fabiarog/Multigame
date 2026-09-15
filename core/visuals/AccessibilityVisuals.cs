@@ -35,9 +35,10 @@ public static class AccessibilityVisuals
 
         return settings.ColorblindMode switch
         {
-            1 => redSuit ? new Color(1.0f, 0.76f, 0.18f) : new Color(0.35f, 0.72f, 1.0f),
-            2 => redSuit ? new Color(1.0f, 0.60f, 0.15f) : new Color(0.28f, 0.68f, 1.0f),
-            3 => redSuit ? new Color(1.0f, 0.40f, 0.76f) : new Color(0.22f, 0.90f, 0.78f),
+            // Dark inks maintain at least 5:1 contrast against the paper card face.
+            1 => redSuit ? new Color("#845200") : new Color("#005a8b"),
+            2 => redSuit ? new Color("#903d00") : new Color("#155988"),
+            3 => redSuit ? new Color("#9b235f") : new Color("#00685c"),
             _ => redSuit ? regularRed : regularBlack
         };
     }

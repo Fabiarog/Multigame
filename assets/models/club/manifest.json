@@ -1,0 +1,34 @@
+{
+  "generator": "Blender 5.2.1 Stylized AAA Pipeline",
+  "characters": [
+    "nina",
+    "bento",
+    "corvo",
+    "onca",
+    "iara",
+    "zeca",
+    "barao",
+    "dama"
+  ],
+  "clips": [
+    "idle",
+    "entrance",
+    "truco",
+    "victory",
+    "boss_intro",
+    "flourish",
+    "play_card"
+  ],
+  "articulated_groups": [
+    "Pelvis",
+    "Body",
+    "Head",
+    "ArmL",
+    "ArmR",
+    "ForearmL",
+    "ForearmR",
+    "HandL",
+    "HandR"
+  ],
+  "style": "Stylized Triple-A high-fidelity modular character meshes, 9 articulated anatomical groups, tailored clothing & PBR materials"
+}

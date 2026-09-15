@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dtdbmqixdkmvi"
+path="res://.godot/imported/Dama de copas.mp3-dc04e5c93fd55ac7f5dd8330210a82f7.mp3str"
+
+[deps]
+
+source_file="res://assets/Musics/Dama de copas.mp3"
+dest_files=["res://.godot/imported/Dama de copas.mp3-dc04e5c93fd55ac7f5dd8330210a82f7.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

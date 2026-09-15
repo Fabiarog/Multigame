@@ -1,0 +1,1013 @@
+[
+  {
+    "id": "nina",
+    "vertices": 50123,
+    "polygons": 77848,
+    "mesh_count": 9,
+    "materials": [
+      "AmberEye",
+      "Brow",
+      "Brow.001",
+      "EmeraldGem",
+      "EyeLid",
+      "EyeLid.001",
+      "Glint",
+      "HeldCardBack",
+      "HeldCardFace",
+      "LinenShirt",
+      "NinaGloveLeather",
+      "NinaGloveLeather.001",
+      "NinaHair",
+      "NinaHair.001",
+      "NinaHair.002",
+      "NinaHair.003",
+      "PolishedLeather",
+      "Pupil",
+      "nina_accent",
+      "nina_coat",
+      "nina_satin",
+      "nina_skin"
+    ],
+    "rigs": [],
+    "unweighted": 0,
+    "animations": {
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 1.958,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "ArmLMesh",
+        "vertices": 1763,
+        "polygons": 2808,
+        "groups": 0
+      },
+      {
+        "name": "ForearmLMesh",
+        "vertices": 2228,
+        "polygons": 3508,
+        "groups": 0
+      },
+      {
+        "name": "HandLMesh",
+        "vertices": 7771,
+        "polygons": 10808,
+        "groups": 0
+      },
+      {
+        "name": "ArmRMesh",
+        "vertices": 1763,
+        "polygons": 2808,
+        "groups": 0
+      },
+      {
+        "name": "ForearmRMesh",
+        "vertices": 2228,
+        "polygons": 3508,
+        "groups": 0
+      },
+      {
+        "name": "HandRMesh",
+        "vertices": 7729,
+        "polygons": 10772,
+        "groups": 0
+      },
+      {
+        "name": "BodyMesh",
+        "vertices": 5644,
+        "polygons": 6732,
+        "groups": 0
+      },
+      {
+        "name": "HeadMesh",
+        "vertices": 17211,
+        "polygons": 31032,
+        "groups": 0
+      },
+      {
+        "name": "PelvisMesh",
+        "vertices": 3786,
+        "polygons": 5872,
+        "groups": 0
+      }
+    ]
+  },
+  {
+    "id": "bento",
+    "vertices": 47840,
+    "polygons": 72996,
+    "mesh_count": 9,
+    "materials": [
+      "AmberEye.001",
+      "BentoHair",
+      "BentoHair.001",
+      "BentoHair.002",
+      "BentoHair.003",
+      "BentoHair.004",
+      "Brow.002",
+      "Brow.003",
+      "EnamelDial",
+      "EyeLid.002",
+      "EyeLid.003",
+      "Glint.001",
+      "HeldCardBack.001",
+      "HeldCardFace.001",
+      "LinenShirt.001",
+      "PolishedLeather.001",
+      "Pupil.001",
+      "SuspenderLeather",
+      "SuspenderLeather.001",
+      "WatchStrap",
+      "bento_accent",
+      "bento_coat",
+      "bento_satin",
+      "bento_skin"
+    ],
+    "rigs": [],
+    "unweighted": 0,
+    "animations": {
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 1.958,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "ArmLMesh",
+        "vertices": 1763,
+        "polygons": 2808,
+        "groups": 0
+      },
+      {
+        "name": "ForearmLMesh",
+        "vertices": 2748,
+        "polygons": 4136,
+        "groups": 0
+      },
+      {
+        "name": "HandLMesh",
+        "vertices": 6649,
+        "polygons": 9112,
+        "groups": 0
+      },
+      {
+        "name": "ArmRMesh",
+        "vertices": 1763,
+        "polygons": 2808,
+        "groups": 0
+      },
+      {
+        "name": "ForearmRMesh",
+        "vertices": 2228,
+        "polygons": 3508,
+        "groups": 0
+      },
+      {
+        "name": "HandRMesh",
+        "vertices": 7120,
+        "polygons": 9916,
+        "groups": 0
+      },
+      {
+        "name": "BodyMesh",
+        "vertices": 6696,
+        "polygons": 7964,
+        "groups": 0
+      },
+      {
+        "name": "HeadMesh",
+        "vertices": 15087,
+        "polygons": 26872,
+        "groups": 0
+      },
+      {
+        "name": "PelvisMesh",
+        "vertices": 3786,
+        "polygons": 5872,
+        "groups": 0
+      }
+    ]
+  },
+  {
+    "id": "corvo",
+    "vertices": 106772,
+    "polygons": 183451,
+    "mesh_count": 2,
+    "materials": [
+      "corvo_skin"
+    ],
+    "rigs": [
+      {
+        "name": "Armature",
+        "bones": [
+          "Root",
+          "Pelvis",
+          "Spine",
+          "Chest",
+          "Neck",
+          "Head",
+          "Shoulder.L",
+          "UpperArm.L",
+          "Forearm.L",
+          "Hand.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "Forearm.R",
+          "Hand.R",
+          "CardSocket.R",
+          "Wing.L",
+          "Wing.R",
+          "Thigh.L",
+          "Shin.L",
+          "Foot.L",
+          "Thigh.R",
+          "Shin.R",
+          "Foot.R"
+        ]
+      }
+    ],
+    "unweighted": 0,
+    "animations": {
+      "taunt": 1.792,
+      "laugh": 1.792,
+      "surprised": 1.625,
+      "suspicious": 1.792,
+      "bad_beat": 1.958,
+      "lose": 1.958,
+      "big_win": 2.292,
+      "small_win": 1.625,
+      "life_lost": 1.792,
+      "trick_lose": 1.625,
+      "trick_win": 1.625,
+      "bid_zero": 1.625,
+      "bid_uncertain": 1.625,
+      "bid_confident": 1.625,
+      "decline_truco": 1.625,
+      "accept_truco": 1.625,
+      "showdown": 1.958,
+      "fold": 1.625,
+      "all_in": 1.958,
+      "bet": 1.625,
+      "check": 1.458,
+      "cut_deck": 1.625,
+      "shuffle": 1.958,
+      "deal": 1.958,
+      "play_card_dramatic": 2.125,
+      "play_card_fast": 1.458,
+      "hold_cards": 1.625,
+      "inspect_hand": 1.792,
+      "think": 1.958,
+      "idle_impatient": 1.625,
+      "idle_table_02": 1.958,
+      "idle_table_01": 1.958,
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 2.292,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "mesh_node",
+        "vertices": 106730,
+        "polygons": 183371,
+        "groups": 23
+      },
+      {
+        "name": "Esfera icosa\u00e9drica",
+        "vertices": 42,
+        "polygons": 80,
+        "groups": 0
+      }
+    ]
+  },
+  {
+    "id": "onca",
+    "vertices": 44682,
+    "polygons": 67728,
+    "mesh_count": 9,
+    "materials": [
+      "AmberEye.002",
+      "Brow.004",
+      "Brow.005",
+      "EyeLid.004",
+      "EyeLid.005",
+      "Glint.002",
+      "HeldCardBack.002",
+      "HeldCardFace.002",
+      "JaguarNose",
+      "LinenShirt.002",
+      "PolishedLeather.002",
+      "Pupil.002",
+      "WhiteFur.002",
+      "onca_accent",
+      "onca_coat",
+      "onca_satin",
+      "onca_skin"
+    ],
+    "rigs": [],
+    "unweighted": 0,
+    "animations": {
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 1.958,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "ArmLMesh",
+        "vertices": 1763,
+        "polygons": 2808,
+        "groups": 0
+      },
+      {
+        "name": "ForearmLMesh",
+        "vertices": 2228,
+        "polygons": 3508,
+        "groups": 0
+      },
+      {
+        "name": "HandLMesh",
+        "vertices": 6909,
+        "polygons": 9360,
+        "groups": 0
+      },
+      {
+        "name": "ArmRMesh",
+        "vertices": 1763,
+        "polygons": 2808,
+        "groups": 0
+      },
+      {
+        "name": "ForearmRMesh",
+        "vertices": 2228,
+        "polygons": 3508,
+        "groups": 0
+      },
+      {
+        "name": "HandRMesh",
+        "vertices": 6951,
+        "polygons": 9396,
+        "groups": 0
+      },
+      {
+        "name": "BodyMesh",
+        "vertices": 5644,
+        "polygons": 6732,
+        "groups": 0
+      },
+      {
+        "name": "HeadMesh",
+        "vertices": 13410,
+        "polygons": 23736,
+        "groups": 0
+      },
+      {
+        "name": "PelvisMesh",
+        "vertices": 3786,
+        "polygons": 5872,
+        "groups": 0
+      }
+    ]
+  },
+  {
+    "id": "iara",
+    "vertices": 45530,
+    "polygons": 78626,
+    "mesh_count": 1,
+    "materials": [
+      "iara_skin"
+    ],
+    "rigs": [
+      {
+        "name": "Armature",
+        "bones": [
+          "Root",
+          "Pelvis",
+          "Spine",
+          "Chest",
+          "Neck",
+          "Head",
+          "Shoulder.L",
+          "UpperArm.L",
+          "Forearm.L",
+          "Hand.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "Forearm.R",
+          "Hand.R",
+          "CardSocket.R",
+          "Thigh.L",
+          "Shin.L",
+          "Foot.L",
+          "Thigh.R",
+          "Shin.R",
+          "Foot.R"
+        ]
+      }
+    ],
+    "unweighted": 0,
+    "animations": {
+      "taunt": 1.792,
+      "laugh": 1.792,
+      "surprised": 1.625,
+      "suspicious": 1.792,
+      "bad_beat": 1.958,
+      "lose": 1.958,
+      "big_win": 2.292,
+      "small_win": 1.625,
+      "life_lost": 1.792,
+      "trick_lose": 1.625,
+      "trick_win": 1.625,
+      "bid_zero": 1.625,
+      "bid_uncertain": 1.625,
+      "bid_confident": 1.625,
+      "decline_truco": 1.625,
+      "accept_truco": 1.625,
+      "showdown": 1.958,
+      "fold": 1.625,
+      "all_in": 1.958,
+      "bet": 1.625,
+      "check": 1.458,
+      "cut_deck": 1.625,
+      "shuffle": 1.958,
+      "deal": 1.958,
+      "play_card_dramatic": 2.125,
+      "play_card_fast": 1.458,
+      "hold_cards": 1.625,
+      "inspect_hand": 1.792,
+      "think": 1.958,
+      "idle_impatient": 1.625,
+      "idle_table_02": 1.958,
+      "idle_table_01": 1.958,
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 2.292,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "mesh_node",
+        "vertices": 45530,
+        "polygons": 78626,
+        "groups": 21
+      }
+    ]
+  },
+  {
+    "id": "zeca",
+    "vertices": 40299,
+    "polygons": 69072,
+    "mesh_count": 1,
+    "materials": [
+      "zeca_skin"
+    ],
+    "rigs": [
+      {
+        "name": "Armature",
+        "bones": [
+          "Root",
+          "Pelvis",
+          "Spine",
+          "Chest",
+          "Neck",
+          "Head",
+          "Ear.L",
+          "Ear.R",
+          "Shoulder.L",
+          "UpperArm.L",
+          "Forearm.L",
+          "Hand.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "Forearm.R",
+          "Hand.R",
+          "CardSocket.R",
+          "Tail.01",
+          "Tail.02",
+          "Thigh.L",
+          "Shin.L",
+          "Foot.L",
+          "Thigh.R",
+          "Shin.R",
+          "Foot.R"
+        ]
+      }
+    ],
+    "unweighted": 0,
+    "animations": {
+      "taunt": 1.792,
+      "laugh": 1.792,
+      "surprised": 1.625,
+      "suspicious": 1.792,
+      "bad_beat": 1.958,
+      "lose": 1.958,
+      "big_win": 2.292,
+      "small_win": 1.625,
+      "life_lost": 1.792,
+      "trick_lose": 1.625,
+      "trick_win": 1.625,
+      "bid_zero": 1.625,
+      "bid_uncertain": 1.625,
+      "bid_confident": 1.625,
+      "decline_truco": 1.625,
+      "accept_truco": 1.625,
+      "showdown": 1.958,
+      "fold": 1.625,
+      "all_in": 1.958,
+      "bet": 1.625,
+      "check": 1.458,
+      "cut_deck": 1.625,
+      "shuffle": 1.958,
+      "deal": 1.958,
+      "play_card_dramatic": 2.125,
+      "play_card_fast": 1.458,
+      "hold_cards": 1.625,
+      "inspect_hand": 1.792,
+      "think": 1.958,
+      "idle_impatient": 1.625,
+      "idle_table_02": 1.958,
+      "idle_table_01": 1.958,
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 2.292,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "mesh_node",
+        "vertices": 40299,
+        "polygons": 69072,
+        "groups": 25
+      }
+    ]
+  },
+  {
+    "id": "aki",
+    "vertices": 29981,
+    "polygons": 41378,
+    "mesh_count": 1,
+    "materials": [
+      "N00_000_00_EyeHighlight_00_EYE (Instance)",
+      "N00_000_00_EyeIris_00_EYE (Instance)",
+      "N00_000_00_EyeWhite_00_EYE (Instance)",
+      "N00_000_00_FaceBrow_00_FACE (Instance)",
+      "N00_000_00_FaceEyeline_00_FACE (Instance)",
+      "N00_000_00_FaceMouth_00_FACE (Instance)",
+      "N00_000_00_Face_00_SKIN (Instance)",
+      "N00_000_Hair_00_HAIR (Instance)",
+      "N00_001_03_Bottoms_01_CLOTH (Instance)",
+      "N00_002_01_Shoes_01_CLOTH (Instance)",
+      "N00_003_01_Shoes_01_CLOTH (Instance)",
+      "N00_007_01_Tops_01_CLOTH (Instance)",
+      "aki_skin"
+    ],
+    "rigs": [
+      {
+        "name": "Armature",
+        "bones": [
+          "Root",
+          "Pelvis",
+          "Spine",
+          "Chest",
+          "Neck",
+          "Head",
+          "Shoulder.L",
+          "UpperArm.L",
+          "Forearm.L",
+          "Hand.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "Forearm.R",
+          "Hand.R",
+          "CardSocket.R",
+          "Thigh.L",
+          "Shin.L",
+          "Foot.L",
+          "Thigh.R",
+          "Shin.R",
+          "Foot.R"
+        ]
+      }
+    ],
+    "unweighted": 0,
+    "animations": {
+      "trick_win": 1.792,
+      "trick_lose": 1.792,
+      "think": 1.792,
+      "taunt": 1.792,
+      "suspicious": 1.792,
+      "surprised": 1.792,
+      "small_win": 1.792,
+      "shuffle": 1.792,
+      "showdown": 1.792,
+      "play_card_fast": 1.792,
+      "play_card_dramatic": 1.792,
+      "lose": 1.792,
+      "life_lost": 1.792,
+      "laugh": 1.792,
+      "inspect_hand": 1.792,
+      "idle_table_02": 1.792,
+      "idle_table_01": 1.792,
+      "idle_impatient": 1.792,
+      "hold_cards": 1.792,
+      "fold": 1.792,
+      "decline_truco": 1.792,
+      "deal": 1.792,
+      "cut_deck": 1.792,
+      "check": 1.792,
+      "big_win": 1.792,
+      "bid_zero": 1.792,
+      "bid_uncertain": 1.792,
+      "bid_confident": 1.792,
+      "bet": 1.792,
+      "bad_beat": 1.792,
+      "all_in": 1.792,
+      "accept_truco": 1.792,
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 2.292,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "Body",
+        "vertices": 29981,
+        "polygons": 41378,
+        "groups": 21
+      }
+    ]
+  },
+  {
+    "id": "barao",
+    "vertices": 40662,
+    "polygons": 69508,
+    "mesh_count": 1,
+    "materials": [
+      "barao_skin"
+    ],
+    "rigs": [
+      {
+        "name": "Armature",
+        "bones": [
+          "Root",
+          "Pelvis",
+          "Spine",
+          "Chest",
+          "Neck",
+          "Head",
+          "Shoulder.L",
+          "UpperArm.L",
+          "Forearm.L",
+          "Hand.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "Forearm.R",
+          "Hand.R",
+          "CardSocket.R",
+          "Wing.L",
+          "Wing.R",
+          "Thigh.L",
+          "Shin.L",
+          "Foot.L",
+          "Thigh.R",
+          "Shin.R",
+          "Foot.R"
+        ]
+      }
+    ],
+    "unweighted": 0,
+    "animations": {
+      "taunt": 1.792,
+      "laugh": 1.792,
+      "surprised": 1.625,
+      "suspicious": 1.792,
+      "bad_beat": 1.958,
+      "lose": 1.958,
+      "big_win": 2.292,
+      "small_win": 1.625,
+      "life_lost": 1.792,
+      "trick_lose": 1.625,
+      "trick_win": 1.625,
+      "bid_zero": 1.625,
+      "bid_uncertain": 1.625,
+      "bid_confident": 1.625,
+      "decline_truco": 1.625,
+      "accept_truco": 1.625,
+      "showdown": 1.958,
+      "fold": 1.625,
+      "all_in": 1.958,
+      "bet": 1.625,
+      "check": 1.458,
+      "cut_deck": 1.625,
+      "shuffle": 1.958,
+      "deal": 1.958,
+      "play_card_dramatic": 2.125,
+      "play_card_fast": 1.458,
+      "hold_cards": 1.625,
+      "inspect_hand": 1.792,
+      "think": 1.958,
+      "idle_impatient": 1.625,
+      "idle_table_02": 1.958,
+      "idle_table_01": 1.958,
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 2.292,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "mesh_node",
+        "vertices": 40662,
+        "polygons": 69508,
+        "groups": 23
+      }
+    ]
+  },
+  {
+    "id": "dama",
+    "vertices": 53930,
+    "polygons": 93256,
+    "mesh_count": 1,
+    "materials": [
+      "dama_skin"
+    ],
+    "rigs": [
+      {
+        "name": "Armature",
+        "bones": [
+          "Root",
+          "Pelvis",
+          "Spine",
+          "Chest",
+          "Neck",
+          "Head",
+          "Shoulder.L",
+          "UpperArm.L",
+          "Forearm.L",
+          "Hand.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "Forearm.R",
+          "Hand.R",
+          "CardSocket.R",
+          "Tail.01",
+          "Tail.02",
+          "Tail.03",
+          "Tail.04",
+          "Tail.05"
+        ]
+      }
+    ],
+    "unweighted": 0,
+    "animations": {
+      "taunt": 1.792,
+      "laugh": 1.792,
+      "surprised": 1.625,
+      "suspicious": 1.792,
+      "bad_beat": 1.958,
+      "lose": 1.958,
+      "big_win": 2.292,
+      "small_win": 1.625,
+      "life_lost": 1.792,
+      "trick_lose": 1.625,
+      "trick_win": 1.625,
+      "bid_zero": 1.625,
+      "bid_uncertain": 1.625,
+      "bid_confident": 1.625,
+      "decline_truco": 1.625,
+      "accept_truco": 1.625,
+      "showdown": 1.958,
+      "fold": 1.625,
+      "all_in": 1.958,
+      "bet": 1.625,
+      "check": 1.458,
+      "cut_deck": 1.625,
+      "shuffle": 1.958,
+      "deal": 1.958,
+      "play_card_dramatic": 2.125,
+      "play_card_fast": 1.458,
+      "hold_cards": 1.625,
+      "inspect_hand": 1.792,
+      "think": 1.958,
+      "idle_impatient": 1.625,
+      "idle_table_02": 1.958,
+      "idle_table_01": 1.958,
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 2.292,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "mesh_node",
+        "vertices": 53930,
+        "polygons": 93256,
+        "groups": 20
+      }
+    ]
+  },
+  {
+    "id": "morgana",
+    "vertices": 42694,
+    "polygons": 58889,
+    "mesh_count": 1,
+    "materials": [
+      "hidden",
+      "morgana_skin"
+    ],
+    "rigs": [
+      {
+        "name": "Armature",
+        "bones": [
+          "Root",
+          "Pelvis",
+          "Spine",
+          "Chest",
+          "Neck",
+          "Head",
+          "Shoulder.L",
+          "UpperArm.L",
+          "Forearm.L",
+          "Hand.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "Forearm.R",
+          "Hand.R",
+          "CardSocket.R",
+          "Thigh.L",
+          "Shin.L",
+          "Foot.L",
+          "Thigh.R",
+          "Shin.R",
+          "Foot.R"
+        ]
+      }
+    ],
+    "unweighted": 0,
+    "animations": {
+      "trick_win": 1.792,
+      "trick_lose": 1.792,
+      "think": 1.792,
+      "taunt": 1.792,
+      "suspicious": 1.792,
+      "surprised": 1.792,
+      "small_win": 1.792,
+      "shuffle": 1.792,
+      "showdown": 1.792,
+      "play_card_fast": 1.792,
+      "play_card_dramatic": 1.792,
+      "lose": 1.792,
+      "life_lost": 1.792,
+      "laugh": 1.792,
+      "inspect_hand": 1.792,
+      "idle_table_02": 1.792,
+      "idle_table_01": 1.792,
+      "idle_impatient": 1.792,
+      "hold_cards": 1.792,
+      "fold": 1.792,
+      "decline_truco": 1.792,
+      "deal": 1.792,
+      "cut_deck": 1.792,
+      "check": 1.792,
+      "big_win": 1.792,
+      "bid_zero": 1.792,
+      "bid_uncertain": 1.792,
+      "bid_confident": 1.792,
+      "bet": 1.792,
+      "bad_beat": 1.792,
+      "all_in": 1.792,
+      "accept_truco": 1.792,
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 2.292,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "model:wizch_01",
+        "vertices": 42694,
+        "polygons": 58889,
+        "groups": 21
+      }
+    ]
+  },
+  {
+    "id": "carnical",
+    "vertices": 26376,
+    "polygons": 46801,
+    "mesh_count": 1,
+    "materials": [
+      "Clothes",
+      "carnical_skin"
+    ],
+    "rigs": [
+      {
+        "name": "Armature",
+        "bones": [
+          "Root",
+          "Pelvis",
+          "Spine",
+          "Chest",
+          "Neck",
+          "Head",
+          "Shoulder.L",
+          "UpperArm.L",
+          "Forearm.L",
+          "Hand.L",
+          "Shoulder.R",
+          "UpperArm.R",
+          "Forearm.R",
+          "Hand.R",
+          "CardSocket.R",
+          "Thigh.L",
+          "Shin.L",
+          "Foot.L",
+          "Thigh.R",
+          "Shin.R",
+          "Foot.R"
+        ]
+      }
+    ],
+    "unweighted": 0,
+    "animations": {
+      "trick_win": 1.792,
+      "trick_lose": 1.792,
+      "think": 1.792,
+      "taunt": 1.792,
+      "suspicious": 1.792,
+      "surprised": 1.792,
+      "small_win": 1.792,
+      "shuffle": 1.792,
+      "showdown": 1.792,
+      "play_card_fast": 1.792,
+      "play_card_dramatic": 1.792,
+      "lose": 1.792,
+      "life_lost": 1.792,
+      "laugh": 1.792,
+      "inspect_hand": 1.792,
+      "idle_table_02": 1.792,
+      "idle_table_01": 1.792,
+      "idle_impatient": 1.792,
+      "hold_cards": 1.792,
+      "fold": 1.792,
+      "decline_truco": 1.792,
+      "deal": 1.792,
+      "cut_deck": 1.792,
+      "check": 1.792,
+      "big_win": 1.792,
+      "bid_zero": 1.792,
+      "bid_uncertain": 1.792,
+      "bid_confident": 1.792,
+      "bet": 1.792,
+      "bad_beat": 1.792,
+      "all_in": 1.792,
+      "accept_truco": 1.792,
+      "play_card": 1.958,
+      "flourish": 1.958,
+      "boss_intro": 2.292,
+      "victory": 1.958,
+      "truco": 1.958,
+      "entrance": 1.958,
+      "idle": 2.625
+    },
+    "mesh_details": [
+      {
+        "name": "Base_body",
+        "vertices": 26376,
+        "polygons": 46801,
+        "groups": 21
+      }
+    ]
+  }
+]

@@ -1,0 +1,51 @@
+{
+	"gpu": "NVIDIA GeForce RTX 3050",
+	"measurements": [
+		{
+			"draw_calls": 847.0,
+			"median_frame_ms": 1.33,
+			"p95_frame_ms": 1.638,
+			"primitives": 133030.0,
+			"quality": "leve",
+			"render_scale": 1.0,
+			"size": "(1280, 720)",
+			"table_logical_size": "(724, 375)",
+			"table_target_pixels": "(724, 375)"
+		},
+		{
+			"draw_calls": 847.0,
+			"median_frame_ms": 2.388,
+			"p95_frame_ms": 2.733,
+			"primitives": 133030.0,
+			"quality": "ultra",
+			"render_scale": 1.0,
+			"size": "(1280, 720)",
+			"table_logical_size": "(724, 375)",
+			"table_target_pixels": "(724, 375)"
+		},
+		{
+			"draw_calls": 845.0,
+			"median_frame_ms": 7.305,
+			"p95_frame_ms": 7.734,
+			"primitives": 246396.0,
+			"quality": "leve",
+			"render_scale": 1.0,
+			"size": "(3840, 2160)",
+			"table_logical_size": "(724, 375)",
+			"table_target_pixels": "(2172, 1125)"
+		},
+		{
+			"draw_calls": 845.0,
+			"median_frame_ms": 11.153,
+			"p95_frame_ms": 11.516,
+			"primitives": 246396.0,
+			"quality": "ultra",
+			"render_scale": 1.0,
+			"size": "(3840, 2160)",
+			"table_logical_size": "(724, 375)",
+			"table_target_pixels": "(2172, 1125)"
+		}
+	],
+	"renderer": "forward_plus",
+	"synthetic_scene": true
+}

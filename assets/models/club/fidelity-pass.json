@@ -1,0 +1,80 @@
+[
+  {
+    "id": "corvo",
+    "before_faces": 63184,
+    "after_faces": 64336,
+    "mesh_groups": 4
+  },
+  {
+    "id": "onca",
+    "before_faces": 53106,
+    "after_faces": 102066,
+    "mesh_groups": 4
+  },
+  {
+    "id": "nina",
+    "before_faces": 57112,
+    "after_faces": 80152,
+    "mesh_groups": 4
+  },
+  {
+    "id": "bento",
+    "before_faces": 57054,
+    "after_faces": 137694,
+    "mesh_groups": 4
+  },
+  {
+    "id": "iara",
+    "before_faces": 47506,
+    "after_faces": 93586,
+    "mesh_groups": 4
+  },
+  {
+    "id": "zeca",
+    "before_faces": 43802,
+    "after_faces": 82394,
+    "mesh_groups": 4
+  },
+  {
+    "id": "barao",
+    "before_faces": 39029,
+    "after_faces": 52853,
+    "mesh_groups": 4
+  },
+  {
+    "id": "dama",
+    "before_faces": 44987,
+    "after_faces": 70547,
+    "mesh_groups": 4
+  },
+  {
+    "id": "room_classic_club",
+    "before_faces": 2534,
+    "after_faces": 13158,
+    "mesh_groups": 88
+  },
+  {
+    "id": "room_barao_lounge",
+    "before_faces": 2534,
+    "after_faces": 13158,
+    "mesh_groups": 88
+  },
+  {
+    "id": "room_dama_salon",
+    "before_faces": 2534,
+    "after_faces": 13158,
+    "mesh_groups": 88
+  },
+  {
+    "id": "room_cyber_casino",
+    "before_faces": 2534,
+    "after_faces": 13158,
+    "mesh_groups": 88
+  },
+  {
+    "id": "club_chair",
+    "before_faces": 1704,
+    "after_faces": 4488,
+    "mesh_groups": 18
+  }
+]

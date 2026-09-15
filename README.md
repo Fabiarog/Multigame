@@ -1,49 +1,79 @@
-# Game Hub - Multiplayer Pixel Art Card Game
+# MultiGame — Clube de cartas
 
-Welcome to the **Game Hub** repository! This is a scalable, modular platform built in **Godot 4.3 (.NET/C#)** designed to host multiple high-quality 2D/3D pixel art multiplayer games, starting with a Poker Roguelike and a Truco Roguelike.
+Pôquer roguelike, truco e Fodinha em Godot .NET/C#, com mesas em **2.5D**, elenco articulado feito no Blender e uma identidade de clube brasileiro: feltro verde, papel creme e detalhes de latão. O acervo pixel art original foi preservado.
 
-## 🛠 Prerequisites
+![Abertura do clube](docs/screenshots/abertura.png)
 
-To compile, run, and edit this project, you will need:
+Atualização de 12/09/2026: ritmo de IA preservado ao reduzir movimentos, correções da distribuição/pontuação no pôquer, transições de gestos e câmera mais estáveis, feltro mais discreto e sombras de contato suavizadas. Veja [escopo e validação do Patch 25](docs/PATCH25_VALIDACAO.md).
 
-1. **Godot Engine 4.7 (.NET Version)**: [Download Godot 4.7 (.NET)](https://godotengine.org/download)
-   > *Note: You must download the **.NET version** to compile C# scripts. The standard version will not work.*
-2. **.NET 8.0 SDK**: [Download .NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
-3. **IDE**: Visual Studio 2022, Visual Studio Code, or JetBrains Rider for C# editing.
+## O que está jogável
 
-## 🚀 How to Run the Game
+- **Pôquer roguelike solo:** seleção de cartas, prévia de pontuação, descartes, metas por rodada, relíquias, loja e tutorial. A apresentação dos rivais usa o novo elenco.
+- **Truco solo:** 1×1, 2×2 e 3×3 com os demais lugares controlados por IA. Cada participante joga sua própria mão; o resultado do tombo considera a melhor carta de cada equipe.
+- **Pena nas equipes:** o aliado que recebe a carta decide se fica com ela. A IA resolve sua própria decisão no solo; o jogador local recebe os botões quando é o destinatário.
+- **Apresentação:** mesa e personagens 3D em 2.5D ou POV, leques de cartas e animações de embaralhar, cortar, entregar a pena, distribuir, jogar e recolher no truco. A lógica aguarda a última carta pousar antes de liberar a próxima etapa; o pôquer também bloqueia a mão durante a entrega.
+- **Elenco Blender:** seis jogáveis (Nina, Bento, Seu Corvo, Dona Onça, Iara e Zeca) e dois bosses exclusivos (Barão da Meia-Noite e Dama de Copas). Os modelos têm sete clipes: repouso, entrada, truco, vitória, boss, floreio e jogar carta. Três vitórias com um personagem desbloqueiam seu floreio de truco.
+- **Refinamento MCP:** oito personagens com mais geometria e acabamento, preservando sua identidade; gestos próprios de Corvo, Onça, Barão e Dama, relógio de salão animado, poses de repouso corrigidas e opções de iluminação aplicadas à mesa. Histórico e reprodução no **Patch 8** do [registro cumulativo](AI_DEV_PATCH_NOTES.md).
+- **Pilhas e entradas:** cartas jogadas se acumulam sobre a mesa 3D; cutscenes apresentam os participantes e os bosses, com opção de pular. No truco, os resultados indicam a equipe vencedora.
+- **Áudio:** cinco loops originais sintetizados, efeitos de cartas e vinhetas de entrada; volumes de música/efeitos e seleção de faixa.
+- **Fodinha:** solo com três IAs, palpites antes das jogadas, cinco vidas e perda da diferença entre palpite e vitórias; nove mãos de 1→5→1 cartas, eliminação e resultado final. Regras completas no botão “Como jogar”.
+- **Vídeo:** mesa renderizada nos pixels reais de sua área na janela, inclusive 4K, com interface no tamanho original; escala 3D configurável, filtragem linear e sombras ajustadas. Mais detalhes nos rostos, molduras e poltronas via Blender MCP (Patch 9). Os efeitos gráficos continuam sendo rasterização, sem ray tracing por hardware.
+- **Ajustes:** perfil, áudio, opções visuais e acessibilidade, incluindo redução de movimento e modos de cor. A opção de reduzir animações também encurta as esperas da partida; deixe-a desligada para o ritmo normal.
+- **Câmera:** no POV, arraste com o botão direito para olhar dentro do limite de pescoço, use `C` para alternar mesa/POV e `Centralizar` para voltar ao centro.
 
-### Method 1: Using the Godot Editor (Recommended for Developers)
-1. Open Godot 4.7 (.NET).
-2. Click **Import** and select the `project.godot` file inside this repository.
-3. Click **Save & Open**.
-4. In the top right corner of the editor, click **Build** to compile the C# solution for the first time.
-5. Press **F5** (or click the Play icon ⏯️) to run the Game Hub.
+## Limites atuais
 
-### Method 2: Running via Command Line (Headless/CI)
-Open your terminal in the project directory and run:
-```bash
-dotnet build
-godot --path .
+**O multiplayer de partida ainda precisa de implementação.** A estrutura anterior de rede/lobby LAN foi preservada, mas não sincroniza turnos, baralho nem decisões entre computadores. Portanto, a decisão de pena pelo aliado humano remoto é uma entrega futura, detalhada no plano. Não considere o botão LAN uma partida multiplayer completa.
+
+**Fodinha está disponível em solo com IAs.** Rede, variantes regionais e progressão roguelike desse modo ficam para próximas etapas. A progressão roguelike completa do truco, habilidades exclusivas dos personagens e novos bosses mecânicos também estão no plano.
+
+## Executar
+
+Versões verificadas nesta revisão: **Godot 4.7.2 .NET** e **SDK .NET 8.0.424**. O SDK do projeto usa `Godot.NET.Sdk/4.7.2` e `net8.0`.
+
+1. Instale o Godot **.NET** e o SDK .NET 8.
+2. Importe `project.godot` no editor, compile C# e pressione **F5**.
+
+No PowerShell, também é possível usar o launcher:
+
+```powershell
+$env:DOTNET_ROOT = 'C:\caminho\para\dotnet'
+$env:GODOT_BIN = 'C:\caminho\para\Godot_v4.7.2-stable_mono_win64_console.exe'
+.\tools\play.ps1
 ```
 
-## 🎮 Features & Navigation
+O launcher também encontra o ambiente temporário preparado neste PC enquanto ele existir em `%TEMP%\multigame-tools`. Para uso permanente, configure os caminhos acima. O `Game Hub.exe` local foi atualizado como **build de revisão/debug**; mantenha `Game Hub.pck` e a pasta `data_GameHub_windows_x86_64` ao lado dele. Essa pasta de runtime é gerada pelo export e não é versionada: em outro computador, compile/exporte o fonte ou transfira os três juntos. Os templates release instalados estão incompletos; este build não é um pacote final de distribuição.
 
-When the Hub launches, you will find:
-* **Play Menu**: Access quick matches, LAN lobbies, or the **Tutorial** mode (where bots will teach you the mechanics).
-* **Settings**: A comprehensive configuration menu supporting:
-  * *Graphics & Visuals* (Resolution, Pixel Scaling, VFX toggles).
-  * *Controls* (Keyboard/Mouse/Controller remapping).
-  * *Audio* (Master, Music, SFX sliders).
-  * *Profile* (Nickname and Avatar/Character selection).
-  * *Accessibility* (Colorblind modes, text scaling, screen shake toggles).
-* **Dynamic Scenarios**: Matches take place across various 2.5D backgrounds (Casino, Wild West, Pirate Ship, Space, Cyberpunk, Brazil).
+O identificador interno `Game Hub` foi mantido para preservar o caminho dos ajustes existentes. O título visível foi atualizado para MultiGame.
 
-## 📁 Architecture Overview
+## Verificação
 
-* `core/`: Global Singletons (Network, Audio, Save, Game Registry).
-* `hub/`: Main menu UI, settings screens, and lobby management.
-* `games/`: Isolated modules for each playable game (e.g., `poker_roguelike`, `truco_roguelike`).
+Com as mesmas variáveis de ambiente configuradas:
 
-## 🤝 Contributing
-Make sure to build the C# solution locally before submitting changes. Avoid committing `/.godot/` and `/data/saves/` folders.
+```powershell
+.\tools\visual_smoke.ps1
+```
+
+O script compila C#, importa recursos, verifica duplas/trios e captura o renderizador real em uma janela fora da tela. Os saves de teste ficam em um `APPDATA` temporário isolado. Imagens em `docs/screenshots`; relatório JSON e logs no diretório temporário informado ao final. O teste falha em exceções de runtime, ações esperadas ausentes ou elementos de interface fora dos limites.
+
+## Organização e próximos passos
+
+| Caminho | Responsabilidade |
+| --- | --- |
+| `core/visuals` | Tema, cartas, personagens e mesa 2.5D compartilhados |
+| `core/systems` | Preferências, áudio e persistência existente |
+| `core/networking` | Estrutura de lobby/rede a completar |
+| `hub` | Abertura, coleção, ajustes e lobby |
+| `games/poker_roguelike` | Corrida de pôquer, pontuação e loja |
+| `games/truco` | Regras, turnos por lugar e apresentação do truco |
+| `games/fodinha` | Palpites, vazas, vidas, IAs e apresentação de quatro participantes |
+| `assets` | Acervo preservado e novos recursos visuais/sonoros |
+| `tools` | Launcher, geração de áudio e verificações |
+
+- **[Guia para IAs e Patch Notes Cumulativo](AI_DEV_PATCH_NOTES.md)** — Documentação técnica completa de arquitetura, todos os patches implementados, automação no Blender 5.2, comandos de build e regras de manutenção.
+- [Entrega atual: Blender, pilhas, cutscenes, gráficos e próximas etapas](docs/plano-mesas-blender.md).
+- [Primeira repaginada: implementado, pendências, critérios e perguntas](docs/plano-repaginacao-clube.md).
+- [Origem das artes, prompts, áudio e licenças de fontes](assets/art-provenance.md).
+- [Plano anterior de personagens/cartas/truco](docs/plano-implementacao-personagens-cartas-truco.md), mantido como histórico.
+
+O estado anterior foi preservado na branch **Backup** antes das alterações. Esta repaginada é entregue em **review**, mantendo **main** como estava.

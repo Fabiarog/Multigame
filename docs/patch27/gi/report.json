@@ -1,0 +1,37 @@
+[
+	{
+		"median_ms": 8.947,
+		"mode": "none",
+		"p95_ms": 9.226,
+		"render_memory_bytes": 516339216.0
+	},
+	{
+		"median_ms": 9.204,
+		"mode": "probe",
+		"p95_ms": 9.435,
+		"render_memory_bytes": 540239504.0
+	},
+	{
+		"median_ms": 10.783,
+		"mode": "ssil",
+		"p95_ms": 11.081,
+		"render_memory_bytes": 590471312.0
+	},
+	{
+		"median_ms": 10.663,
+		"mode": "sdfgi",
+		"p95_ms": 13.05,
+		"render_memory_bytes": 1001405840.0
+	},
+	{
+		"median_ms": 11.291,
+		"mode": "voxel",
+		"p95_ms": 11.583,
+		"render_memory_bytes": 665900944.0
+	},
+	{
+		"mode": "lightmap",
+		"reason": "Current exported room has UV1 only; requires editor bake after a separate UV2/lightmap setup.",
+		"status": "not_baked"
+	}
+]

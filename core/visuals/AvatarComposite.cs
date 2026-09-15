@@ -114,7 +114,7 @@ public partial class AvatarComposite : Node3D
 
     private void SetLayerTexture(Sprite3D layer, string path)
     {
-        if (ResourceLoader.Exists(path))
+        if (!string.IsNullOrEmpty(path) && ResourceLoader.Exists(path))
         {
             var tex = ResourceLoader.Load<Texture2D>(path);
             layer.Texture = tex;
@@ -134,8 +134,28 @@ public partial class AvatarComposite : Node3D
         }
         else
         {
-            layer.Texture = null;
-            GD.Print($"[AvatarComposite] Texture not found: {path}");
+            string fallback = "res://assets/sprites/characters/spider/spider_spritesheet.jpg";
+            if (layer == BaseLayer && ResourceLoader.Exists(fallback))
+            {
+                var tex = ResourceLoader.Load<Texture2D>(fallback);
+                layer.Texture = tex;
+                var shader = ResourceLoader.Load<Shader>("res://assets/shaders/SpatialChromaKey.gdshader");
+                if (shader != null)
+                {
+                    var mat = new ShaderMaterial();
+                    mat.Shader = shader;
+                    mat.SetShaderParameter("chroma_color", new Color(0.0f, 1.0f, 0.0f));
+                    mat.SetShaderParameter("chroma_threshold", 0.35f);
+                    mat.SetShaderParameter("chroma_smoothing", 0.1f);
+                    mat.SetShaderParameter("sprite_texture", tex);
+                    layer.MaterialOverride = mat;
+                }
+            }
+            else
+            {
+                layer.Texture = null;
+                layer.Visible = false;
+            }
         }
     }
 

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "corvo",
+    "source_faces": 27828,
+    "polished_faces": 63184,
+    "mesh_groups": 4
+  },
+  {
+    "id": "onca",
+    "source_faces": 26502,
+    "polished_faces": 53106,
+    "mesh_groups": 4
+  },
+  {
+    "id": "barao",
+    "source_faces": 20057,
+    "polished_faces": 39029,
+    "mesh_groups": 4
+  },
+  {
+    "id": "dama",
+    "source_faces": 22557,
+    "polished_faces": 44987,
+    "mesh_groups": 4
+  },
+  {
+    "id": "nina",
+    "source_faces": 35396,
+    "polished_faces": 57112,
+    "mesh_groups": 4
+  },
+  {
+    "id": "bento",
+    "source_faces": 22130,
+    "polished_faces": 57054,
+    "mesh_groups": 4
+  },
+  {
+    "id": "iara",
+    "source_faces": 22382,
+    "polished_faces": 47506,
+    "mesh_groups": 4
+  },
+  {
+    "id": "zeca",
+    "source_faces": 19260,
+    "polished_faces": 43802,
+    "mesh_groups": 4
+  }
+]
